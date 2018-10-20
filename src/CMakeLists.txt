@@ -1,6 +1,6 @@
-add_executable(zitorrent main.cpp)
+add_executable(zit main.cpp)
 
-target_compile_options(zitorrent PUBLIC -Wall -Wextra -Werror -Weffc++)
+target_compile_options(zit PUBLIC -Wall -Wextra -Werror -Weffc++)
 
 find_program(CLANG_FORMAT
   NAMES clang-format clang-format-5.0)

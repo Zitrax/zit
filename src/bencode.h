@@ -1,8 +1,11 @@
+// -*- mode:c++; c-basic-offset : 2; - * -
 #pragma once
 
-#include <list>
+#include <map>
 #include <memory>
 #include <sstream>
+#include <type_traits>
+#include <vector>
 
 namespace bencode {
 
@@ -47,18 +50,34 @@ using ElmPtr = std::unique_ptr<Element>;
 
 // Template specializations
 template <>
-inline std::string encode<std::string>(const std::string& str) {
+inline std::string encode(const std::string& str) {
   std::stringstream ss;
   ss << str.length() << ":" << str;
   return ss.str();
 }
 
 template <>
-inline std::string encode(const std::list<ElmPtr>& elist) {
+inline std::string encode(const std::vector<ElmPtr>& elist) {
   std::stringstream ss;
   ss << "I";
   for (const auto& elm : elist) {
     ss << elm->encode();
+  }
+  ss << "e";
+  return ss.str();
+}
+
+/**
+ * A map of strings to other types
+ */
+using BencodeMap = std::map<std::string, ElmPtr>;
+
+template <>
+inline std::string encode(const BencodeMap& emap) {
+  std::stringstream ss;
+  ss << "d";
+  for (const auto& elm : emap) {
+    ss << encode(elm.first) << elm.second->encode();
   }
   ss << "e";
   return ss.str();
