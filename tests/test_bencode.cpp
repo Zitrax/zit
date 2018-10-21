@@ -1,0 +1,81 @@
+#include "gtest/gtest.h"
+#include "bencode.h"
+
+using namespace bencode;
+using namespace std;
+
+TEST(bencode, string)
+{
+    EXPECT_EQ(encode(std::string("spam")), "4:spam");
+    EXPECT_EQ(encode("spam"), "4:spam");
+    EXPECT_EQ(encode("spam"s), "4:spam");
+
+    EXPECT_EQ(encode(std::string("egg")), "3:egg");
+    EXPECT_EQ(encode("egg"), "3:egg");
+    EXPECT_EQ(encode("egg"s), "3:egg");
+
+    EXPECT_EQ(encode("0"), "1:0");
+    EXPECT_EQ(encode("0"s), "1:0");
+
+    EXPECT_EQ(encode(""), "0:");
+    EXPECT_EQ(encode(""s), "0:");
+}
+
+TEST(bencode, integers)
+{
+    // short
+    EXPECT_EQ(encode(static_cast<short>(3)), "i3e");
+    EXPECT_EQ(encode(static_cast<short>(-3)), "i-3e");
+
+    // unsigned short
+    EXPECT_EQ(encode(static_cast<unsigned short>(3)), "i3e");
+
+    // int
+    EXPECT_EQ(encode(0), "i0e");
+    EXPECT_EQ(encode(3), "i3e");
+    EXPECT_EQ(encode(-3), "i-3e");
+
+    // unsigned int
+    EXPECT_EQ(encode(3U), "i3e");
+
+    // long
+    EXPECT_EQ(encode(3L), "i3e");
+    EXPECT_EQ(encode(-3L), "i-3e");
+
+    // unsigned long
+    EXPECT_EQ(encode(3UL), "i3e");
+
+    // long long
+    EXPECT_EQ(encode(3LL), "i3e");
+    EXPECT_EQ(encode(-3LL), "i-3e");
+
+    // unsigned long long
+    EXPECT_EQ(encode(3ULL), "i3e");
+    EXPECT_EQ(encode(12345678901234567890ULL), "i12345678901234567890e");
+}
+
+TEST(bencode, lists)
+{
+    auto v = std::vector<ElmPtr>();
+    EXPECT_EQ(encode(v), "le");
+    v.push_back(Element::build("spam"));
+    v.push_back(Element::build("egg"));
+    EXPECT_EQ(encode(v), "l4:spam3:egge");
+    v.push_back(Element::build(99));
+    EXPECT_EQ(encode(v), "l4:spam3:eggi99ee");
+}
+
+TEST(bencode, map)
+{
+    auto m = BencodeMap();
+    EXPECT_EQ(encode(m), "de");
+    m["cow"] = Element::build("moo");
+    m["spam"] = Element::build("eggs");
+    EXPECT_EQ(encode(m), "d3:cow3:moo4:spam4:eggse");
+    m.clear();
+    auto v = std::vector<ElmPtr>();
+    v.push_back(Element::build("a"));
+    v.push_back(Element::build("b"));
+    m["spam"] = Element::build(v);
+    EXPECT_EQ(encode(m), "d4:spaml1:a1:bee");
+}
