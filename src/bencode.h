@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <sstream>
+#include <stdexcept>
 #include <type_traits>
 #include <vector>
 
@@ -46,19 +47,31 @@ std::string encode(const T& in) {
 }
 
 // Classes
-class Element {
+class Element : public std::enable_shared_from_this<Element> {
  public:
   virtual ~Element() = default;
   virtual std::string encode() const = 0;
 
   template <typename T>
-  static auto build(const T& val) {
-    return std::make_unique<TypedElement<T>>(val);
+  auto to() {
+    static_assert(std::is_base_of<Element, T>::value,
+                  "Can only return sublasses of Element");
+    auto ptr = std::dynamic_pointer_cast<T>(shared_from_this());
+    if (!ptr) {
+      throw std::runtime_error("Could not convert to type");
+    }
+    return ptr;
   }
 
+  /**
+   * First try used T&& val, but it couse storage of int references when we want
+   * such values copied. See https://stackoverflow.com/q/17316386/11722 and
+   * https://isocpp.org/blog/2012/11/universal-references-in-c11-scott-meyers
+   * for details.
+   */
   template <typename T>
-  static auto build(T&& val) {
-    return std::make_unique<TypedElement<T>>(std::forward<T>(val));
+  static auto build(T val) {
+    return std::make_shared<TypedElement<T>>(std::move(val));
   }
 
   static auto build(const char* val) { return build(std::string(val)); }
@@ -78,12 +91,15 @@ class TypedElement : public Element {
       : m_data(std::forward<T>(data)) {}
   std::string encode() const override { return bencode::encode(m_data); }
 
+  operator T() const { return m_data; }
+  auto val() const { return m_data; }
+
  private:
   const T m_data;
 };
 
 // Typedefs
-using ElmPtr = std::unique_ptr<Element>;
+using ElmPtr = std::shared_ptr<Element>;
 
 // Template specializations
 template <>
@@ -123,6 +139,47 @@ inline std::string encode_internal(const BencodeMap& emap) {
   }
   ss << "e";
   return ss.str();
+}
+
+ElmPtr decode(const std::string& str) {
+  if (str.empty()) {
+    throw std::invalid_argument("Empty string");
+  }
+
+  if (str[0] == 'i') {
+    std::istringstream iss(str.substr(1));
+    int64_t i64;
+    iss >> i64;
+    if (iss.fail()) {
+      throw std::invalid_argument("Could not convert to integer");
+    }
+    if (str.at(static_cast<int>(iss.tellg()) + 1) != 'e') {
+      throw std::invalid_argument("No integer end marker");
+    }
+    return Element::build(i64);
+  } else if (str[0] >= '0' && str[0] <= '9') {
+    std::istringstream iss(str);
+    uint64_t strlen;
+    iss >> strlen;
+    if (iss.fail()) {
+      throw std::invalid_argument("Could not convert string length to integer");
+    }
+    char c;
+    try {
+      c = str.at(iss.tellg());
+    } catch (const std::out_of_range& ex) { /* throw below instead */
+    }
+    if (c != ':') {
+      throw std::invalid_argument("No string length end marker");
+    }
+    auto ret = str.substr(static_cast<int>(iss.tellg()) + 1, strlen);
+    if (ret.length() != strlen) {
+      throw std::invalid_argument("String not of expected length");
+    }
+    return Element::build(ret);
+  }
+
+  throw std::invalid_argument("Invalid bencode string: " + str);
 }
 
 }  // namespace bencode
