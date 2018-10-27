@@ -12,6 +12,7 @@ if(CLANG_FORMAT)
   list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "#")
 
   add_custom_target(format
+    COMMENT "Formatting ${ALL_SOURCE_FILES}"
     COMMAND ${CLANG_FORMAT} -style=Chromium -i ${ALL_SOURCE_FILES}
     )
 else()

@@ -141,45 +141,67 @@ inline std::string encode_internal(const BencodeMap& emap) {
   return ss.str();
 }
 
+ElmPtr decodeInt(std::istringstream& iss) {
+  int64_t i64;
+  iss >> i64;
+  if (iss.fail()) {
+    throw std::invalid_argument("Could not convert to integer");
+  }
+  if (iss.get() != 'e') {
+    throw std::invalid_argument("No integer end marker");
+  }
+  return Element::build(i64);
+}
+
+ElmPtr decodeString(std::istringstream& iss) {
+  uint64_t strlen;
+  iss >> strlen;
+  if (iss.fail()) {
+    throw std::invalid_argument("Could not convert string length to integer");
+  }
+  if (iss.get() != ':') {
+    throw std::invalid_argument("No string length end marker");
+  }
+  std::string str(strlen, '\0');
+  iss.read(&str[0], strlen);
+  if (iss.eof()) {
+    throw std::invalid_argument("String not of expected length");
+  }
+  return Element::build(str);
+}
+
+ElmPtr decode(std::istringstream& iss) {
+  if (iss.peek() == 'i') {
+    iss.ignore();
+    return decodeInt(iss);
+  } else if (iss.peek() >= '0' && iss.peek() <= '9') {
+    return decodeString(iss);
+  } else if (iss.peek() == 'l') {
+    iss.ignore();
+    auto v = std::vector<ElmPtr>();
+    if (iss.peek() != 'e') {
+      while (true) {
+        v.push_back(decode(iss));
+        if (iss.eof()) {
+          throw std::invalid_argument("Unexpected eof: " + iss.str());
+        }
+        if (iss.peek() == 'e') {
+          break;
+        }
+      }
+    }
+    return Element::build(v);
+  }
+
+  throw std::invalid_argument("Invalid bencode string: " + iss.str());
+}
+
 ElmPtr decode(const std::string& str) {
   if (str.empty()) {
     throw std::invalid_argument("Empty string");
   }
-
-  if (str[0] == 'i') {
-    std::istringstream iss(str.substr(1));
-    int64_t i64;
-    iss >> i64;
-    if (iss.fail()) {
-      throw std::invalid_argument("Could not convert to integer");
-    }
-    if (str.at(static_cast<int>(iss.tellg()) + 1) != 'e') {
-      throw std::invalid_argument("No integer end marker");
-    }
-    return Element::build(i64);
-  } else if (str[0] >= '0' && str[0] <= '9') {
-    std::istringstream iss(str);
-    uint64_t strlen;
-    iss >> strlen;
-    if (iss.fail()) {
-      throw std::invalid_argument("Could not convert string length to integer");
-    }
-    char c;
-    try {
-      c = str.at(iss.tellg());
-    } catch (const std::out_of_range& ex) { /* throw below instead */
-    }
-    if (c != ':') {
-      throw std::invalid_argument("No string length end marker");
-    }
-    auto ret = str.substr(static_cast<int>(iss.tellg()) + 1, strlen);
-    if (ret.length() != strlen) {
-      throw std::invalid_argument("String not of expected length");
-    }
-    return Element::build(ret);
-  }
-
-  throw std::invalid_argument("Invalid bencode string: " + str);
+  std::istringstream iss(str);
+  return decode(iss);
 }
 
 }  // namespace bencode

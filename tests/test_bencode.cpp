@@ -110,7 +110,23 @@ TEST(bencode, decode_string)
 
     // FIXME: This is uglier than the int.
     //        Why can't operator T() be used like in the int case?
-    EXPECT_EQ((*decode("4:spam")->to<TypedElement<string>>()).val(), "spam"s);
-    EXPECT_EQ((*decode("3:egg")->to<TypedElement<string>>()).val(), "egg"s);
-    EXPECT_EQ((*decode("0:")->to<TypedElement<string>>()).val(), ""s);
+    EXPECT_EQ(decode("4:spam")->to<TypedElement<string>>()->val(), "spam"s);
+    EXPECT_EQ(decode("3:egg")->to<TypedElement<string>>()->val(), "egg"s);
+    EXPECT_EQ(decode("0:")->to<TypedElement<string>>()->val(), ""s);
+}
+
+TEST(bencode, decode_vector)
+{
+    // FIXME: Tets some invalid strings
+
+    // []
+    auto v = decode("le")->to<TypedElement<vector<ElmPtr>>>()->val();
+    EXPECT_EQ(v.size(), 0);
+
+    // [3]
+    v = decode("li3ee")->to<TypedElement<vector<ElmPtr>>>()->val();
+    EXPECT_EQ(v.size(), 1);
+    auto i = *v[0]->to<TypedElement<int64_t>>();
+    EXPECT_EQ(i, 3);
+
 }
