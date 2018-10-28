@@ -65,7 +65,7 @@ TEST(bencode, lists)
     EXPECT_EQ(encode(v), "l4:spam3:eggi99ee");
 }
 
-TEST(bencode, map)
+TEST(bencode, dict)
 {
     auto m = BencodeMap();
     EXPECT_EQ(encode(m), "de");
@@ -148,4 +148,31 @@ TEST(bencode, decode_list)
     EXPECT_EQ(v[0]->to<TypedElement<string>>()->val(), "spam");
     EXPECT_EQ(v[1]->to<TypedElement<string>>()->val(), "egg");
     EXPECT_EQ(v[2]->to<TypedElement<int64_t>>()->val(), 99);
+}
+
+TEST(bencode, decode_dict)
+{
+    // Invalid dicts
+    EXPECT_THROW(decode("d"), std::invalid_argument);
+    EXPECT_THROW(decode("dee"), std::invalid_argument);
+    EXPECT_THROW(decode("deee"), std::invalid_argument);
+    EXPECT_THROW(decode("deeee"), std::invalid_argument);
+    EXPECT_THROW(decode("die"), std::invalid_argument);
+    EXPECT_THROW(decode("d4e"), std::invalid_argument);
+    EXPECT_THROW(decode("dde"), std::invalid_argument);
+    EXPECT_THROW(decode("ddi3e"), std::invalid_argument);
+
+    // { "spam" => "egg" }
+    auto m = decode("d4:spam3:egge")->to<TypedElement<BencodeMap>>()->val();
+    EXPECT_EQ(m.size(), 1);
+    auto v = m.at("spam");
+    EXPECT_EQ(v->to<TypedElement<std::string>>()->val(), "egg");
+
+    // { "cow" => "moo", "cows" => 7 }
+    m = decode("d3:cow3:moo4:cowsi7ee")->to<TypedElement<BencodeMap>>()->val();
+    EXPECT_EQ(m.size(), 2);
+    v = m.at("cow");
+    EXPECT_EQ(v->to<TypedElement<std::string>>()->val(), "moo");
+    v = m.at("cows");
+    EXPECT_EQ(v->to<TypedElement<int64_t>>()->val(), 7);
 }

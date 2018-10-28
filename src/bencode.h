@@ -193,6 +193,29 @@ ElmPtr decodeList(std::istringstream& iss) {
   throw std::invalid_argument("Invalid bencode string: " + iss.str());
 }
 
+ElmPtr decodeDict(std::istringstream& iss) {
+  iss.ignore();
+  auto m = BencodeMap();
+  if (iss.peek() != 'e') {
+    while (true) {
+      auto key = decodeString(iss);
+      auto val = decode(iss);
+      m[key->to<TypedElement<std::string>>()->val()] = val;
+      if (iss.eof()) {
+        throw std::invalid_argument("Unexpected eof: " + iss.str());
+      }
+      if (iss.peek() == 'e') {
+        break;
+      }
+    }
+  }
+  if (iss.ignore().ignore().eof()) {
+    return Element::build(m);
+  }
+
+  throw std::invalid_argument("Invalid bencode string: " + iss.str());
+}
+
 ElmPtr decode(std::istringstream& iss) {
   if (iss.peek() == 'i') {
     iss.ignore();
@@ -201,15 +224,14 @@ ElmPtr decode(std::istringstream& iss) {
     return decodeString(iss);
   } else if (iss.peek() == 'l') {
     return decodeList(iss);
+  } else if (iss.peek() == 'd') {
+    return decodeDict(iss);
   }
 
   throw std::invalid_argument("Invalid bencode string: " + iss.str());
 }
 
 ElmPtr decode(const std::string& str) {
-  if (str.empty()) {
-    throw std::invalid_argument("Empty string");
-  }
   std::istringstream iss(str);
   return decode(iss);
 }
