@@ -115,9 +115,17 @@ TEST(bencode, decode_string)
     EXPECT_EQ(decode("0:")->to<TypedElement<string>>()->val(), ""s);
 }
 
-TEST(bencode, decode_vector)
+TEST(bencode, decode_list)
 {
-    // FIXME: Tets some invalid strings
+    // Invalid lists
+    EXPECT_THROW(decode("l"), std::invalid_argument);
+    EXPECT_THROW(decode("lee"), std::invalid_argument);
+    EXPECT_THROW(decode("leee"), std::invalid_argument);
+    EXPECT_THROW(decode("leeee"), std::invalid_argument);
+    EXPECT_THROW(decode("lie"), std::invalid_argument);
+    EXPECT_THROW(decode("l4e"), std::invalid_argument);
+    EXPECT_THROW(decode("lle"), std::invalid_argument);
+    EXPECT_THROW(decode("lli3e"), std::invalid_argument);
 
     // []
     auto v = decode("le")->to<TypedElement<vector<ElmPtr>>>()->val();
@@ -129,4 +137,15 @@ TEST(bencode, decode_vector)
     auto i = *v[0]->to<TypedElement<int64_t>>();
     EXPECT_EQ(i, 3);
 
+    // ["spam"]
+    v = decode("l4:spame")->to<TypedElement<vector<ElmPtr>>>()->val();
+    EXPECT_EQ(v.size(), 1);
+    EXPECT_EQ(v[0]->to<TypedElement<string>>()->val(), "spam");
+
+    // ["spam", "egg", 99]
+    v = decode("l4:spam3:eggi99ee")->to<TypedElement<vector<ElmPtr>>>()->val();
+    EXPECT_EQ(v.size(), 3);
+    EXPECT_EQ(v[0]->to<TypedElement<string>>()->val(), "spam");
+    EXPECT_EQ(v[1]->to<TypedElement<string>>()->val(), "egg");
+    EXPECT_EQ(v[2]->to<TypedElement<int64_t>>()->val(), 99);
 }

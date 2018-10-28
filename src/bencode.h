@@ -170,6 +170,29 @@ ElmPtr decodeString(std::istringstream& iss) {
   return Element::build(str);
 }
 
+ElmPtr decode(std::istringstream& iss);
+
+ElmPtr decodeList(std::istringstream& iss) {
+  iss.ignore();
+  auto v = std::vector<ElmPtr>();
+  if (iss.peek() != 'e') {
+    while (true) {
+      v.push_back(decode(iss));
+      if (iss.eof()) {
+        throw std::invalid_argument("Unexpected eof: " + iss.str());
+      }
+      if (iss.peek() == 'e') {
+        break;
+      }
+    }
+  }
+  if (iss.ignore().ignore().eof()) {
+    return Element::build(v);
+  }
+
+  throw std::invalid_argument("Invalid bencode string: " + iss.str());
+}
+
 ElmPtr decode(std::istringstream& iss) {
   if (iss.peek() == 'i') {
     iss.ignore();
@@ -177,20 +200,7 @@ ElmPtr decode(std::istringstream& iss) {
   } else if (iss.peek() >= '0' && iss.peek() <= '9') {
     return decodeString(iss);
   } else if (iss.peek() == 'l') {
-    iss.ignore();
-    auto v = std::vector<ElmPtr>();
-    if (iss.peek() != 'e') {
-      while (true) {
-        v.push_back(decode(iss));
-        if (iss.eof()) {
-          throw std::invalid_argument("Unexpected eof: " + iss.str());
-        }
-        if (iss.peek() == 'e') {
-          break;
-        }
-      }
-    }
-    return Element::build(v);
+    return decodeList(iss);
   }
 
   throw std::invalid_argument("Invalid bencode string: " + iss.str());
