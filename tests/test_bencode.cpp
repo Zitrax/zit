@@ -199,12 +199,12 @@ TEST(bencode, decode_real)
 
     // Torrent file specification expects a dict containing
     // * 'info' dict
-    // * 'announce' URL of tracker
-    // * 'announce-list' (optional)
-    // * 'creation date' (optional)
-    // * 'comment' (optional)
-    // * 'created by' (optional)
-    // * 'encoding' (optional)
+    // * 'announce' (str) URL of tracker
+    // * 'announce-list' (list<list<str>> optional)
+    // * 'creation date' (int optional)
+    // * 'comment' (str optional)
+    // * 'created by' (str optional)
+    // * 'encoding' (str optional)
 
     auto root_dict = root->to<TypedElement<BeDict>>()->val();
 
@@ -216,8 +216,48 @@ TEST(bencode, decode_real)
     EXPECT_TRUE(root_dict.find("announce-list") != root_dict.end());
     EXPECT_TRUE(root_dict.find("creation date") != root_dict.end());
     EXPECT_TRUE(root_dict.find("comment") != root_dict.end());
+    EXPECT_FALSE(root_dict.find("created by") != root_dict.end());
+    EXPECT_FALSE(root_dict.find("encoding") != root_dict.end());
 
-    // FIXME: Verify content of the above...
+    // Verify info dict
+    // - Common info
+    // * piece length (int)
+    // * pieces (str)
+    // * private (int optional)
+    // - Single File Mode ( Like this )
+    // * name (str)
+    // * length (int)
+    // * md5sum (string optional)
+    // - Multiple File Mode ( For multiple files )
+    auto info = root_dict["info"]->to<TypedElement<BeDict>>()->val();
+    EXPECT_TRUE(info.find("piece length") != info.end());
+    EXPECT_TRUE(info.find("pieces") != info.end());
+    EXPECT_FALSE(info.find("private") != info.end());
+    EXPECT_TRUE(info.find("name") != info.end());
+    EXPECT_TRUE(info.find("length") != info.end());
+    EXPECT_FALSE(info.find("md5sum") != info.end());
+    // Verify info content
+    EXPECT_EQ(*info["piece length"]->to<TypedElement<int64_t>>(), 524288);
+    auto pieces = info["pieces"]->to<TypedElement<string>>()->val();
+    EXPECT_FALSE(pieces.empty());
+    EXPECT_TRUE(pieces.size() % 20 == 0) << "Expected multiple of 20 bytes";
+    EXPECT_EQ(info["name"]->to<TypedElement<string>>()->val(), "ubuntu-18.10-live-server-amd64.iso");
+    EXPECT_EQ(*info["length"]->to<TypedElement<int64_t>>(), 923795456);
+
+    // Verify content of the rest
+    EXPECT_EQ(root_dict["announce"]->to<TypedElement<string>>()->val(), "http://torrent.ubuntu.com:6969/announce");
+    EXPECT_EQ(*root_dict["creation date"]->to<TypedElement<int64_t>>(), 1539860630);
+    EXPECT_EQ(root_dict["comment"]->to<TypedElement<string>>()->val(), "Ubuntu CD releases.ubuntu.com");
+
+    auto announce_list = root_dict["announce-list"]->to<TypedElement<BeList>>()->val();
+    EXPECT_EQ(announce_list.size(), 2);
+    auto announce_list_a = announce_list[0]->to<TypedElement<BeList>>()->val();
+    auto announce_list_b = announce_list[1]->to<TypedElement<BeList>>()->val();
+    EXPECT_EQ(announce_list_a.size(), 1);
+    EXPECT_EQ(announce_list_b.size(), 1);
+    EXPECT_EQ(announce_list_a[0]->to<TypedElement<string>>()->val(), "http://torrent.ubuntu.com:6969/announce");
+    EXPECT_EQ(announce_list_b[0]->to<TypedElement<string>>()->val(), "http://ipv6.torrent.ubuntu.com:6969/announce");
+
 }
 
 
