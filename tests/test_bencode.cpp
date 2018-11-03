@@ -67,7 +67,7 @@ TEST(bencode, lists)
 
 TEST(bencode, dict)
 {
-    auto m = BencodeMap();
+    auto m = BeDict();
     EXPECT_EQ(encode(m), "de");
     m["cow"] = Element::build("moo");
     m["spam"] = Element::build("eggs");
@@ -163,16 +163,61 @@ TEST(bencode, decode_dict)
     EXPECT_THROW(decode("ddi3e"), std::invalid_argument);
 
     // { "spam" => "egg" }
-    auto m = decode("d4:spam3:egge")->to<TypedElement<BencodeMap>>()->val();
+    auto m = decode("d4:spam3:egge")->to<TypedElement<BeDict>>()->val();
     EXPECT_EQ(m.size(), 1);
     auto v = m.at("spam");
     EXPECT_EQ(v->to<TypedElement<std::string>>()->val(), "egg");
 
     // { "cow" => "moo", "cows" => 7 }
-    m = decode("d3:cow3:moo4:cowsi7ee")->to<TypedElement<BencodeMap>>()->val();
+    m = decode("d3:cow3:moo4:cowsi7ee")->to<TypedElement<BeDict>>()->val();
     EXPECT_EQ(m.size(), 2);
     v = m.at("cow");
     EXPECT_EQ(v->to<TypedElement<std::string>>()->val(), "moo");
     v = m.at("cows");
     EXPECT_EQ(v->to<TypedElement<int64_t>>()->val(), 7);
 }
+
+#include <fstream>
+#include <filesystem>
+
+static auto read_file(const std::string& file_name)
+{
+    std::ifstream file_stream{file_name};
+    file_stream.exceptions(std::ifstream::failbit);
+    file_stream.clear();
+    std::ostringstream str_stream{};
+    file_stream >> str_stream.rdbuf();
+    return str_stream.str();
+}
+
+
+TEST(bencode, decode_real)
+{
+    std::filesystem::path p(__FILE__);
+    auto s = read_file(p.parent_path() /= "test.torrent");
+    auto root = decode(s);
+
+    // Torrent file specification expects a dict containing
+    // * 'info' dict
+    // * 'announce' URL of tracker
+    // * 'announce-list' (optional)
+    // * 'creation date' (optional)
+    // * 'comment' (optional)
+    // * 'created by' (optional)
+    // * 'encoding' (optional)
+
+    auto root_dict = root->to<TypedElement<BeDict>>()->val();
+
+    // Verify required content
+    EXPECT_TRUE(root_dict.find("info") != root_dict.end());
+    EXPECT_TRUE(root_dict.find("announce") != root_dict.end());
+
+    // Verify optional content for this specific torrent
+    EXPECT_TRUE(root_dict.find("announce-list") != root_dict.end());
+    EXPECT_TRUE(root_dict.find("creation date") != root_dict.end());
+    EXPECT_TRUE(root_dict.find("comment") != root_dict.end());
+
+    // FIXME: Verify content of the above...
+}
+
+

@@ -11,11 +11,11 @@ int main(int argc, char** argv) {
   } else {
     // FIXME: check __AFL_LOOP
     for (std::string line; std::getline(std::cin, line);) {
-        try {
-            bencode::decode(line);
-        } catch (const std::exception&){
-            // This is fine
-        }
+      try {
+        bencode::decode(line);
+      } catch (const std::exception&) {
+        // This is fine
+      }
     }
     return 0;
   }

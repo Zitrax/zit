@@ -1,6 +1,7 @@
 // -*- mode:c++; c-basic-offset : 2; - * -
 #pragma once
 
+#include <iomanip>
 #include <map>
 #include <memory>
 #include <sstream>
@@ -13,6 +14,12 @@ namespace bencode {
 // Forward declarations
 template <typename T>
 class TypedElement;
+class Element;
+
+// Typedefs
+using ElmPtr = std::shared_ptr<Element>;
+using BeDict = std::map<std::string, ElmPtr>;
+using BeList = std::vector<ElmPtr>;
 
 /**
  * These two templates are used to convert arrays to pointer specifically to
@@ -98,9 +105,6 @@ class TypedElement : public Element {
   const T m_data;
 };
 
-// Typedefs
-using ElmPtr = std::shared_ptr<Element>;
-
 // Template specializations
 template <>
 inline std::string encode_internal(const std::string& str) {
@@ -110,7 +114,7 @@ inline std::string encode_internal(const std::string& str) {
 }
 
 template <>
-inline std::string encode_internal(const std::vector<ElmPtr>& elist) {
+inline std::string encode_internal(const BeList& elist) {
   std::stringstream ss;
   ss << "l";
   for (const auto& elm : elist) {
@@ -125,13 +129,8 @@ inline std::string encode_internal(const char* const& in) {
   return encode_internal(std::string(in));
 }
 
-/**
- * A map of strings to other types
- */
-using BencodeMap = std::map<std::string, ElmPtr>;
-
 template <>
-inline std::string encode_internal(const BencodeMap& emap) {
+inline std::string encode_internal(const BeDict& emap) {
   std::stringstream ss;
   ss << "d";
   for (const auto& elm : emap) {
@@ -170,11 +169,26 @@ ElmPtr decodeString(std::istringstream& iss) {
   return Element::build(str);
 }
 
+[[noreturn]] void throw_invalid_string(std::istringstream& iss) {
+  std::stringstream console_safe;
+  for (char c : iss.str().substr(0, 128)) {
+    console_safe << (c > 31 ? c : '?');
+  }
+  auto pos = static_cast<size_t>(iss.tellg());
+  iss.seekg(0, std::ios::end);
+  if (iss.tellg() > 128) {
+    console_safe << "...";
+  }
+
+  throw std::invalid_argument("Invalid bencode string: '" + console_safe.str() +
+                              "' at position " + std::to_string(pos) + "\n");
+}
+
 ElmPtr decode(std::istringstream& iss);
 
 ElmPtr decodeList(std::istringstream& iss) {
   iss.ignore();
-  auto v = std::vector<ElmPtr>();
+  auto v = BeList();
   if (iss.peek() != 'e') {
     while (true) {
       v.push_back(decode(iss));
@@ -186,16 +200,13 @@ ElmPtr decodeList(std::istringstream& iss) {
       }
     }
   }
-  if (iss.ignore().ignore().eof()) {
-    return Element::build(v);
-  }
-
-  throw std::invalid_argument("Invalid bencode string: " + iss.str());
+  iss.ignore();
+  return Element::build(v);
 }
 
 ElmPtr decodeDict(std::istringstream& iss) {
   iss.ignore();
-  auto m = BencodeMap();
+  auto m = BeDict();
   if (iss.peek() != 'e') {
     while (true) {
       auto key = decodeString(iss);
@@ -209,13 +220,11 @@ ElmPtr decodeDict(std::istringstream& iss) {
       }
     }
   }
-  if (iss.ignore().ignore().eof()) {
-    return Element::build(m);
-  }
-
-  throw std::invalid_argument("Invalid bencode string: " + iss.str());
+  iss.ignore();
+  return Element::build(m);
 }
 
+// FIXME: Make internal
 ElmPtr decode(std::istringstream& iss) {
   if (iss.peek() == 'i') {
     iss.ignore();
@@ -227,13 +236,16 @@ ElmPtr decode(std::istringstream& iss) {
   } else if (iss.peek() == 'd') {
     return decodeDict(iss);
   }
-
-  throw std::invalid_argument("Invalid bencode string: " + iss.str());
+  throw_invalid_string(iss);
 }
 
 ElmPtr decode(const std::string& str) {
   std::istringstream iss(str);
-  return decode(iss);
+  auto elm = decode(iss);
+  if (!elm || !iss.ignore().eof()) {
+    throw_invalid_string(iss);
+  }
+  return elm;
 }
 
 }  // namespace bencode
