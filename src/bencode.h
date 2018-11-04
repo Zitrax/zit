@@ -98,8 +98,15 @@ class TypedElement : public Element {
       : m_data(std::forward<T>(data)) {}
   std::string encode() const override { return bencode::encode(m_data); }
 
-  operator T() const { return m_data; }
   auto val() const { return m_data; }
+
+  /**
+   * Allow comparisons to the content type without manually calling val()
+   */
+  template <typename U = T>
+  friend bool operator==(const TypedElement<T>& lhs, const T& rhs) {
+    return lhs.m_data == rhs;
+  }
 
  private:
   const T m_data;

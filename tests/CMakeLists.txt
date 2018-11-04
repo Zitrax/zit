@@ -44,4 +44,3 @@ include_directories("../src")
 add_executable(zitest test_bencode.cpp)
 target_link_libraries(zitest gtest gtest_main stdc++fs)
 add_test(NAME zitest COMMAND zitest)
-

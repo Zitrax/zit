@@ -1,6 +1,9 @@
 #include "bencode.h"
 #include "gtest/gtest.h"
 
+#include <filesystem>
+#include <fstream>
+
 using namespace bencode;
 using namespace std;
 
@@ -102,12 +105,10 @@ TEST(bencode, decode_string) {
   EXPECT_THROW(decode("2aa"), std::invalid_argument);
   EXPECT_THROW(decode("2"), std::invalid_argument);
   // OK
-
-  // FIXME: This is uglier than the int.
-  //        Why can't operator T() be used like in the int case?
-  EXPECT_EQ(decode("4:spam")->to<TypedElement<string>>()->val(), "spam"s);
-  EXPECT_EQ(decode("3:egg")->to<TypedElement<string>>()->val(), "egg"s);
-  EXPECT_EQ(decode("0:")->to<TypedElement<string>>()->val(), ""s);
+  EXPECT_EQ(*decode("4:spam")->to<TypedElement<string>>(), "spam"s);
+  EXPECT_EQ(*decode("3:egg")->to<TypedElement<string>>(), "egg"s);
+  EXPECT_EQ(*decode("0:")->to<TypedElement<string>>(), ""s);
+  EXPECT_EQ(*decode("0:")->to<TypedElement<string>>(), ""s);
 }
 
 TEST(bencode, decode_list) {
@@ -134,14 +135,14 @@ TEST(bencode, decode_list) {
   // ["spam"]
   v = decode("l4:spame")->to<TypedElement<vector<ElmPtr>>>()->val();
   EXPECT_EQ(v.size(), 1);
-  EXPECT_EQ(v[0]->to<TypedElement<string>>()->val(), "spam");
+  EXPECT_EQ(*v[0]->to<TypedElement<string>>(), "spam");
 
   // ["spam", "egg", 99]
   v = decode("l4:spam3:eggi99ee")->to<TypedElement<vector<ElmPtr>>>()->val();
   EXPECT_EQ(v.size(), 3);
-  EXPECT_EQ(v[0]->to<TypedElement<string>>()->val(), "spam");
-  EXPECT_EQ(v[1]->to<TypedElement<string>>()->val(), "egg");
-  EXPECT_EQ(v[2]->to<TypedElement<int64_t>>()->val(), 99);
+  EXPECT_EQ(*v[0]->to<TypedElement<string>>(), "spam");
+  EXPECT_EQ(*v[1]->to<TypedElement<string>>(), "egg");
+  EXPECT_EQ(*v[2]->to<TypedElement<int64_t>>(), 99);
 }
 
 TEST(bencode, decode_dict) {
@@ -159,19 +160,16 @@ TEST(bencode, decode_dict) {
   auto m = decode("d4:spam3:egge")->to<TypedElement<BeDict>>()->val();
   EXPECT_EQ(m.size(), 1);
   auto v = m.at("spam");
-  EXPECT_EQ(v->to<TypedElement<std::string>>()->val(), "egg");
+  EXPECT_EQ(*v->to<TypedElement<std::string>>(), "egg");
 
   // { "cow" => "moo", "cows" => 7 }
   m = decode("d3:cow3:moo4:cowsi7ee")->to<TypedElement<BeDict>>()->val();
   EXPECT_EQ(m.size(), 2);
   v = m.at("cow");
-  EXPECT_EQ(v->to<TypedElement<std::string>>()->val(), "moo");
+  EXPECT_EQ(*v->to<TypedElement<std::string>>(), "moo");
   v = m.at("cows");
-  EXPECT_EQ(v->to<TypedElement<int64_t>>()->val(), 7);
+  EXPECT_EQ(*v->to<TypedElement<int64_t>>(), 7);
 }
-
-#include <filesystem>
-#include <fstream>
 
 static auto read_file(const std::string& file_name) {
   std::ifstream file_stream{file_name};
@@ -231,16 +229,16 @@ TEST(bencode, decode_real) {
   auto pieces = info["pieces"]->to<TypedElement<string>>()->val();
   EXPECT_FALSE(pieces.empty());
   EXPECT_TRUE(pieces.size() % 20 == 0) << "Expected multiple of 20 bytes";
-  EXPECT_EQ(info["name"]->to<TypedElement<string>>()->val(),
+  EXPECT_EQ(*info["name"]->to<TypedElement<string>>(),
             "ubuntu-18.10-live-server-amd64.iso");
   EXPECT_EQ(*info["length"]->to<TypedElement<int64_t>>(), 923795456);
 
   // Verify content of the rest
-  EXPECT_EQ(root_dict["announce"]->to<TypedElement<string>>()->val(),
+  EXPECT_EQ(*root_dict["announce"]->to<TypedElement<string>>(),
             "http://torrent.ubuntu.com:6969/announce");
   EXPECT_EQ(*root_dict["creation date"]->to<TypedElement<int64_t>>(),
             1539860630);
-  EXPECT_EQ(root_dict["comment"]->to<TypedElement<string>>()->val(),
+  EXPECT_EQ(*root_dict["comment"]->to<TypedElement<string>>(),
             "Ubuntu CD releases.ubuntu.com");
 
   auto announce_list =
@@ -250,8 +248,8 @@ TEST(bencode, decode_real) {
   auto announce_list_b = announce_list[1]->to<TypedElement<BeList>>()->val();
   EXPECT_EQ(announce_list_a.size(), 1);
   EXPECT_EQ(announce_list_b.size(), 1);
-  EXPECT_EQ(announce_list_a[0]->to<TypedElement<string>>()->val(),
+  EXPECT_EQ(*announce_list_a[0]->to<TypedElement<string>>(),
             "http://torrent.ubuntu.com:6969/announce");
-  EXPECT_EQ(announce_list_b[0]->to<TypedElement<string>>()->val(),
+  EXPECT_EQ(*announce_list_b[0]->to<TypedElement<string>>(),
             "http://ipv6.torrent.ubuntu.com:6969/announce");
 }
