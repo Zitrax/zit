@@ -1,11 +1,10 @@
 #include "bencode.h"
+#include "file_utils.h"
 #include "gtest/gtest.h"
-
-#include <filesystem>
-#include <fstream>
 
 using namespace bencode;
 using namespace std;
+using namespace zit;
 
 TEST(bencode, string) {
   EXPECT_EQ(encode(std::string("spam")), "4:spam");
@@ -169,15 +168,6 @@ TEST(bencode, decode_dict) {
   EXPECT_EQ(*v->to<TypedElement<std::string>>(), "moo");
   v = m.at("cows");
   EXPECT_EQ(*v->to<TypedElement<int64_t>>(), 7);
-}
-
-static auto read_file(const std::string& file_name) {
-  std::ifstream file_stream{file_name};
-  file_stream.exceptions(std::ifstream::failbit);
-  file_stream.clear();
-  std::ostringstream str_stream{};
-  file_stream >> str_stream.rdbuf();
-  return str_stream.str();
 }
 
 TEST(bencode, decode_real) {

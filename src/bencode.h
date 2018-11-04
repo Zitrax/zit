@@ -147,7 +147,7 @@ inline std::string encode_internal(const BeDict& emap) {
   return ss.str();
 }
 
-ElmPtr decodeInt(std::istringstream& iss) {
+inline ElmPtr decodeInt(std::istringstream& iss) {
   int64_t i64;
   iss >> i64;
   if (iss.fail()) {
@@ -159,7 +159,7 @@ ElmPtr decodeInt(std::istringstream& iss) {
   return Element::build(i64);
 }
 
-ElmPtr decodeString(std::istringstream& iss) {
+inline ElmPtr decodeString(std::istringstream& iss) {
   uint64_t strlen;
   iss >> strlen;
   if (iss.fail()) {
@@ -176,7 +176,7 @@ ElmPtr decodeString(std::istringstream& iss) {
   return Element::build(str);
 }
 
-[[noreturn]] void throw_invalid_string(std::istringstream& iss) {
+[[noreturn]] inline void throw_invalid_string(std::istringstream& iss) {
   std::stringstream console_safe;
   for (char c : iss.str().substr(0, 128)) {
     console_safe << (c > 31 ? c : '?');
@@ -193,7 +193,7 @@ ElmPtr decodeString(std::istringstream& iss) {
 
 ElmPtr decode(std::istringstream& iss);
 
-ElmPtr decodeList(std::istringstream& iss) {
+inline ElmPtr decodeList(std::istringstream& iss) {
   iss.ignore();
   auto v = BeList();
   if (iss.peek() != 'e') {
@@ -211,7 +211,7 @@ ElmPtr decodeList(std::istringstream& iss) {
   return Element::build(v);
 }
 
-ElmPtr decodeDict(std::istringstream& iss) {
+inline ElmPtr decodeDict(std::istringstream& iss) {
   iss.ignore();
   auto m = BeDict();
   if (iss.peek() != 'e') {
@@ -232,7 +232,7 @@ ElmPtr decodeDict(std::istringstream& iss) {
 }
 
 // FIXME: Make internal
-ElmPtr decode(std::istringstream& iss) {
+inline ElmPtr decode(std::istringstream& iss) {
   if (iss.peek() == 'i') {
     iss.ignore();
     return decodeInt(iss);
@@ -246,7 +246,7 @@ ElmPtr decode(std::istringstream& iss) {
   throw_invalid_string(iss);
 }
 
-ElmPtr decode(const std::string& str) {
+inline ElmPtr decode(const std::string& str) {
   std::istringstream iss(str);
   auto elm = decode(iss);
   if (!elm || !iss.ignore().eof()) {
