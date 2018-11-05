@@ -26,3 +26,11 @@ TEST(torrent, construct) {
   EXPECT_TRUE(t.files().empty());
   EXPECT_TRUE(t.is_single_file());
 }
+
+TEST(torrent, construct_fail) {
+    EXPECT_THROW(zit::Torrent t("FOO"), std::ios_base::failure);
+
+    std::filesystem::path p(__FILE__);
+    EXPECT_THROW(zit::Torrent t(p.parent_path() /= "empty.torrent"), std::ios_base::failure);
+    EXPECT_THROW(zit::Torrent t(p.parent_path() /= "invalid.torrent"), std::invalid_argument);
+}
