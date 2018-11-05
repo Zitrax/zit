@@ -94,7 +94,7 @@ class TypedElement : public Element {
    * Make sure we can store both moved and copied data
    * See: https://stackoverflow.com/q/48862454/11722
    */
-  TypedElement(std::add_rvalue_reference_t<T> data)
+  explicit TypedElement(std::add_rvalue_reference_t<T> data)
       : m_data(std::forward<T>(data)) {}
   std::string encode() const override { return bencode::encode(m_data); }
 

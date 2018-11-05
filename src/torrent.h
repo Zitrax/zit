@@ -14,7 +14,7 @@ class Torrent {
   /**
    * @param file path to .torrent file to read
    */
-  Torrent(const std::filesystem::path& file);
+  explicit Torrent(const std::filesystem::path& file);
 
   /** The tracker URL */
   auto announce() const { return m_announce; }
@@ -118,7 +118,7 @@ class FileInfo {
  public:
   FileInfo(int64_t length,
            const std::filesystem::path& path,
-           std::string md5sum = "")
+           const std::string& md5sum = "")
       : length(length), path(path), md5sum(md5sum) {}
 
  private:
