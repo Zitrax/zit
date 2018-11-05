@@ -3,12 +3,20 @@
 #include "bencode.h"
 #include "file_utils.h"
 
+#include <algorithm>
+
 using namespace bencode;
 using namespace std;
 
 namespace zit {
 
-Torrent::Torrent(const std::filesystem::path& file) {
+// To make transform calls more readable
+template <class In, class Out, class Op>
+static auto transform_all(const In& in, Out& out, Op func) {
+  return transform(begin(in), end(in), back_inserter(out), func);
+}
+
+Torrent::Torrent(const filesystem::path& file) {
   auto root = bencode::decode(read_file(file));
 
   auto root_dict = root->to<TypedElement<BeDict>>()->val();
@@ -64,13 +72,15 @@ Torrent::Torrent(const std::filesystem::path& file) {
     // TODO: Check performance, copied ?
     auto announce_list =
         root_dict["announce-list"]->to<TypedElement<BeList>>()->val();
-    for (const auto& tier : announce_list) {
-      std::vector<std::string> tier_list;
-      for (const auto& tier_url : tier->to<TypedElement<BeList>>()->val()) {
-        tier_list.push_back(tier_url->to<TypedElement<string>>()->val());
-      }
-      m_announce_list.push_back(tier_list);
-    }
+
+    transform_all(announce_list, m_announce_list, [](const auto& tier) {
+      vector<string> tier_output_list;
+      transform_all(tier->template to<TypedElement<BeList>>()->val(),
+                    tier_output_list, [](const auto& elm) {
+                      return elm->template to<TypedElement<string>>()->val();
+                    });
+      return tier_output_list;
+    });
   }
 }
 
