@@ -18,7 +18,7 @@ Torrent::Torrent(const std::filesystem::path& file) {
   auto info = root_dict["info"]->to<TypedElement<BeDict>>()->val();
 
   m_name = info["name"]->to<TypedElement<string>>()->val();
-  m_name = info["pieces"]->to<TypedElement<string>>()->val();
+  m_pieces = info["pieces"]->to<TypedElement<string>>()->val();
   m_piece_length = info["piece length"]->to<TypedElement<int64_t>>()->val();
 
   // Either 'length' or 'files' is needed depending on mode
@@ -60,9 +60,17 @@ Torrent::Torrent(const std::filesystem::path& file) {
   if (has("private")) {
     m_private = root_dict["private"]->to<TypedElement<int64_t>>()->val() == 1;
   }
-
-  // FIXME:
-  // std::vector<std::vector<std::string>> m_announce_list{};
+  if (has("announce-list")) {
+      // TODO: Check performance, copied ?
+      auto announce_list = root_dict["announce-list"]->to<TypedElement<BeList>>()->val();
+      for(const auto& tier : announce_list) {
+          std::vector<std::string> tier_list;
+          for(const auto& tier_url : tier->to<TypedElement<BeList>>()->val()) {
+              tier_list.push_back(tier_url->to<TypedElement<string>>()->val());
+          }
+          m_announce_list.push_back(tier_list);
+      }
+  }
 }
 
 }  // namespace zit
