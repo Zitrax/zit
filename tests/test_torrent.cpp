@@ -12,7 +12,8 @@ TEST(torrent, construct) {
   EXPECT_EQ(announce_list[0].size(), 1);
   EXPECT_EQ(announce_list[0][0], "http://torrent.ubuntu.com:6969/announce");
   EXPECT_EQ(announce_list[1].size(), 1);
-  EXPECT_EQ(announce_list[1][0], "http://ipv6.torrent.ubuntu.com:6969/announce");
+  EXPECT_EQ(announce_list[1][0],
+            "http://ipv6.torrent.ubuntu.com:6969/announce");
   EXPECT_EQ(t.creation_date(), 1539860630);
   EXPECT_EQ(t.comment(), "Ubuntu CD releases.ubuntu.com");
   EXPECT_EQ(t.created_by(), "");
@@ -28,9 +29,11 @@ TEST(torrent, construct) {
 }
 
 TEST(torrent, construct_fail) {
-    EXPECT_THROW(zit::Torrent t("FOO"), std::ios_base::failure);
+  EXPECT_THROW(zit::Torrent t("FOO"), std::ios_base::failure);
 
-    std::filesystem::path p(__FILE__);
-    EXPECT_THROW(zit::Torrent t(p.parent_path() /= "empty.torrent"), std::ios_base::failure);
-    EXPECT_THROW(zit::Torrent t(p.parent_path() /= "invalid.torrent"), std::invalid_argument);
+  std::filesystem::path p(__FILE__);
+  EXPECT_THROW(zit::Torrent t(p.parent_path() /= "empty.torrent"),
+               std::ios_base::failure);
+  EXPECT_THROW(zit::Torrent t(p.parent_path() /= "invalid.torrent"),
+               std::invalid_argument);
 }
