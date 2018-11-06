@@ -1,5 +1,23 @@
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*,modernize*'
+
+# Unfortunately the gtest headers cause some problems which is why some checks
+# are removed. There does not seem to be a nice way to disable checks for
+# specific files at the moment. See https://reviews.llvm.org/D26418
+
+Checks:          'clang-diagnostic-*,
+                 clang-analyzer-*,
+                 modernize*,
+                 cppcoreguidelines*,
+                 -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
+                 -cppcoreguidelines-pro-type-vararg,
+                 -cppcoreguidelines-owning-memory,
+                 -cppcoreguidelines-special-member-functions,
+                 bugprone-*,
+                 cert-*,
+                 -cert-err58-cpp,
+                 misc-*,
+                 performance-*
+                 '
 WarningsAsErrors: ''
 HeaderFilterRegex: ''
 AnalyzeTemporaryDtors: false

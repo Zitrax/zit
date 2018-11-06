@@ -27,7 +27,7 @@ else()
   message(WARNING "Could not find clang-format, formatting not available")
 endif()
 
-find_program(CLANG_TIDY clang-tidy)
+find_program(CLANG_TIDY run-clang-tidy)
 
 if(CLANG_TIDY)
 
@@ -38,7 +38,7 @@ if(CLANG_TIDY)
   add_custom_target(tidy
     COMMENT "Tidying ${ALL_SOURCE_FILES}"
     COMMAND ${CLANG_TIDY} -header-filter=.*
-            -p ${CMAKE_CURRENT_BINARY_DIR}/compile_commands.json
+            -p ${CMAKE_CURRENT_BINARY_DIR}
             ${ALL_SOURCE_FILES}
     )
 else()

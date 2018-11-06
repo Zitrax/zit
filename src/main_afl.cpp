@@ -5,7 +5,7 @@
 int main(int argc, char** argv) {
   if (argc > 1) {
     std::ifstream fin;
-    fin.open(argv[1]);
+    fin.open(argv[1]); // NOLINT
     // FIXME: Read from file
     return 1;
   } else {
