@@ -30,14 +30,16 @@ if (CMAKE_VERSION VERSION_LESS 2.8.11)
   include_directories("${gtest_SOURCE_DIR}/include")
 endif()
 
-set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-include(CodeCoverage)
-append_coverage_compiler_flags()
-setup_target_for_coverage_lcov(
-  NAME zitest_coverage
-  EXECUTABLE zitest
-  DEPENDENCIES zitest
-)
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+  include(CodeCoverage)
+  append_coverage_compiler_flags()
+  setup_target_for_coverage_lcov(
+    NAME zitest_coverage
+    EXECUTABLE zitest
+    DEPENDENCIES zitest
+    )
+endif()
 
 # The test code
 include_directories("../src")
