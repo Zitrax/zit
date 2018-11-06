@@ -27,7 +27,7 @@ using BeList = std::vector<ElmPtr>;
  */
 template <class T>
 struct array_to_pointer_decay {
-  typedef T type;
+  using type = T;
 };
 
 /**
@@ -36,7 +36,7 @@ struct array_to_pointer_decay {
  */
 template <class T, std::size_t N>
 struct array_to_pointer_decay<T[N]> {
-  typedef const T* type;
+  using type = const T*;
 };
 
 // Function templates
@@ -49,7 +49,7 @@ std::string encode_internal(const T& in) {
 
 template <typename T>
 std::string encode(const T& in) {
-  typedef typename array_to_pointer_decay<T>::type src;
+  using src = typename array_to_pointer_decay<T>::type;
   return encode_internal<src>(in);
 }
 
