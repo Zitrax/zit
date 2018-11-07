@@ -13,7 +13,7 @@ file(GLOB_RECURSE ALL_HEADER_FILES src/*.h tests/*.h)
 # failing the command. Filter them away.
 list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "#")
 list(FILTER ALL_HEADER_FILES EXCLUDE REGEX "#")
-set(ALL_INPUT_FILES "${ALL_SOURCE_FILES} ${ALL_HEADER_FILES}")
+set(ALL_INPUT_FILES ${ALL_SOURCE_FILES} ${ALL_HEADER_FILES})
 
 find_program(CLANG_FORMAT
   NAMES clang-format clang-format-5.0)
