@@ -10,10 +10,32 @@ using namespace std;
 
 namespace zit {
 
-// To make transform calls more readable
+/**
+ * To make transform calls more readable
+ */
 template <class In, class Out, class Op>
 static auto transform_all(const In& in, Out& out, Op func) {
   return transform(begin(in), end(in), back_inserter(out), func);
+}
+
+/**
+ * Convenience function for converting a known BeDict element for the multi
+ * file "files" part.
+ */
+static auto beDictToFileInfo(const Element& element) {
+  const auto& dict = element.template to<TypedElement<BeDict>>()->val();
+  string md5;
+  if (dict.find("md5sum") != dict.end()) {
+    md5 = dict.at("md5sum")->template to<TypedElement<string>>()->val();
+  }
+  auto path_list = dict.at("path")->template to<TypedElement<BeList>>()->val();
+  filesystem::path path;
+  for (const auto& elm : path_list) {
+    path /= elm->template to<TypedElement<string>>()->val();
+  }
+  return FileInfo(
+      dict.at("length")->template to<TypedElement<int64_t>>()->val(), path,
+      md5);
 }
 
 Torrent::Torrent(const filesystem::path& file) {
@@ -37,8 +59,8 @@ Torrent::Torrent(const filesystem::path& file) {
     if (m_length != 0) {
       throw runtime_error("Invalid torrent: dual mode");
     }
-    auto files = info["files"]->to<TypedElement<BeList>>()->val();
-    // FIXME: Fill in files
+    transform_all(info["files"]->to<TypedElement<BeList>>()->val(), m_files,
+                  [](const auto& dict) { return beDictToFileInfo(*dict); });
   }
   if (m_length == 0 && m_files.empty()) {
     throw runtime_error("Invalid torrent: no mode");

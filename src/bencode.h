@@ -60,10 +60,10 @@ class Element : public std::enable_shared_from_this<Element> {
   virtual std::string encode() const = 0;
 
   template <typename T>
-  auto to() {
+  auto to() const {
     static_assert(std::is_base_of<Element, T>::value,
                   "Can only return sublasses of Element");
-    auto ptr = std::dynamic_pointer_cast<T>(shared_from_this());
+    auto ptr = std::dynamic_pointer_cast<const T>(shared_from_this());
     if (!ptr) {
       throw std::runtime_error("Could not convert to type");
     }

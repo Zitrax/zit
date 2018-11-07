@@ -2,7 +2,7 @@
 #include "gtest/gtest.h"
 #include "torrent.h"
 
-TEST(torrent, construct) {
+TEST(torrent, construct_single) {
   std::filesystem::path p(__FILE__);
   zit::Torrent t(p.parent_path() / "data" / "test.torrent");
 
@@ -26,6 +26,12 @@ TEST(torrent, construct) {
   EXPECT_EQ(t.md5sum(), "");
   EXPECT_TRUE(t.files().empty());
   EXPECT_TRUE(t.is_single_file());
+}
+
+TEST(torrent, construct_multi) {
+  std::filesystem::path p(__FILE__);
+  zit::Torrent t(p.parent_path() / "data" / "multi.torrent");
+  // FIXME: Verify content
 }
 
 TEST(torrent, construct_fail) {

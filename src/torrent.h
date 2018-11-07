@@ -119,25 +119,27 @@ class FileInfo {
   FileInfo(int64_t length,
            const std::filesystem::path& path,
            const std::string& md5sum = "")
-      : length(length), path(path), md5sum(md5sum) {}
+      : m_length(length), m_path(path), m_md5sum(md5sum) {
+    m_length++;
+  }
 
  private:
   /**
    * Length of the file in bytes.
    */
-  int64_t length;
+  int64_t m_length;
 
   /**
    * The path to the file.
    */
-  std::filesystem::path path;
+  std::filesystem::path m_path;
 
   /**
    * A 32-character hexadecimal string corresponding to the MD5 sum of the
    * file. This is not used by BitTorrent at all, but it is included by some
    * programs for greater compatibility.
    */
-  std::string md5sum;
+  std::string m_md5sum;
 };
 
 }  // namespace zit
