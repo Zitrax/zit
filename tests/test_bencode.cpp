@@ -172,7 +172,7 @@ TEST(bencode, decode_dict) {
 
 TEST(bencode, decode_real) {
   std::filesystem::path p(__FILE__);
-  auto s = read_file(p.parent_path() /= "test.torrent");
+  auto s = read_file(p.parent_path() / "data" / "test.torrent");
   auto root = decode(s);
 
   // Torrent file specification expects a dict containing

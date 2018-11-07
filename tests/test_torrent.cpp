@@ -4,7 +4,7 @@
 
 TEST(torrent, construct) {
   std::filesystem::path p(__FILE__);
-  zit::Torrent t(p.parent_path() /= "test.torrent");
+  zit::Torrent t(p.parent_path() / "data" / "test.torrent");
 
   EXPECT_EQ(t.announce(), "http://torrent.ubuntu.com:6969/announce");
   const auto announce_list = t.announce_list();
@@ -32,8 +32,8 @@ TEST(torrent, construct_fail) {
   EXPECT_THROW(zit::Torrent t("FOO"), std::ios_base::failure);
 
   std::filesystem::path p(__FILE__);
-  EXPECT_THROW(zit::Torrent t(p.parent_path() /= "empty.torrent"),
+  EXPECT_THROW(zit::Torrent t(p.parent_path() / "data" / "empty.torrent"),
                std::ios_base::failure);
-  EXPECT_THROW(zit::Torrent t(p.parent_path() /= "invalid.torrent"),
+  EXPECT_THROW(zit::Torrent t(p.parent_path() / "data" / "invalid.torrent"),
                std::invalid_argument);
 }
