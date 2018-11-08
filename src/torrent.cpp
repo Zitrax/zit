@@ -41,25 +41,25 @@ static auto beDictToFileInfo(const Element& element) {
 Torrent::Torrent(const filesystem::path& file) {
   auto root = bencode::decode(read_file(file));
 
-  auto root_dict = root->to<TypedElement<BeDict>>()->val();
+  const auto& root_dict = root->to<TypedElement<BeDict>>()->val();
 
   // Required
-  m_announce = root_dict["announce"]->to<TypedElement<string>>()->val();
-  auto info = root_dict["info"]->to<TypedElement<BeDict>>()->val();
+  m_announce = root_dict.at("announce")->to<TypedElement<string>>()->val();
+  const auto& info = root_dict.at("info")->to<TypedElement<BeDict>>()->val();
 
-  m_name = info["name"]->to<TypedElement<string>>()->val();
-  m_pieces = info["pieces"]->to<TypedElement<string>>()->val();
-  m_piece_length = info["piece length"]->to<TypedElement<int64_t>>()->val();
+  m_name = info.at("name")->to<TypedElement<string>>()->val();
+  m_pieces = info.at("pieces")->to<TypedElement<string>>()->val();
+  m_piece_length = info.at("piece length")->to<TypedElement<int64_t>>()->val();
 
   // Either 'length' or 'files' is needed depending on mode
   if (info.find("length") != info.end()) {
-    m_length = info["length"]->to<TypedElement<int64_t>>()->val();
+    m_length = info.at("length")->to<TypedElement<int64_t>>()->val();
   }
   if (info.find("files") != info.end()) {
     if (m_length != 0) {
       throw runtime_error("Invalid torrent: dual mode");
     }
-    transform_all(info["files"]->to<TypedElement<BeList>>()->val(), m_files,
+    transform_all(info.at("files")->to<TypedElement<BeList>>()->val(), m_files,
                   [](const auto& dict) { return beDictToFileInfo(*dict); });
   }
   if (m_length == 0 && m_files.empty()) {
@@ -73,27 +73,28 @@ Torrent::Torrent(const filesystem::path& file) {
   // Optional
   if (has("creation date")) {
     m_creation_date =
-        root_dict["creation date"]->to<TypedElement<int64_t>>()->val();
+        root_dict.at("creation date")->to<TypedElement<int64_t>>()->val();
   }
   if (has("comment")) {
-    m_comment = root_dict["comment"]->to<TypedElement<string>>()->val();
+    m_comment = root_dict.at("comment")->to<TypedElement<string>>()->val();
   }
   if (has("created by")) {
-    m_created_by = root_dict["created by"]->to<TypedElement<string>>()->val();
+    m_created_by =
+        root_dict.at("created by")->to<TypedElement<string>>()->val();
   }
   if (has("encoding")) {
-    m_encoding = root_dict["encoding"]->to<TypedElement<string>>()->val();
+    m_encoding = root_dict.at("encoding")->to<TypedElement<string>>()->val();
   }
   if (has("md5sum")) {
-    m_md5sum = root_dict["md5sum"]->to<TypedElement<string>>()->val();
+    m_md5sum = root_dict.at("md5sum")->to<TypedElement<string>>()->val();
   }
   if (has("private")) {
-    m_private = root_dict["private"]->to<TypedElement<int64_t>>()->val() == 1;
+    m_private =
+        root_dict.at("private")->to<TypedElement<int64_t>>()->val() == 1;
   }
   if (has("announce-list")) {
-    // TODO: Check performance, copied ?
-    auto announce_list =
-        root_dict["announce-list"]->to<TypedElement<BeList>>()->val();
+    const auto& announce_list =
+        root_dict.at("announce-list")->to<TypedElement<BeList>>()->val();
 
     transform_all(announce_list, m_announce_list, [](const auto& tier) {
       vector<string> tier_output_list;
