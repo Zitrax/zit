@@ -118,7 +118,9 @@ class Torrent {
 class FileInfo {
  public:
   FileInfo(int64_t length, std::filesystem::path path, std::string md5sum = "")
-      : m_length(length), m_path(std::move(path)), m_md5sum(std::move(md5sum)) {}
+      : m_length(length),
+        m_path(std::move(path)),
+        m_md5sum(std::move(md5sum)) {}
 
   /**
    * Length of the file in bytes.

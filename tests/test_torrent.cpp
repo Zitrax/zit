@@ -38,10 +38,10 @@ TEST(torrent, construct_multi) {
   EXPECT_EQ(announce_list[0].size(), 1);
   EXPECT_EQ(announce_list[0][0], "http://tracker.kali.org:6969/announce");
   EXPECT_EQ(announce_list[1].size(), 1);
-  EXPECT_EQ(announce_list[1][0],
-            "udp://tracker.kali.org:6969/announce");
+  EXPECT_EQ(announce_list[1][0], "udp://tracker.kali.org:6969/announce");
   EXPECT_EQ(t.creation_date(), 1537436744);
-  EXPECT_EQ(t.comment(), "kali-linux-2018.3a-amd64.iso from https://www.kali.org/");
+  EXPECT_EQ(t.comment(),
+            "kali-linux-2018.3a-amd64.iso from https://www.kali.org/");
   EXPECT_EQ(t.created_by(), "mktorrent 1.1");
   EXPECT_EQ(t.encoding(), "");
   EXPECT_EQ(t.piece_length(), 262144);
@@ -62,7 +62,6 @@ TEST(torrent, construct_multi) {
   EXPECT_EQ(file2.length(), 95);
   EXPECT_EQ(file2.md5sum(), "");
   EXPECT_EQ(file2.path(), "kali-linux-2018.3a-amd64.iso.txt.sha256sum");
-
 }
 
 TEST(torrent, construct_fail) {
