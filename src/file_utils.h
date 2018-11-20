@@ -15,11 +15,16 @@ namespace zit {
  *   is empty.
  */
 inline auto read_file(const std::filesystem::path& file_name) {
-  std::ifstream file_stream{file_name};
-  file_stream.exceptions(std::ifstream::failbit);
-  std::ostringstream str_stream{};
-  file_stream >> str_stream.rdbuf();
-  return str_stream.str();
+  try {
+    std::ifstream file_stream{file_name};
+    file_stream.exceptions(std::ifstream::failbit);
+    std::ostringstream str_stream{};
+    file_stream >> str_stream.rdbuf();
+    return str_stream.str();
+  } catch (const std::exception& ex) {
+    std::throw_with_nested(
+        std::runtime_error("Could not read: " + file_name.string()));
+  }
 }
 
 }  // namespace zit

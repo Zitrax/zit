@@ -11,7 +11,7 @@ class Net {
 
   // TODO: url param and split/parse internally
   std::tuple<std::string, std::string> http_get(const std::string& server,
-                                                const std::string& path = "");
+                                                const std::string& path = "/");
 };
 
 }  // namespace zit
