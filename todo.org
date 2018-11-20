@@ -1,0 +1,2 @@
+* TODO Net should be able to read/parse standard URLs
+* TODO Query tracker
