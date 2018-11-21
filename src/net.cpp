@@ -1,8 +1,10 @@
+// -*- mode:c++; c-basic-offset : 2; - * -
 #include "net.h"
 
 #include <asio.hpp>
 
 #include <iostream>
+#include <regex>
 
 using asio::ip::tcp;
 using namespace std;
@@ -15,8 +17,6 @@ namespace zit {
 //
 std::tuple<std::string, std::string> Net::http_get(const string& server,
                                                    const string& path) {
-  cerr << server << path << "\n";
-
   asio::io_service io_service;
   tcp::resolver resolver(io_service);
   tcp::resolver::query query(server, "http");
@@ -95,6 +95,19 @@ std::tuple<std::string, std::string> Net::http_get(const string& server,
   }
 
   return {headers.str(), resp.str()};
+}
+
+Url::Url(const string& url) {
+  regex ur("^(https?)://([^:/]*)(?::(\\d+))?(.*?)$");
+  cmatch match;
+  // FIXME: Why the need for .c_str()?
+  if (!regex_match(url.c_str(), match, ur) || match.size() != 5) {
+    throw runtime_error("Invalid URL: " + url);
+  }
+  m_scheme = match[1];
+  m_host = match[2];
+  m_port = stoi(match[3]);
+  m_path = match[4];
 }
 
 }  // namespace zit

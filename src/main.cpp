@@ -44,10 +44,14 @@ int main() {
 
     cout << torrent.announce() << "\n";
 
+    zit::Url url(torrent.announce());
+    cout << url;
+
     // Net
     zit::Net net;
 
-    auto[headers, body] = net.http_get("www.ulv.no");
+    // FIXME: Add port
+    auto[headers, body] = net.http_get(url.host(), url.path());
     cout << "=====HEADER=====\n"
          << headers << "\n=====BODY=====\n"
          << body << "\n";
