@@ -3,17 +3,9 @@
 
 #include <ostream>
 #include <string>
+#include <tuple>
 
 namespace zit {
-
-class Net {
- public:
-  Net() = default;
-
-  // TODO: url param and split/parse internally
-  std::tuple<std::string, std::string> http_get(const std::string& server,
-                                                const std::string& path = "/");
-};
 
 /**
  * Simplified URL parsing that covers cases we are interested in
@@ -41,5 +33,18 @@ inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
   os << "Port:   " << url.port() << "\n";
   return os;
 }
+
+class Net {
+ public:
+  Net() = default;
+
+  std::tuple<std::string, std::string> http_get(const std::string& server,
+                                                const std::string& path = "/",
+                                                uint16_t port = 80);
+
+  auto http_get(const Url& url) {
+    return http_get(url.host(), url.path(), url.port());
+  }
+};
 
 }  // namespace zit

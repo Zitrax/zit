@@ -16,10 +16,11 @@ namespace zit {
 // https://www.boost.org/doc/libs/1_36_0/doc/html/boost_asio/example/http/client/sync_client.cpp
 //
 std::tuple<std::string, std::string> Net::http_get(const string& server,
-                                                   const string& path) {
+                                                   const string& path,
+                                                   uint16_t port) {
   asio::io_service io_service;
   tcp::resolver resolver(io_service);
-  tcp::resolver::query query(server, "http");
+  tcp::resolver::query query(server, to_string(port));
   tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
   tcp::resolver::iterator end;
 

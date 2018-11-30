@@ -51,7 +51,7 @@ int main() {
     zit::Net net;
 
     // FIXME: Add port
-    auto[headers, body] = net.http_get(url.host(), url.path());
+    auto[headers, body] = net.http_get(url);
     cout << "=====HEADER=====\n"
          << headers << "\n=====BODY=====\n"
          << body << "\n";
