@@ -90,7 +90,7 @@ class Torrent {
   auto md5sum() const { return m_md5sum; }
 
   /**
-   * In multi file mode this the file information for each file.
+   * In multi file mode this is the file information for each file.
    */
   auto files() const { return m_files; }
 
@@ -144,5 +144,8 @@ class FileInfo {
   std::filesystem::path m_path;
   std::string m_md5sum;
 };
+
+std::ostream& operator<<(std::ostream& os, const zit::FileInfo& file_info);
+std::ostream& operator<<(std::ostream& os, const zit::Torrent& torrent);
 
 }  // namespace zit

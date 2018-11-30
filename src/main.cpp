@@ -42,7 +42,7 @@ int main() {
     p.remove_filename();
     zit::Torrent torrent(p / ".." / "tests" / "data" / "test.torrent");
 
-    cout << torrent.announce() << "\n";
+    cout << torrent << "\n";
 
     zit::Url url(torrent.announce());
     cout << url;

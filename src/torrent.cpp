@@ -107,4 +107,48 @@ Torrent::Torrent(const filesystem::path& file) {
   }
 }
 
+std::ostream& operator<<(std::ostream& os, const zit::FileInfo& file_info) {
+  os << "(" << file_info.path() << ", " << file_info.length() << ", "
+     << file_info.md5sum() << ")\n";
+  return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const zit::Torrent& torrent) {
+  os << "--------------------\n";
+  if (torrent.is_single_file()) {
+    os << "Name:          " << torrent.name() << "\n";
+    os << "Length:        " << torrent.length() << "\n";
+    if (!torrent.md5sum().empty()) {
+      os << "MD5Sum:        " << torrent.md5sum() << "\n";
+    }
+  } else {
+    os << "Files:\n";
+    for (const auto& fi : torrent.files()) {
+      os << "  " << fi << "\n";
+    }
+  }
+  os << "Creation date: " << torrent.creation_date() << "\n";
+  os << "Comment:       " << torrent.comment() << "\n";
+  if (!torrent.created_by().empty()) {
+    os << "Created by:    " << torrent.created_by() << "\n";
+  }
+  if (!torrent.encoding().empty()) {
+    os << "Encoding:      " << torrent.encoding() << "\n";
+  }
+  os << "Piece length:  " << torrent.piece_length() << "\n";
+  os << "Private:       " << (torrent.is_private() ? "Yes" : "No") << "\n";
+  os << "Announce List:\n";
+  for (const auto& list : torrent.announce_list()) {
+    for (const auto& url : list) {
+      os << "  " << url;
+    }
+    os << "\n";
+  }
+  if (torrent.announce_list().empty()) {
+    os << "  " << torrent.announce() << "\n";
+  }
+  os << "--------------------\n";
+  return os;
+}
+
 }  // namespace zit
