@@ -68,11 +68,11 @@ TEST(torrent, construct_multi) {
 }
 
 TEST(torrent, construct_fail) {
-  EXPECT_THROW(zit::Torrent t("FOO"), std::ios_base::failure);
+  EXPECT_THROW(zit::Torrent t("FOO"), std::runtime_error);
 
   std::filesystem::path p(__FILE__);
   EXPECT_THROW(zit::Torrent t(p.parent_path() / "data" / "empty.torrent"),
-               std::ios_base::failure);
+               std::runtime_error);
   EXPECT_THROW(zit::Torrent t(p.parent_path() / "data" / "invalid.torrent"),
                std::invalid_argument);
 }
