@@ -1,3 +1,5 @@
 * TODO Net should be able to read/parse standard URLs
 * TODO Query tracker
 * TODO Add port to http_get
+* TODO Bencoded dicts must always have the keys in alpha order
+* TODO Apparently .torrent files can contain a "signatures" key too, see http://bittorrent.org/beps/bep_0035.html
