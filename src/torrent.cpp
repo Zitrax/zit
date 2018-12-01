@@ -3,6 +3,7 @@
 #include "bencode.h"
 #include "file_utils.h"
 
+#include <openssl/sha.h>
 #include <algorithm>
 
 using namespace bencode;
@@ -36,6 +37,15 @@ static auto beDictToFileInfo(const Element& element) {
   return FileInfo(
       dict.at("length")->template to<TypedElement<int64_t>>()->val(), path,
       md5);
+}
+
+static auto sha1(const string& str) {
+  unsigned char hash[SHA_DIGEST_LENGTH];
+  if (SHA1(reinterpret_cast<const unsigned char*>(str.c_str()), str.length(),
+           hash) == 0) {
+    throw runtime_error("SHA1 calculation failed");
+  }
+  return string(reinterpret_cast<const char*>(hash), SHA_DIGEST_LENGTH);
 }
 
 Torrent::Torrent(const filesystem::path& file) {
@@ -105,6 +115,8 @@ Torrent::Torrent(const filesystem::path& file) {
       return tier_output_list;
     });
   }
+
+  m_info_hash = sha1(encode(info));
 }
 
 std::ostream& operator<<(std::ostream& os, const zit::FileInfo& file_info) {
