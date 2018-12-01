@@ -43,6 +43,6 @@ endif()
 
 # The test code
 include_directories("../src")
-add_executable(zitest test_bencode.cpp test_torrent.cpp ../src/torrent.cpp)
+add_executable(zitest test_bencode.cpp test_torrent.cpp test_net.cpp ../src/torrent.cpp ../src/net.cpp)
 target_link_libraries(zitest gtest gtest_main stdc++fs crypto)
 add_test(NAME zitest COMMAND zitest)

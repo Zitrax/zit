@@ -45,6 +45,11 @@ class Net {
   auto http_get(const Url& url) {
     return http_get(url.host(), url.path(), url.port());
   }
+
+  /**
+   * URL encode string.
+   */
+  static std::string url_encode(const std::string& value);
 };
 
 }  // namespace zit

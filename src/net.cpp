@@ -3,6 +3,7 @@
 
 #include <asio.hpp>
 
+#include <iomanip>
 #include <iostream>
 #include <regex>
 
@@ -96,6 +97,28 @@ std::tuple<std::string, std::string> Net::http_get(const string& server,
   }
 
   return {headers.str(), resp.str()};
+}
+
+// Based on https://stackoverflow.com/a/17708801/11722
+string Net::url_encode(const string& value) {
+  ostringstream escaped;
+  escaped.fill('0');
+  escaped << hex;
+
+  for (const auto c : value) {
+    // Keep alphanumeric and other accepted characters intact
+    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
+      escaped << c;
+      continue;
+    }
+
+    // Any other characters are percent-encoded
+    escaped << uppercase;
+    escaped << '%' << setw(2) << int(static_cast<byte>(c));
+    escaped << nouppercase;
+  }
+
+  return escaped.str();
 }
 
 Url::Url(const string& url) {
