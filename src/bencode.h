@@ -108,7 +108,7 @@ class TypedElement : public Element {
   /**
    * Pretty print to console.
    */
-  virtual std::ostream& print(std::ostream& os) {
+  std::ostream& print(std::ostream& os) override {
     if constexpr (std::is_same<T, std::map<std::string, ElmPtr>>()) {
       auto indent = [&os]() {
         for (int i = 0; i < os.iword(indent_index); ++i) {
