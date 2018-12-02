@@ -12,13 +12,19 @@ using namespace std;
 
 namespace zit {
 
+Url& Url::add_param(const std::string& param) {
+  m_params.push_back(param);
+  return *this;
+}
+
 //
 // Implementation based on the example at:
 // https://www.boost.org/doc/libs/1_36_0/doc/html/boost_asio/example/http/client/sync_client.cpp
 //
 std::tuple<std::string, std::string> Net::http_get(const string& server,
                                                    const string& path,
-                                                   uint16_t port) {
+                                                   uint16_t port,
+                                                   string_list params) {
   asio::io_service io_service;
   tcp::resolver resolver(io_service);
   tcp::resolver::query query(server, to_string(port));
@@ -44,7 +50,16 @@ std::tuple<std::string, std::string> Net::http_get(const string& server,
   // allow us to treat all data up until the EOF as the content.
   asio::streambuf request;
   ostream request_stream(&request);
-  request_stream << "GET " << path << " HTTP/1.0\r\n";
+  std::stringstream rpath;
+  rpath << path;
+  auto it = params.begin();
+  if (it != params.end()) {
+    rpath << "?" << *it++;
+  }
+  while (it != params.end()) {
+    rpath << "&" << *it++;
+  }
+  request_stream << "GET " << rpath.str() << " HTTP/1.0\r\n";
   request_stream << "Host: " << server << "\r\n";
   request_stream << "Accept: */*\r\n";
   request_stream << "Connection: close\r\n\r\n";
