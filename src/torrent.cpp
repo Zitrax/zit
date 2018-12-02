@@ -39,12 +39,17 @@ static auto beDictToFileInfo(const Element& element) {
       md5);
 }
 
+// We can't get away here without the reinterpret casts as long as we work with
+// std::strings. Using another library would work (but they would still do the
+// cast internally).
 static auto sha1(const string& str) {
   unsigned char hash[SHA_DIGEST_LENGTH];
-  if (SHA1(reinterpret_cast<const unsigned char*>(str.c_str()), str.length(),
-           hash) == 0) {
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+  if (SHA1(reinterpret_cast<const unsigned char*>(str.data()), str.length(),
+           hash) == nullptr) {
     throw runtime_error("SHA1 calculation failed");
   }
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
   return string(reinterpret_cast<const char*>(hash), SHA_DIGEST_LENGTH);
 }
 
