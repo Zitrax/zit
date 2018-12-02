@@ -4,7 +4,9 @@
 #include "file_utils.h"
 
 #include <openssl/sha.h>
+
 #include <algorithm>
+#include <iostream>
 
 using namespace bencode;
 using namespace std;
@@ -122,6 +124,27 @@ Torrent::Torrent(const filesystem::path& file) {
   }
 
   m_info_hash = sha1(encode(info));
+}
+
+std::vector<Url> Torrent::start() {
+  Url url(m_announce);
+  url.add_param("info_hash=" + Net::url_encode(m_info_hash));
+  url.add_param("peer_id=abcdefghijklmnopqrst");  // FIXME: Use proper id
+  url.add_param("port=6881");                     // FIXME: configure this
+  url.add_param("uploaded=0");
+  url.add_param("downloaded=0");
+  url.add_param("left=0");  // FIXME: Sum of all sizes
+  url.add_param("event=started");
+  url.add_param("compact=1");  // TODO: Look up what this really means
+  cout << url;
+
+  Net net;
+  auto[headers, body] = net.http_get(url);
+  cout << "=====HEADER=====\n"
+       << headers << "\n=====BODY=====\n"
+       << decode(body) << "\n";
+
+  return {};
 }
 
 std::ostream& operator<<(std::ostream& os, const zit::FileInfo& file_info) {

@@ -6,6 +6,8 @@
 #include <utility>
 #include <vector>
 
+#include "net.h"
+
 namespace zit {
 
 class FileInfo;
@@ -112,6 +114,13 @@ class Torrent {
    * They must not perform a decode-encode roundtrip on invalid data.
    */
   auto info_hash() const { return m_info_hash; }
+
+  /**
+   * The first request to the tracker.
+   *
+   * @return a list of peers for this torrent.
+   */
+  std::vector<Url> start();
 
  private:
   std::string m_announce{};
