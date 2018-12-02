@@ -191,14 +191,14 @@ inline ElmPtr decodeString(std::istringstream& iss) {
                               "' at position " + std::to_string(pos) + "\n");
 }
 
-ElmPtr decode(std::istringstream& iss);
+ElmPtr decode_internal(std::istringstream& iss);
 
 inline ElmPtr decodeList(std::istringstream& iss) {
   iss.ignore();
   auto v = BeList();
   if (iss.peek() != 'e') {
     while (true) {
-      v.push_back(decode(iss));
+      v.push_back(decode_internal(iss));
       if (iss.eof()) {
         throw std::invalid_argument("Unexpected eof: " + iss.str());
       }
@@ -217,7 +217,7 @@ inline ElmPtr decodeDict(std::istringstream& iss) {
   if (iss.peek() != 'e') {
     while (true) {
       auto key = decodeString(iss);
-      auto val = decode(iss);
+      auto val = decode_internal(iss);
       m[key->to<TypedElement<std::string>>()->val()] = val;
       if (iss.eof()) {
         throw std::invalid_argument("Unexpected eof: " + iss.str());
@@ -231,8 +231,10 @@ inline ElmPtr decodeDict(std::istringstream& iss) {
   return Element::build(m);
 }
 
-// FIXME: Make internal
-inline ElmPtr decode(std::istringstream& iss) {
+/**
+ * @note Do not call this directly, use @ref decode() instead.
+ */
+inline ElmPtr decode_internal(std::istringstream& iss) {
   if (iss.peek() == 'i') {
     iss.ignore();
     return decodeInt(iss);
@@ -246,9 +248,20 @@ inline ElmPtr decode(std::istringstream& iss) {
   throw_invalid_string(iss);
 }
 
+/**
+ * Decode bencoded string.
+ *
+ * @param str Bencoded string to decode.
+ *
+ * @return ElmPtr to the root element. @ref Element::to() can then be used to
+ *   conver this to the underlying value.
+ *
+ * @throws std::invalid_argument if the input string is not valid bencode
+ *   format.
+ */
 inline ElmPtr decode(const std::string& str) {
   std::istringstream iss(str);
-  auto elm = decode(iss);
+  auto elm = decode_internal(iss);
   if (!elm || !iss.ignore().eof()) {
     throw_invalid_string(iss);
   }
