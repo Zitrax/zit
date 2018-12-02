@@ -21,6 +21,9 @@ using ElmPtr = std::shared_ptr<Element>;
 using BeDict = std::map<std::string, ElmPtr>;
 using BeList = std::vector<ElmPtr>;
 
+// For stream indentation level
+static const auto indent_index = std::ios_base::xalloc();
+
 /**
  * These two templates are used to convert arrays to pointer specifically to
  * allow a char[] to use the std::string specialization.
@@ -70,6 +73,8 @@ class Element : public std::enable_shared_from_this<Element> {
     return ptr;
   }
 
+  virtual std::ostream& print(std::ostream& os) = 0;
+
   /**
    * First try used T&& val, but it couse storage of int references when we want
    * such values copied. See https://stackoverflow.com/q/17316386/11722 and
@@ -99,6 +104,60 @@ class TypedElement : public Element {
   std::string encode() const override { return bencode::encode(m_data); }
 
   auto val() const { return m_data; }
+
+  /**
+   * Pretty print to console.
+   */
+  virtual std::ostream& print(std::ostream& os) {
+    if constexpr (std::is_same<T, std::map<std::string, ElmPtr>>()) {
+      auto indent = [&os]() {
+        for (int i = 0; i < os.iword(indent_index); ++i) {
+          os << " ";
+        }
+      };
+
+      os << "{\n";
+      os.iword(indent_index) += 2;
+      auto it = m_data.cbegin();
+      if (it != m_data.cend()) {
+        auto elm = *it++;
+        indent();
+        os << elm.first << " : " << elm.second;
+      }
+      while (it != m_data.cend()) {
+        auto elm = *it++;
+        os << ",\n";
+        indent();
+        os << elm.first << " : " << elm.second;
+      }
+      os.iword(indent_index) -= 2;
+      os << "\n";
+      indent();
+      os << "}";
+    } else if constexpr (std::is_same<T, std::vector<ElmPtr>>()) {
+      os << "[";
+      auto it = m_data.cbegin();
+      if (it != m_data.cend()) {
+        os << *it++;
+      }
+      while (it != m_data.cend()) {
+        os << "," << *it++;
+      }
+      os << "]";
+    } else if constexpr (std::is_same<T, std::string>()) {
+      std::stringstream console_safe;
+      for (char c : m_data.substr(0, 70)) {
+        console_safe << (c > 31 ? c : '?');
+      }
+      os << console_safe.str();
+      if (m_data.length() > 70) {
+        os << " ... <" << m_data.length() << ">";
+      }
+    } else {
+      os << m_data;
+    }
+    return os;
+  }
 
   /**
    * Allow comparisons to the content type without manually calling val()
@@ -266,6 +325,13 @@ inline ElmPtr decode(const std::string& str) {
     throw_invalid_string(iss);
   }
   return elm;
+}
+
+/**
+ * Pretty print decoded data.
+ */
+inline std::ostream& operator<<(std::ostream& os, const ElmPtr& elmPtr) {
+  return elmPtr->print(os);
 }
 
 }  // namespace bencode
