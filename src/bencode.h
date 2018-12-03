@@ -56,6 +56,17 @@ std::string encode(const T& in) {
   return encode_internal<src>(in);
 }
 
+// Exceptions
+
+/**
+ * Thrown when conversion between types happens.
+ */
+class bencode_conversion_error : public std::runtime_error {
+ public:
+  explicit bencode_conversion_error(const std::string& what_arg)
+      : std::runtime_error(what_arg) {}
+};
+
 // Classes
 class Element : public std::enable_shared_from_this<Element> {
  public:
@@ -68,7 +79,7 @@ class Element : public std::enable_shared_from_this<Element> {
                   "Can only return sublasses of Element");
     auto ptr = std::dynamic_pointer_cast<const T>(shared_from_this());
     if (!ptr) {
-      throw std::runtime_error("Could not convert to type");
+      throw bencode_conversion_error("Could not convert to type");
     }
     return ptr;
   }

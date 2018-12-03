@@ -140,9 +140,29 @@ std::vector<Url> Torrent::start() {
 
   Net net;
   auto[headers, body] = net.http_get(url);
+  auto reply = decode(body);
+
   cout << "=====HEADER=====\n"
        << headers << "\n=====BODY=====\n"
-       << decode(body) << "\n";
+       << reply << "\n";
+
+  // The peers might be in binary or string form
+  auto reply_dict = reply->to<TypedElement<BeDict>>()->val();
+  if (reply_dict.find("peers") == reply_dict.end()) {
+    throw runtime_error("Invalid tracker reply, no peer list");
+  }
+  auto peers = reply_dict["peers"];
+  // First try binary form
+  try {
+      auto binary_peers = peers->to<TypedElement<BeDict>>()->val();
+      // FIXME: implement
+      throw runtime_error("Dict peers not implemented");
+  } catch (const bencode_conversion_error& ex) {
+      // This is fine - try the next format
+  }
+
+  auto string_peers = peers->to<TypedElement<string>>()->val();
+  // TODO: 6 byte string to url in Net class
 
   return {};
 }
