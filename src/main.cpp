@@ -28,7 +28,11 @@ int main() {
 
     zit::Torrent torrent(p / ".." / "tests" / "data" / "test.torrent");
     cout << torrent << "\n";
-    torrent.start();
+    auto peers = torrent.start();
+
+    for(const auto& peer : peers) {
+        cout << peer << "\n";
+    }
 
   } catch (const exception& e) {
     print_exception(e);

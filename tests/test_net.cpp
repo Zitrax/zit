@@ -1,4 +1,5 @@
 // -*- mode:c++; c-basic-offset : 2; - * -
+#include <arpa/inet.h>
 #include "gtest/gtest.h"
 #include "net.h"
 
@@ -11,4 +12,20 @@ TEST(net, url_encode) {
       "\x67\x89\xab\xcd\xef\x12\x34\x56\x78\x9a";
   EXPECT_EQ(Net::url_encode(input),
             "%124Vx%9A%BC%DE%F1%23Eg%89%AB%CD%EF%124Vx%9A");
+}
+
+TEST(net, url_binary) {
+  uint16_t port = htons(10000);
+  // 192.168.0.1:1000
+  std::string urlstr = {1,
+                        0,
+                        static_cast<char>(168),
+                        static_cast<char>(192),
+                        static_cast<char>(port & 0xFF),
+                        static_cast<char>((port & 0xFF00) >> 8)};
+  Url url(urlstr, true);
+  EXPECT_EQ(url.scheme(), "http");
+  EXPECT_EQ(url.host(), "192.168.0.1");
+  EXPECT_EQ(url.port(), 10000);
+  EXPECT_EQ(url.path(), "");
 }

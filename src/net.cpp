@@ -136,17 +136,29 @@ string Net::url_encode(const string& value) {
   return escaped.str();
 }
 
-Url::Url(const string& url) {
-  regex ur("^(https?)://([^:/]*)(?::(\\d+))?(.*?)$");
-  cmatch match;
-  // FIXME: Why the need for .c_str()?
-  if (!regex_match(url.c_str(), match, ur) || match.size() != 5) {
-    throw runtime_error("Invalid URL: " + url);
+Url::Url(const string& url, bool binary) {
+  if (!binary) {
+    regex ur("^(https?)://([^:/]*)(?::(\\d+))?(.*?)$");
+    cmatch match;
+    // FIXME: Why the need for .c_str()?
+    if (!regex_match(url.c_str(), match, ur) || match.size() != 5) {
+      throw runtime_error("Invalid URL: " + url);
+    }
+    m_scheme = match[1];
+    m_host = match[2];
+    m_port = stoi(match[3]);
+    m_path = match[4];
+  } else {
+    if (url.length() != 6) {
+      throw runtime_error("Invalid binary URL length " + url.length());
+    }
+    stringstream ss;
+    ss << to_string(uint8_t(url[3])) << "." << to_string(uint8_t(url[2])) << "."
+       << to_string(uint8_t(url[1])) << "." << to_string(uint8_t(url[0]));
+    m_host = ss.str();
+    m_port = htons(uint8_t(url[4]) << 0 | uint8_t(url[5]) << 8);
+    m_scheme = "http";
   }
-  m_scheme = match[1];
-  m_host = match[2];
-  m_port = stoi(match[3]);
-  m_path = match[4];
 }
 
 }  // namespace zit

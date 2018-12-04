@@ -126,7 +126,7 @@ Torrent::Torrent(const filesystem::path& file) {
   m_info_hash = sha1(encode(info));
 }
 
-std::vector<Url> Torrent::start() {
+vector<Url> Torrent::start() {
   Url url(m_announce);
   url.add_param("info_hash=" + Net::url_encode(m_info_hash));
   url.add_param("peer_id=abcdefghijklmnopqrst");  // FIXME: Use proper id
@@ -151,29 +151,32 @@ std::vector<Url> Torrent::start() {
   if (reply_dict.find("peers") == reply_dict.end()) {
     throw runtime_error("Invalid tracker reply, no peer list");
   }
-  auto peers = reply_dict["peers"];
-  // First try binary form
+  auto peers_dict = reply_dict["peers"];
+  // First try string form
   try {
-      auto binary_peers = peers->to<TypedElement<BeDict>>()->val();
-      // FIXME: implement
-      throw runtime_error("Dict peers not implemented");
+    auto string_peers = peers_dict->to<TypedElement<BeDict>>()->val();
+    // FIXME: implement
+    throw runtime_error("Dict peers not implemented");
   } catch (const bencode_conversion_error& ex) {
-      // This is fine - try the next format
+    // This is fine - try the next format
   }
 
-  auto string_peers = peers->to<TypedElement<string>>()->val();
-  // TODO: 6 byte string to url in Net class
+  auto binary_peers = peers_dict->to<TypedElement<string>>()->val();
+  vector<Url> peers;
+  for (unsigned int i = 0; i < binary_peers.length(); i += 6) {
+      peers.emplace_back(binary_peers.substr(i, 6), true);
+  }
 
-  return {};
+  return peers;
 }
 
-std::ostream& operator<<(std::ostream& os, const zit::FileInfo& file_info) {
+ostream& operator<<(ostream& os, const zit::FileInfo& file_info) {
   os << "(" << file_info.path() << ", " << file_info.length() << ", "
      << file_info.md5sum() << ")\n";
   return os;
 }
 
-std::ostream& operator<<(std::ostream& os, const zit::Torrent& torrent) {
+ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
   os << "--------------------\n";
   if (torrent.is_single_file()) {
     os << "Name:          " << torrent.name() << "\n";

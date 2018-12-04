@@ -15,7 +15,13 @@ using string_list = std::vector<std::string>;
  */
 class Url {
  public:
-  Url(const std::string& url);
+  /**
+   * Create URL object from string
+   *
+   * @param binary if true the string length is expected to be exactly 6, the
+   *   first 4 bytes is the ip and the two last bytes the port.
+   */
+  Url(const std::string& url, bool binary = false);
 
   Url& add_param(const std::string& param);
 
@@ -36,8 +42,8 @@ class Url {
 inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
   os << "Scheme: " << url.scheme() << "\n";
   os << "Host:   " << url.host() << "\n";
-  os << "Path:   " << url.path() << "\n";
   os << "Port:   " << url.port() << "\n";
+  os << "Path:   " << url.path() << "\n";
   if (!url.params().empty()) {
     os << "Params:\n";
     for (const auto& param : url.params()) {
