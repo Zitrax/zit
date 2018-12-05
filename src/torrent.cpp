@@ -1,4 +1,4 @@
-// -*- mode:c++; c-basic-offset : 2; - * -
+// -*- mode:c++; c-basic-offset : 2; -*-
 #include "torrent.h"
 #include "bencode.h"
 #include "file_utils.h"

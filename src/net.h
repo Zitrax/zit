@@ -1,4 +1,4 @@
-// -*- mode:c++; c-basic-offset : 2; - * -
+// -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
 #include <ostream>

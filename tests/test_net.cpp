@@ -1,4 +1,4 @@
-// -*- mode:c++; c-basic-offset : 2; - * -
+// -*- mode:c++; c-basic-offset : 2; -*-
 #include <arpa/inet.h>
 #include "gtest/gtest.h"
 #include "net.h"

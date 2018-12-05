@@ -1,4 +1,4 @@
-// -*- mode:c++; c-basic-offset : 2; - * -
+// -*- mode:c++; c-basic-offset : 2; -*-
 #include "net.h"
 
 #include <asio.hpp>
