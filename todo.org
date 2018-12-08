@@ -6,3 +6,9 @@
 * TODO Bencoded dicts must always have the keys in alpha order
 * TODO Apparently .torrent files can contain a "signatures" key too, see http://bittorrent.org/beps/bep_0035.html
 * TODO Swap openssl sha1 to libcrypto++ (modern C++) ?
+* TODO Scraping
+
+* TODO Peer wire protocol
+** Need to at least maintain four booleans, 'choking' and 'interested' both ways
+** Peer handshake
+*** <pstrlen><pstr><reserved><info_hash><peer_id>

@@ -1,12 +1,11 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
-
 #include <filesystem>
 #include <string>
 #include <utility>
 #include <vector>
 
-#include "net.h"
+#include "peer.h"
 
 namespace zit {
 
@@ -120,7 +119,7 @@ class Torrent {
    *
    * @return a list of peers for this torrent.
    */
-  std::vector<Url> start();
+  std::vector<Peer> start();
 
  private:
   std::string m_announce{};

@@ -40,10 +40,10 @@ class Url {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
-  os << "Scheme: " << url.scheme() << "\n";
-  os << "Host:   " << url.host() << "\n";
-  os << "Port:   " << url.port() << "\n";
-  os << "Path:   " << url.path() << "\n";
+  os << "Scheme:        " << url.scheme() << "\n";
+  os << "Host:          " << url.host() << "\n";
+  os << "Port:          " << url.port() << "\n";
+  os << "Path:          " << url.path() << "\n";
   if (!url.params().empty()) {
     os << "Params:\n";
     for (const auto& param : url.params()) {

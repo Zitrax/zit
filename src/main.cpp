@@ -30,8 +30,8 @@ int main() {
     cout << torrent << "\n";
     auto peers = torrent.start();
 
-    for(const auto& peer : peers) {
-        cout << peer << "\n";
+    for (const auto& peer : peers) {
+      cout << peer << "\n";
     }
 
   } catch (const exception& e) {

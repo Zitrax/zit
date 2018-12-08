@@ -2,6 +2,7 @@
 #include "torrent.h"
 #include "bencode.h"
 #include "file_utils.h"
+#include "peer.h"
 
 #include <openssl/sha.h>
 
@@ -126,7 +127,7 @@ Torrent::Torrent(const filesystem::path& file) {
   m_info_hash = sha1(encode(info));
 }
 
-vector<Url> Torrent::start() {
+vector<Peer> Torrent::start() {
   Url url(m_announce);
   url.add_param("info_hash=" + Net::url_encode(m_info_hash));
   url.add_param("peer_id=abcdefghijklmnopqrst");  // FIXME: Use proper id
@@ -162,9 +163,9 @@ vector<Url> Torrent::start() {
   }
 
   auto binary_peers = peers_dict->to<TypedElement<string>>()->val();
-  vector<Url> peers;
+  vector<Peer> peers;
   for (unsigned int i = 0; i < binary_peers.length(); i += 6) {
-      peers.emplace_back(binary_peers.substr(i, 6), true);
+    peers.emplace_back(Url(binary_peers.substr(i, 6), true));
   }
 
   return peers;
