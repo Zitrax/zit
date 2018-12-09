@@ -16,13 +16,36 @@ using string_list = std::vector<std::string>;
 class Url {
  public:
   /**
-   * Create URL object from string
+   * Create Url object from string
+   *
+   * @param url string on the form http(s)://host:port/path if binary is false,
+   *   otherwise see binary format doc.
    *
    * @param binary if true the string length is expected to be exactly 6, the
    *   first 4 bytes is the ip and the two last bytes the port.
    */
   Url(const std::string& url, bool binary = false);
 
+  /**
+   * Create Url object
+   *
+   * @param scheme (e.g. http or https)
+   * @param host (e.g. localhost or google.com)
+   * @param port (e.g. 80)
+   * @param path (e.g. /index.html)
+   */
+  Url(std::string scheme,
+      std::string host,
+      unsigned short port,
+      std::string path = "")
+      : m_scheme(std::move(scheme)),
+        m_host(std::move(host)),
+        m_path(std::move(path)),
+        m_port(port) {}
+
+  /**
+   * Add http query params to existing Url object.
+   */
   Url& add_param(const std::string& param);
 
   auto scheme() const { return m_scheme; }
@@ -73,6 +96,14 @@ class Net {
    * URL encode string.
    */
   static std::string url_encode(const std::string& value);
+
+  /**
+   * URL encode array.
+   */
+  template <std::size_t SIZE>
+  static std::string url_encode(const std::array<char, SIZE>& value) {
+    return url_encode(std::string(value.data(), value.size()));
+  };
 };
 
 }  // namespace zit

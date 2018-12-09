@@ -15,6 +15,8 @@ class Peer {
   auto choking() const { return m_choking; }
   auto interested() const { return m_interested; }
 
+  void handshake(const std::string& info_hash);
+
  private:
   Url m_url;
   bool m_am_choking = true;

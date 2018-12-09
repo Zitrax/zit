@@ -3,8 +3,7 @@
 #include "bencode.h"
 #include "file_utils.h"
 #include "peer.h"
-
-#include <openssl/sha.h>
+#include "sha1.h"
 
 #include <algorithm>
 #include <iostream>
@@ -40,20 +39,6 @@ static auto beDictToFileInfo(const Element& element) {
   return FileInfo(
       dict.at("length")->template to<TypedElement<int64_t>>()->val(), path,
       md5);
-}
-
-// We can't get away here without the reinterpret casts as long as we work with
-// std::strings. Using another library would work (but they would still do the
-// cast internally).
-static auto sha1(const string& str) {
-  unsigned char hash[SHA_DIGEST_LENGTH];
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-  if (SHA1(reinterpret_cast<const unsigned char*>(str.data()), str.length(),
-           hash) == nullptr) {
-    throw runtime_error("SHA1 calculation failed");
-  }
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-  return string(reinterpret_cast<const char*>(hash), SHA_DIGEST_LENGTH);
 }
 
 Torrent::Torrent(const filesystem::path& file) {
@@ -124,7 +109,7 @@ Torrent::Torrent(const filesystem::path& file) {
     });
   }
 
-  m_info_hash = sha1(encode(info));
+  m_info_hash = sha1::calculate(encode(info));
 }
 
 vector<Peer> Torrent::start() {

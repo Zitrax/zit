@@ -150,7 +150,7 @@ Url::Url(const string& url, bool binary) {
     m_path = match[4];
   } else {
     if (url.length() != 6) {
-      throw runtime_error("Invalid binary URL length " + url.length());
+      throw runtime_error("Invalid binary URL length " + to_string(url.length()));
     }
     stringstream ss;
     ss << to_string(uint8_t(url[3])) << "." << to_string(uint8_t(url[2])) << "."

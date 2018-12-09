@@ -6,10 +6,12 @@
 #include <vector>
 
 #include "peer.h"
+#include "sha1.h"
 
 namespace zit {
 
 class FileInfo;
+class Peer;
 
 class Torrent {
  public:
@@ -135,7 +137,7 @@ class Torrent {
   int64_t m_length = 0;
   std::string m_md5sum{};
   std::vector<FileInfo> m_files{};
-  std::string m_info_hash{};
+  sha1 m_info_hash{};
 };
 
 class FileInfo {
