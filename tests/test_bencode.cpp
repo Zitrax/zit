@@ -109,7 +109,6 @@ TEST(bencode, decode_string) {
   EXPECT_EQ(*decode("4:spam")->to<TypedElement<string>>(), "spam"s);
   EXPECT_EQ(*decode("3:egg")->to<TypedElement<string>>(), "egg"s);
   EXPECT_EQ(*decode("0:")->to<TypedElement<string>>(), ""s);
-  EXPECT_EQ(*decode("0:")->to<TypedElement<string>>(), ""s);
 }
 
 TEST(bencode, decode_list) {
