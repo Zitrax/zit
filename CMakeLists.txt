@@ -2,6 +2,13 @@ cmake_minimum_required (VERSION 3.10)
 set(CMAKE_CXX_STANDARD 17)
 project(zit CXX)
 
+if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+  if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "8")
+    message(FATAL_ERROR "g++ 8 or higher is required")
+  endif()
+  # Support for clang seemed to go far back, so not bothering to check that atm.
+endif()
+
 add_subdirectory(src)
 add_subdirectory(tests)
 
