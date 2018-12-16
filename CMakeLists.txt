@@ -9,6 +9,8 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   # Support for clang seemed to go far back, so not bothering to check that atm.
 endif()
 
+set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "")
+
 add_subdirectory(src)
 add_subdirectory(tests)
 
@@ -37,6 +39,7 @@ endif()
 find_program(CLANG_TIDY run-clang-tidy)
 
 if(CLANG_TIDY)
+  set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
 
   if(NOT CMAKE_EXPORT_COMPILE_COMMANDS)
     message(WARNING "Need to pass -DCMAKE_EXPORT_COMPILE_COMMANDS to run clang-tidy")
