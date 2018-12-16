@@ -16,7 +16,7 @@ static void fill(sha1& dst, T* src) {
   copy_n(src, SHA_DIGEST_LENGTH, ::begin(dst));
 }
 
-    sha1::sha1(const std::string& val) : array() {
+sha1::sha1(const std::string& val) : array() {
   if (val.size() != SHA_DIGEST_LENGTH) {
     throw std::invalid_argument("sha1 size must be 20, was " +
                                 to_string(val.size()));
