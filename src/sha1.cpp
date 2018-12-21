@@ -11,6 +11,8 @@ using namespace std;
 
 namespace zit {
 
+static_assert(SHA_DIGEST_LENGTH == SHA_LENGTH);
+
 template <typename T>
 static void fill(sha1& dst, T* src) {
   copy_n(src, SHA_DIGEST_LENGTH, ::begin(dst));
@@ -25,19 +27,29 @@ sha1::sha1(const std::string& val) : array() {
   zit::fill(*this, val.data());
 }
 
+  sha1::sha1() : array() {
+  this->fill(0);
+}
+
+std::string sha1::str() const {
+  return std::string(data(), SHA_LENGTH);
+}
+
 // We can't get away here without the reinterpret casts as long as we work with
 // std::strings. Using another library would work (but they would still do the
 // cast internally).
 sha1 sha1::calculate(const std::string& data) {
-  unsigned char hash[SHA_DIGEST_LENGTH];
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-  if (SHA1(reinterpret_cast<const unsigned char*>(data.data()), data.length(),
-           hash) == nullptr) {
-    throw runtime_error("SHA1 calculation failed");
-  }
+  auto src = reinterpret_cast<const unsigned char*>(data.data());
+
   sha1 ret;
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
-  zit::fill(ret, hash);
+  auto dst = reinterpret_cast<unsigned char*>(ret.data());
+
+  if (SHA1(src, data.length(), dst) == nullptr) {
+    throw runtime_error("SHA1 calculation failed");
+  }
+
   return ret;
 }
 

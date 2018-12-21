@@ -26,7 +26,7 @@ TEST(torrent, construct_single) {
   EXPECT_EQ(t.md5sum(), "");
   EXPECT_TRUE(t.files().empty());
   EXPECT_TRUE(t.is_single_file());
-  EXPECT_EQ(std::string(t.info_hash().data(), 20),
+  EXPECT_EQ(t.info_hash().str(),
             "\x8c\x4a\xdb\xf9\xeb\xe6\x6f\x1d\x80\x4f"
             "\xb6\xa4\xfb\x9b\x74\x96\x6c\x3a\xb6\x09");
 }
