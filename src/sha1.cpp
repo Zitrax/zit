@@ -27,7 +27,7 @@ sha1::sha1(const std::string& val) : array() {
   zit::fill(*this, val.data());
 }
 
-  sha1::sha1() : array() {
+sha1::sha1() : array() {
   this->fill(0);
 }
 

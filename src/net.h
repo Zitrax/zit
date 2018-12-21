@@ -81,12 +81,15 @@ inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
  */
 class Net {
  public:
+  constexpr static auto DEFAULT_HTTP_PORT = 80;
+
   Net() = default;
 
-  std::tuple<std::string, std::string> http_get(const std::string& server,
-                                                const std::string& path = "/",
-                                                uint16_t port = 80,
-                                                string_list params = {});
+  std::tuple<std::string, std::string> http_get(
+      const std::string& server,
+      const std::string& path = "/",
+      uint16_t port = DEFAULT_HTTP_PORT,
+      string_list params = {});
 
   auto http_get(const Url& url) {
     return http_get(url.host(), url.path(), url.port(), url.params());

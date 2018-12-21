@@ -21,6 +21,11 @@ using ElmPtr = std::shared_ptr<Element>;
 using BeDict = std::map<std::string, ElmPtr>;
 using BeList = std::vector<ElmPtr>;
 
+// Constants
+constexpr auto MAX_LINE_WIDTH = 72;
+constexpr auto MAX_INVALID_STRING_LENGTH = 128;
+constexpr auto ASCII_LAST_CTRL_CHAR = 31;
+
 // For stream indentation level
 static const auto indent_index = std::ios_base::xalloc();
 
@@ -38,6 +43,7 @@ struct array_to_pointer_decay {
  * allow a char[] to use the std::string specialization.
  */
 template <class T, std::size_t N>
+// NOLINTNEXTLINE(modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays)
 struct array_to_pointer_decay<T[N]> {
   using type = const T*;
 };
@@ -122,7 +128,7 @@ class TypedElement : public Element {
   std::ostream& print(std::ostream& os) override {
     if constexpr (std::is_same<T, std::map<std::string, ElmPtr>>()) {
       auto indent = [&os]() {
-        for (int i = 0; i < os.iword(indent_index); ++i) {
+        for (long i = 0; i < os.iword(indent_index); ++i) {
           os << " ";
         }
       };
@@ -157,11 +163,11 @@ class TypedElement : public Element {
       os << "]";
     } else if constexpr (std::is_same<T, std::string>()) {
       std::stringstream console_safe;
-      for (char c : m_data.substr(0, 70)) {
-        console_safe << (c > 31 ? c : '?');
+      for (char c : m_data.substr(0, MAX_LINE_WIDTH)) {
+        console_safe << (c > ASCII_LAST_CTRL_CHAR ? c : '?');
       }
       os << console_safe.str();
-      if (m_data.length() > 70) {
+      if (m_data.length() > MAX_LINE_WIDTH) {
         os << " ... <" << m_data.length() << ">";
       }
     } else {
@@ -248,12 +254,12 @@ inline ElmPtr decodeString(std::istringstream& iss) {
 
 [[noreturn]] inline void throw_invalid_string(std::istringstream& iss) {
   std::stringstream console_safe;
-  for (char c : iss.str().substr(0, 128)) {
-    console_safe << (c > 31 ? c : '?');
+  for (char c : iss.str().substr(0, MAX_INVALID_STRING_LENGTH)) {
+    console_safe << (c > ASCII_LAST_CTRL_CHAR ? c : '?');
   }
   auto pos = static_cast<size_t>(iss.tellg());
   iss.seekg(0, std::ios::end);
-  if (iss.tellg() > 128) {
+  if (iss.tellg() > MAX_INVALID_STRING_LENGTH) {
     console_safe << "...";
   }
 
