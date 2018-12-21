@@ -15,9 +15,15 @@ add_subdirectory(src)
 add_subdirectory(tests)
 
 enable_testing()
+file(GLOB_RECURSE ALL_SRC_SOURCE_FILES src/*.cpp)
+file(GLOB_RECURSE ALL_SRC_HEADER_FILES src/*.h)
 
-file(GLOB_RECURSE ALL_SOURCE_FILES src/*.cpp tests/*.cpp)
-file(GLOB_RECURSE ALL_HEADER_FILES src/*.h tests/*.h)
+file(GLOB_RECURSE ALL_TEST_SOURCE_FILES tests/*.cpp)
+file(GLOB_RECURSE ALL_TEST_HEADER_FILES tests/*.h)
+
+set(ALL_SOURCE_FILES ${ALL_SRC_SOURCE_FILES} ${ALL_TEST_SOURCE_FILES})
+set(ALL_HEADER_FILES ${ALL_SRC_HEADER_FILES} ${ALL_TEST_HEADER_FILES})
+
 # For some reason some temporary? files are picked up
 # failing the command. Filter them away.
 list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "#")
@@ -45,11 +51,14 @@ if(CLANG_TIDY)
     message(WARNING "Need to pass -DCMAKE_EXPORT_COMPILE_COMMANDS to run clang-tidy")
   endif()
 
+  # For now running this only on the src/ files since the googletest
+  # macros generate tons of issues and clang-tidy has no good mechanism
+  # of filtering that out. See https://reviews.llvm.org/D26418
   add_custom_target(tidy
     COMMENT "Tidying ${ALL_SOURCE_FILES}"
     COMMAND ${CLANG_TIDY} -header-filter=.*
             -p ${CMAKE_CURRENT_BINARY_DIR}
-            ${ALL_SOURCE_FILES}
+            ${ALL_SRC_SOURCE_FILES}
     )
 else()
     message(WARNING "Could not find clang-tidy, tidy checking not available")
