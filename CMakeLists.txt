@@ -14,7 +14,6 @@ set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "")
 add_subdirectory(src)
 add_subdirectory(tests)
 
-enable_testing()
 file(GLOB_RECURSE ALL_SRC_SOURCE_FILES src/*.cpp)
 file(GLOB_RECURSE ALL_SRC_HEADER_FILES src/*.h)
 
