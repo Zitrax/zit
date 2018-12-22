@@ -57,6 +57,7 @@ if(CLANG_TIDY)
   add_custom_target(tidy
     COMMENT "Tidying ${ALL_SOURCE_FILES}"
     COMMAND ${CLANG_TIDY} -header-filter=.*
+            -quiet
             -p ${CMAKE_CURRENT_BINARY_DIR}
             ${ALL_SRC_SOURCE_FILES}
     )

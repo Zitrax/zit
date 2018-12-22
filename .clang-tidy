@@ -1,20 +1,14 @@
 ---
 
-# Unfortunately the gtest headers cause some problems which is why some checks
-# are removed. There does not seem to be a nice way to disable checks for
-# specific files at the moment. See https://reviews.llvm.org/D26418
+# Magic number check is a bit noisy, so off by default
 
 Checks:          'clang-diagnostic-*,
                  clang-analyzer-*,
                  modernize*,
                  cppcoreguidelines*,
-                 -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
-                 -cppcoreguidelines-pro-type-vararg,
-                 -cppcoreguidelines-owning-memory,
-                 -cppcoreguidelines-special-member-functions,
+                 -cppcoreguidelines-avoid-magic-numbers,
                  bugprone-*,
                  cert-*,
-                 -cert-err58-cpp,
                  misc-*,
                  performance-*
                  '
@@ -44,5 +38,7 @@ CheckOptions:
     value:           llvm
   - key:             modernize-use-nullptr.NullMacros
     value:           'NULL'
+  - key:             cppcoreguidelines-special-member-functions.AllowSoleDefaultDtor
+    value:           '1'
 ...
 
