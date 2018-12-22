@@ -140,6 +140,7 @@ vector<Peer> Torrent::start() {
   auto peers_dict = reply_dict["peers"];
   // First try string form
   try {
+    // NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores)
     auto string_peers = peers_dict->to<TypedElement<BeDict>>()->val();
     // FIXME: implement
     throw runtime_error("Dict peers not implemented");

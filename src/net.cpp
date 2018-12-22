@@ -82,7 +82,7 @@ std::tuple<std::string, std::string> Net::http_get(const string& server,
   if (!response_stream || http_version.substr(0, 5) != "HTTP/") {
     throw runtime_error("invalid response");
   }
-  if (status_code != 200) {
+  if (status_code != HTTP_STATUS_OK) {
     throw runtime_error("response returned with status code " +
                         to_string(status_code));
   }

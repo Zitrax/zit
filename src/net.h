@@ -82,6 +82,7 @@ inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
 class Net {
  public:
   constexpr static auto DEFAULT_HTTP_PORT = 80;
+  constexpr static auto HTTP_STATUS_OK = 200;
 
   Net() = default;
 
