@@ -1,5 +1,7 @@
 enable_testing()
 
+option(COVERAGE "Enable coverage of unit tests" OFF)
+
 # Download and unpack googletest at configure time
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
@@ -34,15 +36,17 @@ if (CMAKE_VERSION VERSION_LESS 2.8.11)
   include_directories("${gtest_SOURCE_DIR}/include")
 endif()
 
-if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-  set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-  include(CodeCoverage)
-  append_coverage_compiler_flags()
-  setup_target_for_coverage_lcov(
-    NAME zitest_coverage
-    EXECUTABLE zitest
-    DEPENDENCIES zitest
-    )
+if(COVERAGE)
+  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
+    include(CodeCoverage)
+    append_coverage_compiler_flags()
+    setup_target_for_coverage_lcov(
+      NAME zitest_coverage
+      EXECUTABLE zitest
+      DEPENDENCIES zitest
+      )
+  endif()
 endif()
 
 # The test code
