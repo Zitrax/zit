@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 3.10)
 set(CMAKE_CXX_STANDARD 17)
 project(zit CXX)
 
+set(SANITIZED_LIBCXX "" CACHE PATH "Path to custom sanitized libc++ install directory")
+
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "8")
     message(FATAL_ERROR "g++ 8 or higher is required")
@@ -9,7 +11,19 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   # Support for clang seemed to go far back, so not bothering to check that atm.
 endif()
 
-set(CMAKE_CONFIGURATION_TYPES "Debug;Release;RelWithDebInfo" CACHE STRING "")
+set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release)
+
+if(SANITIZED_LIBCXX)
+  # Note: A memory sanitized libcxx can be built using the instructions at
+  #       https://libcxx.llvm.org/docs/BuildingLibcxx.html using cmake
+  #       something like:
+  #         cmake .. -DCMAKE_INSTALL_PREFIX=.. -DCMAKE_BUILD_TYPE=Release -DLLVM_USE_SANITIZER=Memory
+  #         make install-libcxx install-libcxxabi -j$num_of_processors
+  include_directories("${SANITIZED_LIBCXX}/include/c++/v1")
+  add_compile_options("$<$<CONFIG:DEBUG>:-fsanitize=memory;-stdlib=libc++>")
+  # TODO: CMake 3.13 has add_link_options()
+  set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=memory -L${SANITIZED_LIBCXX}/lib -Wl,-rpath,${SANITIZED_LIBCXX}/lib -stdlib=libc++ -lc++abi")
+endif()
 
 add_subdirectory(src)
 add_subdirectory(tests)

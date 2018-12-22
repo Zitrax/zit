@@ -56,5 +56,10 @@ add_executable(zitest
   ../src/net.cpp
   ../src/peer.cpp
   ../src/sha1.cpp)
-target_link_libraries(zitest gtest gtest_main stdc++fs crypto)
+target_link_libraries(zitest gtest gtest_main crypto)
+if(SANITIZED_LIBCXX)
+  target_link_libraries(zitest c++fs)
+else()
+  target_link_libraries(zitest stdc++fs)
+endif()
 add_test(NAME zitest COMMAND zitest)

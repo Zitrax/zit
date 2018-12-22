@@ -8,4 +8,9 @@ add_executable(zit main.cpp torrent.cpp net.cpp sha1.cpp)
 
 # Note this needs to be compiled with afl-g+ or afl-clang++
 add_executable(zit_afl EXCLUDE_FROM_ALL main_afl.cpp)
-target_link_libraries(zit stdc++fs pthread crypto)
+target_link_libraries(zit pthread crypto)
+if(SANITIZED_LIBCXX)
+  target_link_libraries(zit c++fs)
+else()
+  target_link_libraries(zit stdc++fs)
+endif()
