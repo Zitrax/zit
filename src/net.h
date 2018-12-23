@@ -9,6 +9,7 @@
 namespace zit {
 
 using string_list = std::vector<std::string>;
+using namespace std::string_literals;
 
 /**
  * Simplified URL parsing that covers cases we are interested in
@@ -73,6 +74,16 @@ inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
       os << "  " << param << "\n";
     }
   }
+  os << "Full URL:      " << url.scheme() << "://" << url.host() << ":"
+     << url.port() << url.path();
+  if (!url.params().empty()) {
+    bool first = true;
+    for (const auto& param : url.params()) {
+      os << (first ? "?"s : "&"s) << param;
+      first = false;
+    }
+  }
+  os << "\n";
   return os;
 }
 
