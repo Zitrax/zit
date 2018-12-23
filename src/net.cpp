@@ -154,8 +154,8 @@ Url::Url(const string& url, bool binary) {
                           to_string(url.length()));
     }
     stringstream ss;
-    ss << to_string(uint8_t(url[3])) << "." << to_string(uint8_t(url[2])) << "."
-       << to_string(uint8_t(url[1])) << "." << to_string(uint8_t(url[0]));
+    ss << to_string(uint8_t(url[0])) << "." << to_string(uint8_t(url[1])) << "."
+       << to_string(uint8_t(url[2])) << "." << to_string(uint8_t(url[3]));
     m_host = ss.str();
     m_port = htons(uint8_t(url[4]) << 0 | uint8_t(url[5]) << 8);
     m_scheme = "http";

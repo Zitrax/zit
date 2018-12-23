@@ -17,10 +17,10 @@ TEST(net, url_encode) {
 TEST(net, url_binary) {
   uint16_t port = htons(10000);
   // 192.168.0.1:1000
-  std::string urlstr = {1,
-                        0,
+  std::string urlstr = {static_cast<char>(192),
                         static_cast<char>(168),
-                        static_cast<char>(192),
+                        0,
+                        1,
                         static_cast<char>(port & 0xFF),
                         static_cast<char>((port & 0xFF00) >> 8)};
   Url url(urlstr, true);
