@@ -7,6 +7,7 @@
 
 #include <algorithm>
 #include <iostream>
+#include <numeric>
 
 using namespace bencode;
 using namespace std;
@@ -112,6 +113,18 @@ Torrent::Torrent(const filesystem::path& file) {
   m_info_hash = sha1::calculate(encode(info));
 }
 
+auto Torrent::left() const {
+  // FIXME: Should not include pieces that are done
+
+  if (is_single_file()) {
+    return length();
+  }
+
+  return accumulate(
+      m_files.begin(), m_files.end(), 0L,
+      [](int64_t a, const FileInfo& b) { return a + b.length(); });
+}
+
 vector<Peer> Torrent::start() {
   Url url(m_announce);
   url.add_param("info_hash=" + Net::url_encode(m_info_hash));
@@ -119,7 +132,7 @@ vector<Peer> Torrent::start() {
   url.add_param("port=6881");                     // FIXME: configure this
   url.add_param("uploaded=0");
   url.add_param("downloaded=0");
-  url.add_param("left=0");  // FIXME: Sum of all sizes
+  url.add_param("left=" + to_string(left()));
   url.add_param("event=started");
   url.add_param("compact=1");  // TODO: Look up what this really means
   cout << url;

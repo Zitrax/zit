@@ -117,6 +117,11 @@ class Torrent {
   auto info_hash() const { return m_info_hash; }
 
   /**
+   * Number of bytes left to download.
+   */
+  auto left() const;
+
+  /**
    * The first request to the tracker.
    *
    * @return a list of peers for this torrent.
