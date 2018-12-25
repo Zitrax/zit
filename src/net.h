@@ -55,6 +55,13 @@ class Url {
   auto port() const { return m_port; }
   auto params() const { return m_params; }
 
+  /**
+   * In an URL the authority is the "[userinfo@]host[:port]" part.
+   *
+   * At the moment the URL class does not include the userinfo.
+   */
+  auto authority() const { return m_host + ":" + std::to_string(m_port); }
+
  private:
   std::string m_scheme = "";
   std::string m_host = "";
