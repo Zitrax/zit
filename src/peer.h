@@ -2,6 +2,7 @@
 #pragma once
 
 #include "net.h"
+#include "sha1.h"
 
 namespace zit {
 
@@ -15,7 +16,7 @@ class Peer {
   auto choking() const { return m_choking; }
   auto interested() const { return m_interested; }
 
-  void handshake(const std::string& info_hash);
+  void handshake(const sha1& info_hash);
 
  private:
   Url m_url;

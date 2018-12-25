@@ -34,6 +34,8 @@ int main() {
       cout << peer << "\n";
     }
 
+    peers[0].handshake(torrent.info_hash());
+
   } catch (const exception& e) {
     print_exception(e);
     return 1;

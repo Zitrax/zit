@@ -129,7 +129,7 @@ vector<Peer> Torrent::start() {
   Url url(m_announce);
   url.add_param("info_hash=" + Net::url_encode(m_info_hash));
   url.add_param("peer_id=abcdefghijklmnopqrst");  // FIXME: Use proper id
-  url.add_param("port=6881");                     // FIXME: configure this
+  url.add_param("port=20000");                    // FIXME: configure this
   url.add_param("uploaded=0");
   url.add_param("downloaded=0");
   url.add_param("left=" + to_string(left()));
