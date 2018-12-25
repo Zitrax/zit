@@ -162,6 +162,10 @@ vector<Peer> Torrent::start() {
   }
 
   auto binary_peers = peers_dict->to<TypedElement<string>>()->val();
+  if (binary_peers.empty()) {
+    throw runtime_error("Peer list is empty");
+  }
+
   vector<Peer> peers;
   const int THREE_HEX_BYTES = 6;
   for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
