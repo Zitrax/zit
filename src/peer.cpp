@@ -5,6 +5,7 @@
 
 #include <iostream>
 #include <memory>
+#include <optional>
 
 using asio::ip::tcp;
 using namespace std;
@@ -13,48 +14,39 @@ using std::placeholders::_2;
 
 namespace zit {
 
+/**
+ * Convenience for literal byte values.
+ */
+inline constexpr byte operator"" _b(unsigned long long arg) noexcept {
+  return static_cast<byte>(arg);
+}
+
+/**
+ * Convenience wrapper for std::all_of.
+ *
+ * (To be replaced with ranges in C++20)
+ */
+template <class Container, class UnaryPredicate>
+static bool all_of(Container c, UnaryPredicate p) {
+  return std::all_of(c.begin(), c.end(), p);
+}
+
 // Note that since we are using asio without boost
 // we use std::bind, std::shared_ptr, etc... which
 // differs slightly from the boost examples.
 
-class tcp_connection : public enable_shared_from_this<tcp_connection> {
- public:
-  using pointer = shared_ptr<tcp_connection>;
-
-  static pointer create(asio::io_service& io_service) {
-    return pointer(new tcp_connection(io_service));
-  }
-
-  tcp::socket& socket() { return socket_; }
-
-  void start() {
-    message_ = "";  // FIXME make_daytime_string();
-
-    asio::async_write(
-        socket_, asio::buffer(message_),
-        bind(&tcp_connection::handle_write, shared_from_this(), _1, _2));
-  }
-
- private:
-  tcp_connection(asio::io_service& io_service) : socket_(io_service) {}
-
-  void handle_write(const asio::error_code& /*error*/,
-                    size_t /*bytes_transferred*/) {}
-
-  tcp::socket socket_;
-  std::string message_ = "";
-};
-
 class peer_connection {
  public:
   peer_connection(asio::io_service& io_service, unsigned short port_num)
-      : /*acceptor_(io_service, tcp::endpoint(tcp::v4(), port_num)),*/
+      :                         /*acceptor_(io_service),*/
         resolver_(io_service),  // TODO: Initialize here?
         socket_(io_service, tcp::endpoint(tcp::v4(), port_num)) {
     // start_accept();
+    asio::socket_base::reuse_address option(true);
+    socket_.set_option(option);
   }
 
-  void write(Url url, const string& msg) {
+  void write(const Url& url, const string& msg) {
     std::ostream request_stream(&request_);
     request_stream << msg;
 
@@ -98,45 +90,56 @@ class peer_connection {
     }
   }
 
+  /**
+   * A keepalive is a message of zeroes with length 4 bytes.
+   */
+  bool is_keepalive(const vector<byte>& msg) {
+    return msg.size() == 4 && all_of(msg, [](byte b) { return b == 0_b; });
+  }
+
+  optional<string> handshake(const vector<byte>& msg) {
+    if (msg.size() < 68) {  // BitTorrent messages are minimum 68 bytes long
+      return {};
+    }
+    if (memcmp("\x13"
+               "BitTorrent protocol",
+               msg.data(), 20) != 0) {
+      return {};
+    }
+    return "";  // FIXME: Return parsed handshake msg
+  }
+
   void handle_response(const asio::error_code& err) {
     cout << __PRETTY_FUNCTION__ << std::endl;
     if (!err) {
-      // Write all of the data that has been read so far.
-      cout << &response_;
+      if (response_.size()) {
+        cout << response_.size() << "\n";
+
+        // FIXME: Delay issue - only seeing output on the next message
+        vector<byte> response(response_.size());
+        buffer_copy(asio::buffer(response), response_.data());
+        response_.consume(response_.size());
+
+        if (is_keepalive(response)) {
+          cout << "Keep Alive\n";
+        } else if (handshake(response)) {
+          cout << "Handshake\n";
+        } else {
+          cout << "Unknown message of length " + to_string(response.size()) +
+                      "\n";
+        }
+      }
 
       // Read remaining data until EOF.
       asio::async_read(socket_, response_, asio::transfer_at_least(1),
                        bind(&peer_connection::handle_response, this, _1));
-    } else {
+    } else if (err != asio::error::eof) {
       cout << "Error: " << err.message() << "\n";
-    }
-  }
-
-  //   void start_accept() {
-  //     tcp_connection::pointer new_connection =
-  //         tcp_connection::create(acceptor_.get_io_service());
-  //
-  //     acceptor_.async_accept(
-  //         new_connection->socket(),
-  //         bind(&peer_connection::handle_accept, this, new_connection, _1));
-  //   }
-
-  void handle_accept(tcp_connection::pointer new_connection,
-                     const asio::error_code& error) {
-    cout << "Server handle accept\n";
-    if (!error) {
-      new_connection->start();
     } else {
-      cout << "Error: " << error << "\n";
+      cout << "EOF\n";
     }
-
-    // start_accept();
   }
 
-  // server
-  // tcp::acceptor acceptor_;
-
-  // client
   asio::streambuf request_{};
   tcp::resolver resolver_;
   asio::streambuf response_{};
