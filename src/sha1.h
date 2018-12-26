@@ -15,7 +15,7 @@ constexpr auto SHA_LENGTH = 20;
 class sha1 : public std::array<char, SHA_LENGTH> {
  public:
   sha1();
-  sha1(const std::string& val);
+  explicit sha1(const std::string& val);
 
   std::string str() const;
 

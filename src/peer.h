@@ -8,7 +8,7 @@ namespace zit {
 
 class Peer {
  public:
-  Peer(Url url) : m_url(std::move(url)) {}
+  explicit Peer(Url url) : m_url(std::move(url)) {}
 
   auto url() const { return m_url; }
   auto am_choking() const { return m_am_choking; }
