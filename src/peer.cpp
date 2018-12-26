@@ -14,10 +14,13 @@ using std::placeholders::_2;
 
 namespace zit {
 
+// Type aliases
+using bytes = vector<byte>;
+
 /**
  * Convenience for literal byte values.
  */
-inline constexpr byte operator"" _b(unsigned long long arg) noexcept {
+static constexpr byte operator"" _b(unsigned long long arg) noexcept {
   return static_cast<byte>(arg);
 }
 
@@ -35,19 +38,58 @@ static bool all_of(Container c, UnaryPredicate p) {
 // we use std::bind, std::shared_ptr, etc... which
 // differs slightly from the boost examples.
 
+/**
+ * BitTorrent handshake message.
+ */
+class handshake_msg {
+ public:
+  handshake_msg(bytes reserved, sha1 info_hash, string peer_id)
+      : m_reserved(move(reserved)),
+        m_info_hash(move(info_hash)),
+        m_peer_id(move(peer_id)) {}
+
+  auto reserved() const { return m_reserved; }
+  auto info_hash() const { return m_info_hash; }
+  auto peer_id() const { return m_peer_id; }
+
+  /**
+   * Parse bytes and return handshake message if it is one.
+   */
+  static optional<handshake_msg> parse(const bytes& msg) {
+    if (msg.size() < 68) {  // BitTorrent messages are minimum 68 bytes long
+      return {};
+    }
+    if (memcmp("\x13"
+               "BitTorrent protocol",
+               msg.data(), 20) != 0) {
+      return {};
+    }
+    bytes reserved(&msg[20], &msg[28]);
+    sha1 info_hash;
+    copy_n(reinterpret_cast<const char*>(&msg[28]), SHA_LENGTH, &info_hash[0]);
+    string peer_id(reinterpret_cast<const char*>(&msg[48]),
+                   reinterpret_cast<const char*>(&msg[68]));
+    return make_optional<handshake_msg>(reserved, info_hash, peer_id);
+  }
+
+ private:
+  bytes m_reserved;
+  sha1 m_info_hash;
+  string m_peer_id;
+};
+
 class peer_connection {
  public:
   peer_connection(asio::io_service& io_service, unsigned short port_num)
-      :                         /*acceptor_(io_service),*/
-        resolver_(io_service),  // TODO: Initialize here?
+      : resolver_(io_service),
         socket_(io_service, tcp::endpoint(tcp::v4(), port_num)) {
-    // start_accept();
+    // TODO: This does not seem to help
     asio::socket_base::reuse_address option(true);
     socket_.set_option(option);
   }
 
   void write(const Url& url, const string& msg) {
-    std::ostream request_stream(&request_);
+    ostream request_stream(&request_);
     request_stream << msg;
 
     // Start an asynchronous resolve to translate the server and service names
@@ -60,7 +102,7 @@ class peer_connection {
  private:
   void handle_resolve(const asio::error_code& err,
                       tcp::resolver::iterator endpoint_iterator) {
-    cout << __PRETTY_FUNCTION__ << std::endl;
+    cout << __PRETTY_FUNCTION__ << endl;
     if (!err) {
       // Attempt a connection to the first endpoint in the list. Each endpoint
       // will be tried until we successfully establish a connection.
@@ -74,7 +116,7 @@ class peer_connection {
 
   void handle_connect(const asio::error_code& err,
                       tcp::resolver::iterator endpoint_iterator) {
-    cout << __PRETTY_FUNCTION__ << std::endl;
+    cout << __PRETTY_FUNCTION__ << endl;
     if (!err) {
       // The connection was successful. Send the request.
       asio::async_write(socket_, request_,
@@ -93,41 +135,27 @@ class peer_connection {
   /**
    * A keepalive is a message of zeroes with length 4 bytes.
    */
-  bool is_keepalive(const vector<byte>& msg) {
+  bool is_keepalive(const bytes& msg) {
     return msg.size() == 4 && all_of(msg, [](byte b) { return b == 0_b; });
   }
 
-  optional<string> handshake(const vector<byte>& msg) {
-    if (msg.size() < 68) {  // BitTorrent messages are minimum 68 bytes long
-      return {};
-    }
-    if (memcmp("\x13"
-               "BitTorrent protocol",
-               msg.data(), 20) != 0) {
-      return {};
-    }
-    return "";  // FIXME: Return parsed handshake msg
-  }
-
   void handle_response(const asio::error_code& err) {
-    cout << __PRETTY_FUNCTION__ << std::endl;
+    cout << __PRETTY_FUNCTION__ << endl;
     if (!err) {
       if (response_.size()) {
-        cout << response_.size() << "\n";
-
-        // FIXME: Delay issue - only seeing output on the next message
-        vector<byte> response(response_.size());
+        bytes response(response_.size());
         buffer_copy(asio::buffer(response), response_.data());
         response_.consume(response_.size());
 
         if (is_keepalive(response)) {
           cout << "Keep Alive\n";
-        } else if (handshake(response)) {
+        } else if (handshake_msg::parse(response)) {
           cout << "Handshake\n";
         } else {
           cout << "Unknown message of length " + to_string(response.size()) +
                       "\n";
         }
+        cout.flush();
       }
 
       // Read remaining data until EOF.
