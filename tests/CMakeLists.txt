@@ -56,6 +56,7 @@ add_executable(zitest
   test_torrent.cpp
   test_net.cpp
   test_peer.cpp
+  test_string_utils.cpp
   ../src/torrent.cpp
   ../src/net.cpp
   ../src/peer.cpp

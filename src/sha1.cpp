@@ -53,4 +53,14 @@ sha1 sha1::calculate(const std::string& data) {
   return ret;
 }
 
+sha1 sha1::from_bytes(const bytes& buffer, bytes::size_type offset) {
+  if (offset + SHA_LENGTH > buffer.size()) {
+    throw invalid_argument("Buffer too small for extracting sha1");
+  }
+  sha1 ret;
+  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
+  copy_n(reinterpret_cast<const char*>(&buffer[offset]), SHA_LENGTH, &ret[0]);
+  return ret;
+}
+
 }  // namespace zit

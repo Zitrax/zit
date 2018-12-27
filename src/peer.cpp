@@ -1,6 +1,9 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "peer.h"
 
+#include "string_utils.h"
+#include "types.h"
+
 #include <asio.hpp>
 
 #include <iostream>
@@ -13,16 +16,6 @@ using std::placeholders::_1;
 using std::placeholders::_2;
 
 namespace zit {
-
-// Type aliases
-using bytes = vector<byte>;
-
-/**
- * Convenience for literal byte values.
- */
-static constexpr byte operator"" _b(unsigned long long arg) noexcept {
-  return static_cast<byte>(arg);
-}
 
 /**
  * Convenience wrapper for std::all_of.
@@ -45,7 +38,7 @@ class handshake_msg {
  public:
   handshake_msg(bytes reserved, sha1 info_hash, string peer_id)
       : m_reserved(move(reserved)),
-        m_info_hash(move(info_hash)),
+        m_info_hash(info_hash),
         m_peer_id(move(peer_id)) {}
 
   auto reserved() const { return m_reserved; }
@@ -65,10 +58,8 @@ class handshake_msg {
       return {};
     }
     bytes reserved(&msg[20], &msg[28]);
-    sha1 info_hash;
-    copy_n(reinterpret_cast<const char*>(&msg[28]), SHA_LENGTH, &info_hash[0]);
-    string peer_id(reinterpret_cast<const char*>(&msg[48]),
-                   reinterpret_cast<const char*>(&msg[68]));
+    sha1 info_hash = sha1::from_bytes(msg, 28);
+    string peer_id = from_bytes(msg, 48, 68);
     return make_optional<handshake_msg>(reserved, info_hash, peer_id);
   }
 

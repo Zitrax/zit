@@ -3,6 +3,8 @@
 
 #include <array>
 
+#include "types.h"
+
 namespace zit {
 
 constexpr auto SHA_LENGTH = 20;
@@ -20,6 +22,11 @@ class sha1 : public std::array<char, SHA_LENGTH> {
   std::string str() const;
 
   static sha1 calculate(const std::string& data);
+
+  /**
+   * Extract a raw sha1 from a byte vector (no calculation involved).
+   */
+  static sha1 from_bytes(const bytes& buffer, bytes::size_type offset);
 };
 
 }  // namespace zit
