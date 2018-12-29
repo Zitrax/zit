@@ -1,7 +1,9 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
+#include <cstdint>  // uint8_t
 #include <limits>
+#include <stdexcept>  // out_of_range
 #include <vector>
 
 // Type aliases

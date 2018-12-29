@@ -53,10 +53,12 @@ endif()
 include_directories("../src")
 add_executable(zitest
   test_bencode.cpp
+  test_bitfield.cpp
   test_torrent.cpp
   test_net.cpp
   test_peer.cpp
   test_string_utils.cpp
+  ../src/bitfield.cpp
   ../src/torrent.cpp
   ../src/net.cpp
   ../src/peer.cpp
