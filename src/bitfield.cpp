@@ -49,4 +49,23 @@ bitfield::proxy bitfield::operator[](bytes::size_type i) {
   return bitfield::proxy(*this, i);
 }
 
+std::ostream& operator<<(std::ostream& os, const bitfield& bf) {
+  os << "-bitfield-\n";
+  auto size = bf.size();
+  for (unsigned long i = 0; i < size; ++i) {
+    os << bf[i];
+    if (i != size - 1) {
+      if (i % 1000 == 999) {
+        os << "\n\n";
+      } else if (i % 100 == 99) {
+        os << "\n";
+      } else if (i % 10 == 9) {
+        os << " ";
+      }
+    }
+  }
+  os << "\n----------\n";
+  return os;
+}
+
 }  // namespace zit

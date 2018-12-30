@@ -55,8 +55,12 @@ class bitfield {
   const proxy operator[](bytes::size_type i) const;
   proxy operator[](bytes::size_type i);
 
+  auto size() const { return m_bytes.size() * 8; }
+
  private:
   bytes m_bytes{};
 };
+
+std::ostream& operator<<(std::ostream& os, const bitfield& file_info);
 
 }  // namespace zit
