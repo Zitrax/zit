@@ -56,7 +56,7 @@ class bitfield {
   proxy operator[](bytes::size_type i);
 
  private:
-  bytes m_bytes;
+  bytes m_bytes{};
 };
 
 }  // namespace zit
