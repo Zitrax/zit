@@ -1,4 +1,4 @@
-add_compile_options(-Wall -Wextra -Werror -Weffc++)
+add_compile_options(-Wall -Wextra -Werror -Weffc++ -Wconversion -Wsign-conversion)
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   add_compile_options(-Wno-non-virtual-dtor)
