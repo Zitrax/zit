@@ -82,3 +82,19 @@ static constexpr std::byte operator"" _b(unsigned long long arg) {
 static constexpr std::byte operator"" _b(char arg) noexcept {
   return static_cast<std::byte>(arg);
 }
+
+static inline uint32_t big_endian(const bytes& buf,
+                                  bytes::size_type offset = 0) {
+  if (offset + 4 > buf.size() ||
+      offset > std::numeric_limits<bytes::size_type>::max() - 4) {
+    throw std::out_of_range(
+        "Target range outside of buffer: " + std::to_string(offset) + "," +
+        std::to_string(buf.size()));
+  }
+  return static_cast<uint32_t>(static_cast<uint8_t>(buf[offset + 3]) << 0 |
+                               static_cast<uint8_t>(buf[offset + 2]) << 8 |
+                               static_cast<uint8_t>(buf[offset + 1]) << 16 |
+                               static_cast<uint8_t>(buf[offset + 0]) << 24);
+}
+
+}  // namespace zit

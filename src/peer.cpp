@@ -1,6 +1,7 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "peer.h"
 
+#include "bitfield.h"
 #include "string_utils.h"
 #include "types.h"
 
@@ -36,10 +37,14 @@ static bool all_of(Container c, UnaryPredicate p) {
  */
 class handshake_msg {
  public:
-  handshake_msg(bytes reserved, sha1 info_hash, string peer_id)
+  handshake_msg(bytes reserved,
+                sha1 info_hash,
+                string peer_id,
+                bitfield bf = {})
       : m_reserved(move(reserved)),
         m_info_hash(info_hash),
-        m_peer_id(move(peer_id)) {}
+        m_peer_id(move(peer_id)),
+        m_bitfield(move(bf)) {}
 
   auto reserved() const { return m_reserved; }
   auto info_hash() const { return m_info_hash; }
@@ -60,13 +65,31 @@ class handshake_msg {
     bytes reserved(&msg[20], &msg[28]);
     sha1 info_hash = sha1::from_bytes(msg, 28);
     string peer_id = from_bytes(msg, 48, 68);
-    return make_optional<handshake_msg>(reserved, info_hash, peer_id);
+
+    if (msg.size() > 68) {
+      if (msg.size() < 73) {
+        cerr << "Invalid handshake length: " << msg.size() << "\n";
+        return {};
+      }
+      if (static_cast<uint8_t>(msg[72]) != 5) {
+        cerr << "Expected bitfield id (5) but got: "
+             << static_cast<uint8_t>(msg[72]) << "\n";
+        return {};
+      }
+      // 4-byte big endian
+      auto len = big_endian(msg, 68);
+      bitfield bf(bytes(&msg[73], &msg[73 + len]));
+      return make_optional<handshake_msg>(reserved, info_hash, peer_id, bf);
+    } else {
+      return make_optional<handshake_msg>(reserved, info_hash, peer_id);
+    }
   }
 
  private:
   bytes m_reserved;
   sha1 m_info_hash;
   string m_peer_id;
+  bitfield m_bitfield;
 };
 
 class peer_connection {
