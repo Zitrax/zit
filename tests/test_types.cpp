@@ -27,5 +27,18 @@ TEST(types, big_endian_offset) {
 }
 
 TEST(types, numeric_cast) {
-  EXPECT_THROW(numeric_cast<unsigned int>(-1), std::out_of_range);
+  // ok conversions
+  EXPECT_EQ(numeric_cast<uint8_t>(1), 1);
+  EXPECT_EQ(numeric_cast<int8_t>(-1), -1);
+
+  // out of range detection
+
+  // signed <- signed
+  EXPECT_THROW(numeric_cast<int8_t>(-129), std::out_of_range);
+  // signed <- unsigned
+  EXPECT_THROW(numeric_cast<int8_t>(128), std::out_of_range);
+  // unsigned <- signed
+  EXPECT_THROW(numeric_cast<uint8_t>(-1), std::out_of_range);
+  // unsigned <- unsigned
+  EXPECT_THROW(numeric_cast<uint8_t>(256), std::out_of_range);
 }
