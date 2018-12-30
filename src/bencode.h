@@ -9,6 +9,8 @@
 #include <type_traits>
 #include <vector>
 
+#include "types.h"
+
 namespace bencode {
 
 // Forward declarations
@@ -245,7 +247,7 @@ inline ElmPtr decodeString(std::istringstream& iss) {
     throw std::invalid_argument("No string length end marker");
   }
   std::string str(strlen, '\0');
-  iss.read(&str[0], strlen);
+  iss.read(&str[0], zit::numeric_cast<std::streamsize>(strlen));
   if (iss.eof()) {
     throw std::invalid_argument("String not of expected length");
   }

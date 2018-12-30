@@ -10,7 +10,7 @@ using namespace bencode;
 
 // prints the explanatory string of an exception. If the exception is nested,
 // recurses to print the explanatory of the exception it holds
-void print_exception(const exception& e, int level = 0) {
+void print_exception(const exception& e, string::size_type level = 0) {
   cerr << string(level, ' ') << "exception: " << e.what() << '\n';
   try {
     rethrow_if_nested(e);

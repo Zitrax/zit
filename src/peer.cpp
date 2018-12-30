@@ -193,7 +193,7 @@ void Peer::handshake(const sha1& info_hash) {
 
   stringstream hs;
   hs << static_cast<char>(19) << "BitTorrent protocol";
-  hs.write(reserved.c_str(), reserved.length());
+  hs.write(reserved.c_str(), numeric_cast<std::streamsize>(reserved.length()));
   hs << info_hash.str() << "abcdefghijklmnopqrst";  // FIXME: Use proper peer-id
 
   auto port = 20000;  // FIXME: configurable port

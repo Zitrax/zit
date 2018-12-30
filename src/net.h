@@ -67,7 +67,7 @@ class Url {
   std::string m_host = "";
   std::string m_path = "";
   string_list m_params{};
-  unsigned short m_port = 0;
+  uint16_t m_port = 0;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {

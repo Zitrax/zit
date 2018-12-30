@@ -68,6 +68,7 @@ add_executable(zitest
   test_net.cpp
   test_peer.cpp
   test_string_utils.cpp
+  test_types.cpp
   ../src/bitfield.cpp
   ../src/torrent.cpp
   ../src/net.cpp

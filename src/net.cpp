@@ -7,6 +7,8 @@
 #include <iostream>
 #include <regex>
 
+#include "types.h"
+
 using asio::ip::tcp;
 using namespace std;
 
@@ -145,7 +147,7 @@ Url::Url(const string& url, bool binary) {
     }
     m_scheme = match[1];
     m_host = match[2];
-    m_port = stoi(match[3]);
+    m_port = numeric_cast<uint16_t>(stoi(match[3]));
     m_path = match[4];
   } else {
     if (url.length() != 6) {
@@ -156,7 +158,8 @@ Url::Url(const string& url, bool binary) {
     ss << to_string(uint8_t(url[0])) << "." << to_string(uint8_t(url[1])) << "."
        << to_string(uint8_t(url[2])) << "." << to_string(uint8_t(url[3]));
     m_host = ss.str();
-    m_port = htons(uint8_t(url[4]) << 0 | uint8_t(url[5]) << 8);
+    m_port = htons(static_cast<uint16_t>(static_cast<uint8_t>(url[4]) << 0 |
+                                         static_cast<uint8_t>(url[5]) << 8));
     m_scheme = "http";
   }
 }
