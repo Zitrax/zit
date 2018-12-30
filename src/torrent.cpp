@@ -47,6 +47,8 @@ Torrent::Torrent(const filesystem::path& file) {
 
   const auto& root_dict = root->to<TypedElement<BeDict>>()->val();
 
+  cout << root;
+
   // Required
   m_announce = root_dict.at("announce")->to<TypedElement<string>>()->val();
   const auto& info = root_dict.at("info")->to<TypedElement<BeDict>>()->val();

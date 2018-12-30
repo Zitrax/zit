@@ -37,7 +37,6 @@ std::tuple<std::string, std::string> Net::http_get(const string& server,
   asio::error_code error = asio::error::host_not_found;
   while (error && endpoint_iterator != end) {
     tcp::endpoint endpoint = *endpoint_iterator++;
-    cerr << "Trying: " << endpoint << std::endl;
     socket.close();
     socket.connect(endpoint, error);
   }
