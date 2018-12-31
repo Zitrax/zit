@@ -59,6 +59,12 @@ static typename std::
   return static_cast<I>(value);
 }
 
+// For bytes we just cast it directly - there are no smaller types anyway
+template <typename I>
+static I numeric_cast(const std::byte& value) {
+  return static_cast<I>(value);
+}
+
 // Convenience functions
 
 /**

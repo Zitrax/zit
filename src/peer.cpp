@@ -32,6 +32,49 @@ static bool all_of(Container c, UnaryPredicate p) {
 // we use std::bind, std::shared_ptr, etc... which
 // differs slightly from the boost examples.
 
+enum class peer_wire_id : uint8_t {
+  CHOKE = 0,
+  UNCHOKE = 1,
+  INTERESTED = 2,
+  NOT_INTERESTED = 3,
+  HAVE = 4,
+  BITFIELD = 5,
+  REQUEST = 6,
+  PIECE = 7,
+  CANCEL = 8,
+  PORT = 9,
+  UNKNOWN = numeric_limits<uint8_t>::max()
+};
+
+using pwid_t = underlying_type_t<peer_wire_id>;
+
+template <typename T>
+static peer_wire_id to_peer_wire_id(const T& t) {
+  switch (numeric_cast<pwid_t>(t)) {
+    case static_cast<pwid_t>(peer_wire_id::CHOKE):
+      return peer_wire_id::CHOKE;
+    case static_cast<pwid_t>(peer_wire_id::UNCHOKE):
+      return peer_wire_id::UNCHOKE;
+    case static_cast<pwid_t>(peer_wire_id::INTERESTED):
+      return peer_wire_id::INTERESTED;
+    case static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED):
+      return peer_wire_id::NOT_INTERESTED;
+    case static_cast<pwid_t>(peer_wire_id::HAVE):
+      return peer_wire_id::HAVE;
+    case static_cast<pwid_t>(peer_wire_id::BITFIELD):
+      return peer_wire_id::BITFIELD;
+    case static_cast<pwid_t>(peer_wire_id::REQUEST):
+      return peer_wire_id::REQUEST;
+    case static_cast<pwid_t>(peer_wire_id::PIECE):
+      return peer_wire_id::PIECE;
+    case static_cast<pwid_t>(peer_wire_id::CANCEL):
+      return peer_wire_id::CANCEL;
+    case static_cast<pwid_t>(peer_wire_id::PORT):
+      return peer_wire_id::PORT;
+  }
+  return peer_wire_id::UNKNOWN;
+}
+
 /**
  * BitTorrent handshake message.
  */
@@ -71,9 +114,10 @@ class handshake_msg {
         cerr << "Invalid handshake length: " << msg.size() << "\n";
         return {};
       }
-      if (static_cast<uint8_t>(msg[72]) != 5) {
-        cerr << "Expected bitfield id (5) but got: "
-             << static_cast<uint8_t>(msg[72]) << "\n";
+      if (to_peer_wire_id(msg[72]) != peer_wire_id::BITFIELD) {
+        cerr << "Expected bitfield id ("
+             << static_cast<pwid_t>(peer_wire_id::BITFIELD)
+             << ") but got: " << static_cast<uint8_t>(msg[72]) << "\n";
         return {};
       }
       // 4-byte big endian
