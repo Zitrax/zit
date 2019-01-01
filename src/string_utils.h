@@ -26,7 +26,6 @@ inline std::string from_bytes(const bytes& buffer,
     throw std::invalid_argument(__FUNCTION__ + ": end > size"s);
   }
   return std::string(
-      // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
       reinterpret_cast<const char*>(&buffer[start]),
       reinterpret_cast<const char*>(&buffer[end == 0 ? buffer.size() : end]));
 }

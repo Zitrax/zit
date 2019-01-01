@@ -39,11 +39,9 @@ std::string sha1::str() const {
 // std::strings. Using another library would work (but they would still do the
 // cast internally).
 sha1 sha1::calculate(const std::string& data) {
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
   auto src = reinterpret_cast<const unsigned char*>(data.data());
 
   sha1 ret;
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
   auto dst = reinterpret_cast<unsigned char*>(ret.data());
 
   if (SHA1(src, data.length(), dst) == nullptr) {
@@ -58,7 +56,6 @@ sha1 sha1::from_bytes(const bytes& buffer, bytes::size_type offset) {
     throw invalid_argument("Buffer too small for extracting sha1");
   }
   sha1 ret;
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-reinterpret-cast)
   copy_n(reinterpret_cast<const char*>(&buffer[offset]), SHA_LENGTH, &ret[0]);
   return ret;
 }
