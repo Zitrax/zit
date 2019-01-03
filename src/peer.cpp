@@ -1,7 +1,6 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "peer.h"
 
-#include "bitfield.h"
 #include "string_utils.h"
 #include "types.h"
 
@@ -10,6 +9,7 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include "messages.h"
 
 using asio::ip::tcp;
 using namespace std;
@@ -18,128 +18,17 @@ using std::placeholders::_2;
 
 namespace zit {
 
-/**
- * Convenience wrapper for std::all_of.
- *
- * (To be replaced with ranges in C++20)
- */
-template <class Container, class UnaryPredicate>
-static bool all_of(Container c, UnaryPredicate p) {
-  return std::all_of(c.begin(), c.end(), p);
-}
-
 // Note that since we are using asio without boost
 // we use std::bind, std::shared_ptr, etc... which
 // differs slightly from the boost examples.
 
-enum class peer_wire_id : uint8_t {
-  CHOKE = 0,
-  UNCHOKE = 1,
-  INTERESTED = 2,
-  NOT_INTERESTED = 3,
-  HAVE = 4,
-  BITFIELD = 5,
-  REQUEST = 6,
-  PIECE = 7,
-  CANCEL = 8,
-  PORT = 9,
-  UNKNOWN = numeric_limits<uint8_t>::max()
-};
-
-using pwid_t = underlying_type_t<peer_wire_id>;
-
-template <typename T>
-static peer_wire_id to_peer_wire_id(const T& t) {
-  switch (numeric_cast<pwid_t>(t)) {
-    case static_cast<pwid_t>(peer_wire_id::CHOKE):
-      return peer_wire_id::CHOKE;
-    case static_cast<pwid_t>(peer_wire_id::UNCHOKE):
-      return peer_wire_id::UNCHOKE;
-    case static_cast<pwid_t>(peer_wire_id::INTERESTED):
-      return peer_wire_id::INTERESTED;
-    case static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED):
-      return peer_wire_id::NOT_INTERESTED;
-    case static_cast<pwid_t>(peer_wire_id::HAVE):
-      return peer_wire_id::HAVE;
-    case static_cast<pwid_t>(peer_wire_id::BITFIELD):
-      return peer_wire_id::BITFIELD;
-    case static_cast<pwid_t>(peer_wire_id::REQUEST):
-      return peer_wire_id::REQUEST;
-    case static_cast<pwid_t>(peer_wire_id::PIECE):
-      return peer_wire_id::PIECE;
-    case static_cast<pwid_t>(peer_wire_id::CANCEL):
-      return peer_wire_id::CANCEL;
-    case static_cast<pwid_t>(peer_wire_id::PORT):
-      return peer_wire_id::PORT;
-  }
-  return peer_wire_id::UNKNOWN;
-}
-
-/**
- * BitTorrent handshake message.
- */
-class handshake_msg {
- public:
-  handshake_msg(bytes reserved,
-                sha1 info_hash,
-                string peer_id,
-                bitfield bf = {})
-      : m_reserved(move(reserved)),
-        m_info_hash(info_hash),
-        m_peer_id(move(peer_id)),
-        m_bitfield(move(bf)) {}
-
-  auto reserved() const { return m_reserved; }
-  auto info_hash() const { return m_info_hash; }
-  auto peer_id() const { return m_peer_id; }
-
-  /**
-   * Parse bytes and return handshake message if it is one.
-   */
-  static optional<handshake_msg> parse(const bytes& msg) {
-    if (msg.size() < 68) {  // BitTorrent messages are minimum 68 bytes long
-      return {};
-    }
-    if (memcmp("\x13"
-               "BitTorrent protocol",
-               msg.data(), 20) != 0) {
-      return {};
-    }
-    bytes reserved(&msg[20], &msg[28]);
-    sha1 info_hash = sha1::from_bytes(msg, 28);
-    string peer_id = from_bytes(msg, 48, 68);
-
-    if (msg.size() > 68) {
-      if (msg.size() < 73) {
-        cerr << "Invalid handshake length: " << msg.size() << "\n";
-        return {};
-      }
-      if (to_peer_wire_id(msg[72]) != peer_wire_id::BITFIELD) {
-        cerr << "Expected bitfield id ("
-             << static_cast<pwid_t>(peer_wire_id::BITFIELD)
-             << ") but got: " << static_cast<uint8_t>(msg[72]) << "\n";
-        return {};
-      }
-      // 4-byte big endian
-      auto len = big_endian(msg, 68);
-      bitfield bf(bytes(&msg[73], &msg[73 + len]));
-      return make_optional<handshake_msg>(reserved, info_hash, peer_id, bf);
-    } else {
-      return make_optional<handshake_msg>(reserved, info_hash, peer_id);
-    }
-  }
-
- private:
-  bytes m_reserved;
-  sha1 m_info_hash;
-  string m_peer_id;
-  bitfield m_bitfield;
-};
-
 class peer_connection {
  public:
-  peer_connection(asio::io_service& io_service, unsigned short port_num)
-      : resolver_(io_service),
+  peer_connection(Peer& peer,
+                  asio::io_service& io_service,
+                  unsigned short port_num)
+      : peer_(peer),
+        resolver_(io_service),
         socket_(io_service, tcp::endpoint(tcp::v4(), port_num)) {
     // TODO: This does not seem to help
     asio::socket_base::reuse_address option(true);
@@ -190,13 +79,6 @@ class peer_connection {
     }
   }
 
-  /**
-   * A keepalive is a message of zeroes with length 4 bytes.
-   */
-  bool is_keepalive(const bytes& msg) {
-    return msg.size() == 4 && all_of(msg, [](byte b) { return b == 0_b; });
-  }
-
   void handle_response(const asio::error_code& err) {
     cout << __PRETTY_FUNCTION__ << endl;
     if (!err) {
@@ -204,15 +86,8 @@ class peer_connection {
         bytes response(response_.size());
         buffer_copy(asio::buffer(response), response_.data());
         response_.consume(response_.size());
-
-        if (is_keepalive(response)) {
-          cout << "Keep Alive\n";
-        } else if (handshake_msg::parse(response)) {
-          cout << "Handshake\n";
-        } else {
-          cout << "Unknown message of length " + to_string(response.size()) +
-                      "\n";
-        }
+        Message msg(peer_, response);
+        msg.parse();
         cout.flush();
       }
 
@@ -227,6 +102,7 @@ class peer_connection {
   }
 
   asio::streambuf request_{};
+  Peer& peer_;
   tcp::resolver resolver_;
   asio::streambuf response_{};
   tcp::socket socket_;
@@ -269,7 +145,7 @@ void Peer::handshake(const sha1& info_hash) {
   asio::io_service io_service;
   auto connection = unique_ptr<peer_connection>();
   try {
-    connection = make_unique<peer_connection>(io_service, port);
+    connection = make_unique<peer_connection>(*this, io_service, port);
   } catch (const asio::system_error& err) {
     throw_with_nested(runtime_error("Creating peer connection to " +
                                     m_url.authority() + " from port " +

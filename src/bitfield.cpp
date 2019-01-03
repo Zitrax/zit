@@ -22,7 +22,7 @@ bitfield::proxy& bitfield::proxy::operator=(bool b) {
   if (m_bitfield.m_bytes.size() <= byte_index) {
     m_bitfield.m_bytes.resize(byte_index + 1);
   }
-  uint8_t byte_val = static_cast<uint8_t>(m_bitfield.m_bytes[byte_index]);
+  auto byte_val = static_cast<uint8_t>(m_bitfield.m_bytes[byte_index]);
   // Update bit
   if (b) {
     byte_val |= static_cast<uint8_t>(1 << (m_i % 8));

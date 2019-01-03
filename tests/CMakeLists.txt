@@ -73,7 +73,8 @@ add_executable(zitest
   ../src/torrent.cpp
   ../src/net.cpp
   ../src/peer.cpp
-  ../src/sha1.cpp)
+  ../src/sha1.cpp
+  ../src/messages.cpp)
 target_link_libraries(zitest gtest gtest_main crypto)
 if(SANITIZED_LIBCXX)
   target_link_libraries(zitest c++fs)

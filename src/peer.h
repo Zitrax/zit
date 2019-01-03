@@ -1,6 +1,7 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
+#include "bitfield.h"
 #include "net.h"
 #include "sha1.h"
 
@@ -24,6 +25,7 @@ class Peer {
   bool m_am_interested = false;
   bool m_choking = true;
   bool m_interested = false;
+  bitfield m_pieces{};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Peer& url) {
