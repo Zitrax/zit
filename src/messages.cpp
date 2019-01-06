@@ -127,7 +127,7 @@ class handshake_msg {
   bitfield m_bitfield;
 };
 
-void Message::parse() {
+void Message::parse(peer_connection& connection) {
   if (is_keepalive(m_msg)) {
     cout << "Keep Alive\n";
     return;
@@ -140,10 +140,9 @@ void Message::parse() {
     string interested = {0, 0, 0, 1,
                          static_cast<pwid_t>(peer_wire_id::INTERESTED)};
     stringstream hs;
-    hs << static_cast<char>(19) << "BitTorrent protocol";
     hs.write(interested.c_str(),
              numeric_cast<std::streamsize>(interested.length()));
-    // connection->write(
+    connection.write(hs.str());
     return;
   }
 

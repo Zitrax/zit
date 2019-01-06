@@ -5,7 +5,40 @@
 #include "net.h"
 #include "sha1.h"
 
+#include <asio.hpp>
+
+#include <memory>
+#include <optional>
+
 namespace zit {
+
+class Peer;
+
+class peer_connection {
+ public:
+  peer_connection(Peer& peer,
+                  asio::io_service& io_service,
+                  unsigned short port_num);
+
+  void write(const Url& url, const std::string& msg);
+  void write(const std::string& msg);
+
+ private:
+  void handle_resolve(const asio::error_code& err,
+                      asio::ip::tcp::resolver::iterator endpoint_iterator);
+
+  void handle_connect(const asio::error_code& err,
+                      asio::ip::tcp::resolver::iterator endpoint_iterator);
+
+  void handle_response(const asio::error_code& err);
+
+  asio::streambuf request_{};
+  Peer& peer_;
+  asio::ip::tcp::resolver resolver_;
+  asio::streambuf response_{};
+  asio::ip::tcp::socket socket_;
+  asio::ip::tcp::resolver::iterator endpoint_{};
+};
 
 class Peer {
  public:
@@ -26,6 +59,7 @@ class Peer {
   bool m_choking = true;
   bool m_interested = false;
   bitfield m_pieces{};
+  std::unique_ptr<peer_connection> m_connection{};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Peer& url) {
