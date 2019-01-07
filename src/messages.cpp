@@ -67,12 +67,9 @@ static peer_wire_id to_peer_wire_id(const T& t) {
 /**
  * BitTorrent handshake message.
  */
-class handshake_msg {
+class HandshakeMsg {
  public:
-  handshake_msg(bytes reserved,
-                sha1 info_hash,
-                string peer_id,
-                bitfield bf = {})
+  HandshakeMsg(bytes reserved, sha1 info_hash, string peer_id, bitfield bf = {})
       : m_reserved(move(reserved)),
         m_info_hash(info_hash),
         m_peer_id(move(peer_id)),
@@ -86,7 +83,7 @@ class handshake_msg {
   /**
    * Parse bytes and return handshake message if it is one.
    */
-  static optional<handshake_msg> parse(const bytes& msg) {
+  static optional<HandshakeMsg> parse(const bytes& msg) {
     if (msg.size() < 68) {  // BitTorrent messages are minimum 68 bytes long
       return {};
     }
@@ -114,9 +111,9 @@ class handshake_msg {
       auto len = big_endian(msg, 68);
       bitfield bf(bytes(&msg[73], &msg[73 + len - 1]));
       cout << bf;
-      return make_optional<handshake_msg>(reserved, info_hash, peer_id, bf);
+      return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, bf);
     } else {
-      return make_optional<handshake_msg>(reserved, info_hash, peer_id);
+      return make_optional<HandshakeMsg>(reserved, info_hash, peer_id);
     }
   }
 
@@ -133,7 +130,7 @@ void Message::parse(PeerConnection& connection) {
     return;
   }
 
-  auto handshake = handshake_msg::parse(m_msg);
+  auto handshake = HandshakeMsg::parse(m_msg);
   if (handshake) {
     cout << "Handshake\n";
     // Send INTERESTED
