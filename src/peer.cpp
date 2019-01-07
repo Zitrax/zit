@@ -20,9 +20,9 @@ namespace zit {
 // we use std::bind, std::shared_ptr, etc... which
 // differs slightly from the boost examples.
 
-peer_connection::peer_connection(Peer& peer,
-                                 asio::io_service& io_service,
-                                 unsigned short port_num)
+PeerConnection::PeerConnection(Peer& peer,
+                               asio::io_service& io_service,
+                               unsigned short port_num)
     : peer_(peer),
       resolver_(io_service),
       socket_(io_service, tcp::endpoint(tcp::v4(), port_num)) {
@@ -31,7 +31,7 @@ peer_connection::peer_connection(Peer& peer,
   socket_.set_option(option);
 }
 
-void peer_connection::write(const Url& url, const string& msg) {
+void PeerConnection::write(const Url& url, const string& msg) {
   ostream request_stream(&request_);
   request_stream << msg;
 
@@ -43,50 +43,48 @@ void peer_connection::write(const Url& url, const string& msg) {
     // into a list of endpoints.
     tcp::resolver::query query(url.host(), to_string(url.port()));
     resolver_.async_resolve(
-        query, bind(&peer_connection::handle_resolve, this, _1, _2));
+        query, bind(&PeerConnection::handle_resolve, this, _1, _2));
   }
 }
 
-void peer_connection::write(const std::string& msg) {
+void PeerConnection::write(const std::string& msg) {
   write(peer_.url(), msg);
 }
 
-void peer_connection::handle_resolve(
-    const asio::error_code& err,
-    tcp::resolver::iterator endpoint_iterator) {
+void PeerConnection::handle_resolve(const asio::error_code& err,
+                                    tcp::resolver::iterator endpoint_iterator) {
   cout << __PRETTY_FUNCTION__ << endl;
   if (!err) {
     // Attempt a connection to the first endpoint in the list. Each endpoint
     // will be tried until we successfully establish a connection.
     tcp::endpoint endpoint = *endpoint_iterator;
-    socket_.async_connect(endpoint, bind(&peer_connection::handle_connect, this,
+    socket_.async_connect(endpoint, bind(&PeerConnection::handle_connect, this,
                                          _1, ++endpoint_iterator));
   } else {
     cout << "Error: " << err.message() << "\n";
   }
 }
 
-void peer_connection::handle_connect(
-    const asio::error_code& err,
-    tcp::resolver::iterator endpoint_iterator) {
+void PeerConnection::handle_connect(const asio::error_code& err,
+                                    tcp::resolver::iterator endpoint_iterator) {
   cout << __PRETTY_FUNCTION__ << endl;
   if (!err) {
     // The connection was successful. Send the request.
     asio::async_write(socket_, request_,
-                      bind(&peer_connection::handle_response, this, _1));
+                      bind(&PeerConnection::handle_response, this, _1));
     endpoint_ = endpoint_iterator;
   } else if (endpoint_iterator != tcp::resolver::iterator()) {
     // The connection failed. Try the next endpoint in the list.
     socket_.close();
     tcp::endpoint endpoint = *endpoint_iterator;
-    socket_.async_connect(endpoint, bind(&peer_connection::handle_connect, this,
+    socket_.async_connect(endpoint, bind(&PeerConnection::handle_connect, this,
                                          _1, ++endpoint_iterator));
   } else {
     cout << "Error: " << err.message() << "\n";
   }
 }
 
-void peer_connection::handle_response(const asio::error_code& err) {
+void PeerConnection::handle_response(const asio::error_code& err) {
   cout << __PRETTY_FUNCTION__ << endl;
   if (!err) {
     if (response_.size()) {
@@ -100,7 +98,7 @@ void peer_connection::handle_response(const asio::error_code& err) {
 
     // Read remaining data until EOF.
     asio::async_read(socket_, response_, asio::transfer_at_least(1),
-                     bind(&peer_connection::handle_response, this, _1));
+                     bind(&PeerConnection::handle_response, this, _1));
   } else if (err != asio::error::eof) {
     cout << "Error: " << err.message() << "\n";
   } else {
@@ -144,7 +142,7 @@ void Peer::handshake(const sha1& info_hash) {
   // Assume we need to start listening immediately, then send handshake
   asio::io_service io_service;
   try {
-    m_connection = make_unique<peer_connection>(*this, io_service, port);
+    m_connection = make_unique<PeerConnection>(*this, io_service, port);
   } catch (const asio::system_error& err) {
     throw_with_nested(runtime_error("Creating peer connection to " +
                                     m_url.authority() + " from port " +

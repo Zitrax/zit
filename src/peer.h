@@ -14,11 +14,11 @@ namespace zit {
 
 class Peer;
 
-class peer_connection {
+class PeerConnection {
  public:
-  peer_connection(Peer& peer,
-                  asio::io_service& io_service,
-                  unsigned short port_num);
+  PeerConnection(Peer& peer,
+                 asio::io_service& io_service,
+                 unsigned short port_num);
 
   void write(const Url& url, const std::string& msg);
   void write(const std::string& msg);
@@ -59,7 +59,7 @@ class Peer {
   bool m_choking = true;
   bool m_interested = false;
   bitfield m_pieces{};
-  std::unique_ptr<peer_connection> m_connection{};
+  std::unique_ptr<PeerConnection> m_connection{};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Peer& url) {

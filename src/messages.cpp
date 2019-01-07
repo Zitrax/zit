@@ -127,7 +127,7 @@ class handshake_msg {
   bitfield m_bitfield;
 };
 
-void Message::parse(peer_connection& connection) {
+void Message::parse(PeerConnection& connection) {
   if (is_keepalive(m_msg)) {
     cout << "Keep Alive\n";
     return;

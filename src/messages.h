@@ -9,7 +9,7 @@ class Message {
  public:
   Message(const bytes& msg) : m_msg(msg) {}
 
-  void parse(peer_connection& connection);
+  void parse(PeerConnection& connection);
 
   bool is_keepalive(const bytes& msg);
 
