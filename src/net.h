@@ -25,7 +25,7 @@ class Url {
    * @param binary if true the string length is expected to be exactly 6, the
    *   first 4 bytes is the ip and the two last bytes the port.
    */
-  Url(const std::string& url, bool binary = false);
+  explicit Url(const std::string& url, bool binary = false);
 
   /**
    * Create Url object
@@ -49,18 +49,20 @@ class Url {
    */
   Url& add_param(const std::string& param);
 
-  auto scheme() const { return m_scheme; }
-  auto host() const { return m_host; }
-  auto path() const { return m_path; }
-  auto port() const { return m_port; }
-  auto params() const { return m_params; }
+  [[nodiscard]] auto scheme() const { return m_scheme; }
+  [[nodiscard]] auto host() const { return m_host; }
+  [[nodiscard]] auto path() const { return m_path; }
+  [[nodiscard]] auto port() const { return m_port; }
+  [[nodiscard]] auto params() const { return m_params; }
 
   /**
    * In an URL the authority is the "[userinfo@]host[:port]" part.
    *
    * At the moment the URL class does not include the userinfo.
    */
-  auto authority() const { return m_host + ":" + std::to_string(m_port); }
+  [[nodiscard]] auto authority() const {
+    return m_host + ":" + std::to_string(m_port);
+  }
 
  private:
   std::string m_scheme = "";

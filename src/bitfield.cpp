@@ -40,7 +40,7 @@ bitfield::proxy::operator bool() const {
 
 // --- bitfield ---
 
-const bitfield::proxy bitfield::operator[](bytes::size_type i) const {
+bitfield::proxy bitfield::operator[](bytes::size_type i) const {
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
   return bitfield::proxy(const_cast<bitfield&>(*this), i);
 }

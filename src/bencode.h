@@ -45,7 +45,7 @@ struct array_to_pointer_decay {
  * allow a char[] to use the std::string specialization.
  */
 template <class T, std::size_t N>
-// NOLINTNEXTLINE(modernize-avoid-c-arrays, cppcoreguidelines-avoid-c-arrays)
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
 struct array_to_pointer_decay<T[N]> {
   using type = const T*;
 };
@@ -79,6 +79,14 @@ class bencode_conversion_error : public std::runtime_error {
 class Element : public std::enable_shared_from_this<Element> {
  public:
   virtual ~Element() = default;
+
+  // Special member functions (hicpp-special-member-functions)
+  Element() = default;
+  Element(const Element& other) = default;
+  Element(Element&& other) noexcept = default;
+  Element& operator=(const Element& rhs) = default;
+  Element& operator=(Element&& other) noexcept = default;
+
   virtual std::string encode() const = 0;
 
   template <typename T>
@@ -316,11 +324,14 @@ inline ElmPtr decode_internal(std::istringstream& iss) {
   if (iss.peek() == 'i') {
     iss.ignore();
     return decodeInt(iss);
-  } else if (iss.peek() >= '0' && iss.peek() <= '9') {
+  }
+  if (iss.peek() >= '0' && iss.peek() <= '9') {
     return decodeString(iss);
-  } else if (iss.peek() == 'l') {
+  }
+  if (iss.peek() == 'l') {
     return decodeList(iss);
-  } else if (iss.peek() == 'd') {
+  }
+  if (iss.peek() == 'd') {
     return decodeDict(iss);
   }
   throw_invalid_string(iss);

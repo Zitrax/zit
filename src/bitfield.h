@@ -41,10 +41,11 @@ class bitfield {
     // Should not need noexcept since the moved object is the proxy
     // not the underlying object.
     // NOLINTNEXTLINE(performance-noexcept-move-constructor)
-    proxy& operator=(proxy&& other);
+    proxy& operator=(proxy&& rhs);
     proxy& operator=(bool b);
 
     // For rvalue uses
+    // NOLINTNEXTLINE(hicpp-explicit-conversions)
     operator bool() const;
 
    private:
@@ -52,15 +53,15 @@ class bitfield {
     bytes::size_type m_i;
   };
 
-  const proxy operator[](bytes::size_type i) const;
+  proxy operator[](bytes::size_type i) const;
   proxy operator[](bytes::size_type i);
 
-  auto size() const { return m_bytes.size() * 8; }
+  [[nodiscard]] auto size() const { return m_bytes.size() * 8; }
 
  private:
   bytes m_bytes{};
 };
 
-std::ostream& operator<<(std::ostream& os, const bitfield& file_info);
+std::ostream& operator<<(std::ostream& os, const bitfield& bf);
 
 }  // namespace zit

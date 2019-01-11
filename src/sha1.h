@@ -19,7 +19,7 @@ class sha1 : public std::array<char, SHA_LENGTH> {
   sha1();
   explicit sha1(const std::string& val);
 
-  std::string str() const;
+  [[nodiscard]] std::string str() const;
 
   static sha1 calculate(const std::string& data);
 

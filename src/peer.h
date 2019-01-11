@@ -44,11 +44,11 @@ class Peer {
  public:
   explicit Peer(Url url) : m_url(std::move(url)) {}
 
-  auto url() const { return m_url; }
-  auto am_choking() const { return m_am_choking; }
-  auto am_interested() const { return m_am_interested; }
-  auto choking() const { return m_choking; }
-  auto interested() const { return m_interested; }
+  [[nodiscard]] auto url() const { return m_url; }
+  [[nodiscard]] auto am_choking() const { return m_am_choking; }
+  [[nodiscard]] auto am_interested() const { return m_am_interested; }
+  [[nodiscard]] auto choking() const { return m_choking; }
+  [[nodiscard]] auto interested() const { return m_interested; }
 
   void handshake(const sha1& info_hash);
 

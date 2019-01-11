@@ -7,7 +7,7 @@ namespace zit {
 
 class Message {
  public:
-  Message(const bytes& msg) : m_msg(msg) {}
+  explicit Message(const bytes& msg) : m_msg(msg) {}
 
   void parse(PeerConnection& connection);
 
