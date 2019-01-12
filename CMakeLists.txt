@@ -58,19 +58,25 @@ endif()
 find_program(CLANG_TIDY run-clang-tidy)
 
 if(CLANG_TIDY)
-  set(CMAKE_EXPORT_COMPILE_COMMANDS 1)
-
   if(NOT CMAKE_EXPORT_COMPILE_COMMANDS)
-    message(WARNING "Need to pass -DCMAKE_EXPORT_COMPILE_COMMANDS to run clang-tidy")
+    message(FATAL_ERROR "Need to pass -DCMAKE_EXPORT_COMPILE_COMMANDS=ON to run clang-tidy")
   endif()
 
   # For now running this only on the src/ files since the googletest
   # macros generate tons of issues and clang-tidy has no good mechanism
   # of filtering that out. See https://reviews.llvm.org/D26418
   add_custom_target(tidy
-    COMMENT "Tidying ${ALL_SOURCE_FILES}"
+    COMMENT "Tidying ${ALL_SRC_SOURCE_FILES}"
     COMMAND ${CLANG_TIDY} -header-filter=.*
             -quiet
+            -p ${CMAKE_CURRENT_BINARY_DIR}
+            ${ALL_SRC_SOURCE_FILES}
+    )
+
+  add_custom_target(tidy_fix
+    COMMENT "Tidying ${ALL_SRC_SOURCE_FILES}"
+    COMMAND ${CLANG_TIDY} -header-filter=.*
+            -quiet -fix
             -p ${CMAKE_CURRENT_BINARY_DIR}
             ${ALL_SRC_SOURCE_FILES}
     )

@@ -75,10 +75,10 @@ class HandshakeMsg {
         m_peer_id(move(peer_id)),
         m_bitfield(move(bf)) {}
 
-  auto getReserved() const { return m_reserved; }
-  auto getInfoHash() const { return m_info_hash; }
-  auto getPeerId() const { return m_peer_id; }
-  auto getBitfield() const { return m_bitfield; }
+  [[nodiscard]] auto getReserved() const { return m_reserved; }
+  [[nodiscard]] auto getInfoHash() const { return m_info_hash; }
+  [[nodiscard]] auto getPeerId() const { return m_peer_id; }
+  [[nodiscard]] auto getBitfield() const { return m_bitfield; }
 
   /**
    * Parse bytes and return handshake message if it is one.
@@ -112,9 +112,9 @@ class HandshakeMsg {
       bitfield bf(bytes(&msg[73], &msg[73 + len - 1]));
       cout << bf;
       return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, bf);
-    } else {
-      return make_optional<HandshakeMsg>(reserved, info_hash, peer_id);
     }
+
+    return make_optional<HandshakeMsg>(reserved, info_hash, peer_id);
   }
 
  private:
