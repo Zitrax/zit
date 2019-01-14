@@ -64,6 +64,48 @@ static peer_wire_id to_peer_wire_id(const T& t) {
   return peer_wire_id::UNKNOWN;
 }
 
+std::ostream& operator<<(std::ostream& os, const peer_wire_id& id) {
+  switch (id) {
+    case peer_wire_id::CHOKE:
+      os << "CHOKE";
+      break;
+    case peer_wire_id::UNCHOKE:
+      os << "UNCHOKE";
+      break;
+    case peer_wire_id::INTERESTED:
+      os << "INTERESTED";
+      break;
+    case peer_wire_id::NOT_INTERESTED:
+      os << "NOT_INTERESTED";
+      break;
+    case peer_wire_id::HAVE:
+      os << "HAVE";
+      break;
+    case peer_wire_id::BITFIELD:
+      os << "BITFIELD";
+      break;
+    case peer_wire_id::REQUEST:
+      os << "REQUEST";
+      break;
+    case peer_wire_id::PIECE:
+      os << "PIECE";
+      break;
+    case peer_wire_id::CANCEL:
+      os << "CANCEL";
+      break;
+    case peer_wire_id::PORT:
+      os << "PORT";
+      break;
+    case peer_wire_id::UNKNOWN:
+      os << "UNKNOWN";
+      break;
+    default:
+      os << "<peer_wire_id:" << id << ">";
+      break;
+  }
+  return os;
+}
+
 /**
  * BitTorrent handshake message.
  */
@@ -125,11 +167,6 @@ class HandshakeMsg {
 };
 
 void Message::parse(PeerConnection& connection) {
-  if (is_keepalive(m_msg)) {
-    cout << "Keep Alive\n";
-    return;
-  }
-
   auto handshake = HandshakeMsg::parse(m_msg);
   if (handshake) {
     cout << "Handshake\n";
@@ -141,6 +178,32 @@ void Message::parse(PeerConnection& connection) {
              numeric_cast<std::streamsize>(interested.length()));
     connection.write(hs.str());
     return;
+  }
+
+  if (m_msg.size() >= 4) {
+    // Read 4 byte length
+    auto len = big_endian(m_msg);
+    if (len == 0 && m_msg.size() == 4) {
+      cout << "Keep Alive\n";
+    } else if (len == 1 && m_msg.size() >= 5) {
+      auto id = to_peer_wire_id(m_msg[4]);
+      cout << id << "\n";
+      switch (id) {
+        case peer_wire_id::CHOKE:
+        case peer_wire_id::UNCHOKE:
+        case peer_wire_id::INTERESTED:
+        case peer_wire_id::NOT_INTERESTED:
+        case peer_wire_id::HAVE:
+        case peer_wire_id::BITFIELD:
+        case peer_wire_id::REQUEST:
+        case peer_wire_id::PIECE:
+        case peer_wire_id::CANCEL:
+        case peer_wire_id::PORT:
+        case peer_wire_id::UNKNOWN:
+          break;
+      }
+      return;
+    }
   }
 
   cout << "Unknown message of length " << m_msg.size() << "\n";
