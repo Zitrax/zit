@@ -21,22 +21,6 @@ static bool all_of(Container c, UnaryPredicate p) {
   return std::all_of(c.begin(), c.end(), p);
 }
 
-enum class peer_wire_id : uint8_t {
-  CHOKE = 0,
-  UNCHOKE = 1,
-  INTERESTED = 2,
-  NOT_INTERESTED = 3,
-  HAVE = 4,
-  BITFIELD = 5,
-  REQUEST = 6,
-  PIECE = 7,
-  CANCEL = 8,
-  PORT = 9,
-  UNKNOWN = numeric_limits<uint8_t>::max()
-};
-
-using pwid_t = underlying_type_t<peer_wire_id>;
-
 template <typename T>
 static peer_wire_id to_peer_wire_id(const T& t) {
   switch (numeric_cast<pwid_t>(t)) {
@@ -170,13 +154,7 @@ void Message::parse(PeerConnection& connection) {
   auto handshake = HandshakeMsg::parse(m_msg);
   if (handshake) {
     cout << "Handshake\n";
-    // Send INTERESTED
-    string interested = {0, 0, 0, 1,
-                         static_cast<pwid_t>(peer_wire_id::INTERESTED)};
-    stringstream hs;
-    hs.write(interested.c_str(),
-             numeric_cast<std::streamsize>(interested.length()));
-    connection.write(hs.str());
+    connection.peer().set_am_interested(true);
     return;
   }
 
@@ -187,10 +165,12 @@ void Message::parse(PeerConnection& connection) {
       cout << "Keep Alive\n";
     } else if (len == 1 && m_msg.size() >= 5) {
       auto id = to_peer_wire_id(m_msg[4]);
-      cout << id << "\n";
+      cout << "Received: " << id << "\n";
       switch (id) {
         case peer_wire_id::CHOKE:
         case peer_wire_id::UNCHOKE:
+          connection.peer().set_choking(false);
+          return;
         case peer_wire_id::INTERESTED:
         case peer_wire_id::NOT_INTERESTED:
         case peer_wire_id::HAVE:
@@ -202,6 +182,7 @@ void Message::parse(PeerConnection& connection) {
         case peer_wire_id::UNKNOWN:
           break;
       }
+      cout << id << " is unhandled\n";
       return;
     }
   }

@@ -22,6 +22,7 @@ class PeerConnection {
 
   void write(const Url& url, const std::string& msg);
   void write(const std::string& msg);
+  [[nodiscard]] Peer& peer() { return peer_; }
 
  private:
   void handle_resolve(const asio::error_code& err,
@@ -45,12 +46,33 @@ class Peer {
   explicit Peer(Url url) : m_url(std::move(url)) {}
 
   [[nodiscard]] auto url() const { return m_url; }
+
+  /**
+   * This client is choking the remote peer.
+   */
   [[nodiscard]] auto am_choking() const { return m_am_choking; }
+
+  /**
+   * This client is interested in the remote peer.
+   */
   [[nodiscard]] auto am_interested() const { return m_am_interested; }
+
+  /**
+   * Remote peer is choking this client.
+   */
   [[nodiscard]] auto choking() const { return m_choking; }
+
+  /**
+   * Remote peer is interested in this client.
+   */
   [[nodiscard]] auto interested() const { return m_interested; }
 
   void handshake(const sha1& info_hash);
+
+  void set_am_choking(bool am_choking);
+  void set_am_interested(bool am_interested);
+  void set_choking(bool choking);
+  void set_interested(bool interested);
 
  private:
   Url m_url;

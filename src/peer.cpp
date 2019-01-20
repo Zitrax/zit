@@ -106,6 +106,43 @@ void PeerConnection::handle_response(const asio::error_code& err) {
   }
 }
 
+void Peer::set_am_choking(bool am_choking) {
+  m_am_choking = am_choking;
+}
+
+void Peer::set_am_interested(bool am_interested) {
+  // TODO: Extract message sending part
+  if (!m_am_interested && am_interested) {
+    // Send INTERESTED
+    string interested = {0, 0, 0, 1,
+                         static_cast<pwid_t>(peer_wire_id::INTERESTED)};
+    stringstream hs;
+    hs.write(interested.c_str(),
+             numeric_cast<std::streamsize>(interested.length()));
+    m_connection->write(hs.str());
+  }
+
+  if (m_am_interested && !am_interested) {
+    // Send NOT_INTERESTED
+    string interested = {0, 0, 0, 1,
+                         static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED)};
+    stringstream hs;
+    hs.write(interested.c_str(),
+             numeric_cast<std::streamsize>(interested.length()));
+    m_connection->write(hs.str());
+  }
+
+  m_am_interested = am_interested;
+}
+
+void Peer::set_choking(bool choking) {
+  m_choking = choking;
+}
+
+void Peer::set_interested(bool interested) {
+  m_interested = interested;
+}
+
 void Peer::handshake(const sha1& info_hash) {
   // The handshake should contain:
   // <pstrlen><pstr><reserved><info_hash><peer_id>
