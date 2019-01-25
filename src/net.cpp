@@ -10,6 +10,7 @@
 #include "types.h"
 
 using asio::ip::tcp;
+using asio::detail::socket_ops::host_to_network_short;
 using namespace std;
 
 namespace zit {
@@ -158,8 +159,9 @@ Url::Url(const string& url, bool binary) {
     ss << to_string(uint8_t(url[0])) << "." << to_string(uint8_t(url[1])) << "."
        << to_string(uint8_t(url[2])) << "." << to_string(uint8_t(url[3]));
     m_host = ss.str();
-    m_port = htons(static_cast<uint16_t>(static_cast<uint8_t>(url[4]) << 0 |
-                                         static_cast<uint8_t>(url[5]) << 8));
+    m_port = host_to_network_short(static_cast<uint16_t>(
+      static_cast<uint8_t>(url[4]) << 0 | static_cast<uint8_t>(url[5]) << 8)
+    );
     m_scheme = "http";
   }
 }

@@ -3,6 +3,9 @@
 #include "gtest/gtest.h"
 #include "net.h"
 
+#include <asio.hpp>
+using asio::detail::socket_ops::host_to_network_short;
+
 using namespace zit;
 using namespace std;
 
@@ -15,7 +18,7 @@ TEST(net, url_encode) {
 }
 
 TEST(net, url_binary) {
-  uint16_t port = htons(10000);
+  uint16_t port = host_to_network_short(10000);
   // 192.168.0.1:1000
   std::string urlstr = {static_cast<char>(192),
                         static_cast<char>(168),
