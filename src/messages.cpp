@@ -163,11 +163,12 @@ void Message::parse(PeerConnection& connection) {
     auto len = big_endian(m_msg);
     if (len == 0 && m_msg.size() == 4) {
       cout << "Keep Alive\n";
-    } else if (len == 1 && m_msg.size() >= 5) {
+    } else if (m_msg.size() >= 5) {
       auto id = to_peer_wire_id(m_msg[4]);
       cout << "Received: " << id << "\n";
       switch (id) {
         case peer_wire_id::CHOKE:
+          break;
         case peer_wire_id::UNCHOKE:
           connection.peer().set_choking(false);
           return;

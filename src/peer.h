@@ -4,6 +4,7 @@
 #include "bitfield.h"
 #include "net.h"
 #include "sha1.h"
+#include "types.h"
 
 #include <asio.hpp>
 
@@ -20,8 +21,10 @@ class PeerConnection {
                  asio::io_service& io_service,
                  unsigned short port_num);
 
+  void write(const Url& url, const bytes& msg);
   void write(const Url& url, const std::string& msg);
   void write(const std::string& msg);
+  void write(const bytes& msg);
   [[nodiscard]] Peer& peer() { return peer_; }
 
  private:

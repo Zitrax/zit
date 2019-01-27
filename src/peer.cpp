@@ -2,13 +2,13 @@
 #include "peer.h"
 
 #include "string_utils.h"
-#include "types.h"
 
 #include <iostream>
 #include <memory>
 #include <optional>
 #include "messages.h"
 
+using asio::detail::socket_ops::host_to_network_long;
 using asio::ip::tcp;
 using namespace std;
 using std::placeholders::_1;
@@ -31,7 +31,20 @@ PeerConnection::PeerConnection(Peer& peer,
   socket_.set_option(option);
 }
 
+void PeerConnection::write(const Url& url, const bytes& msg) {
+  write(url, from_bytes(msg));
+}
+
+void PeerConnection::write(const bytes& msg) {
+  write(peer_.url(), msg);
+}
+
+void PeerConnection::write(const std::string& msg) {
+  write(peer_.url(), msg);
+}
+
 void PeerConnection::write(const Url& url, const string& msg) {
+  cout << __PRETTY_FUNCTION__ << endl;
   ostream request_stream(&request_);
   request_stream << msg;
 
@@ -47,10 +60,6 @@ void PeerConnection::write(const Url& url, const string& msg) {
   }
 }
 
-void PeerConnection::write(const std::string& msg) {
-  write(peer_.url(), msg);
-}
-
 void PeerConnection::handle_resolve(const asio::error_code& err,
                                     tcp::resolver::iterator endpoint_iterator) {
   cout << __PRETTY_FUNCTION__ << endl;
@@ -58,6 +67,8 @@ void PeerConnection::handle_resolve(const asio::error_code& err,
     // Attempt a connection to the first endpoint in the list. Each endpoint
     // will be tried until we successfully establish a connection.
     tcp::endpoint endpoint = *endpoint_iterator;
+    // FIXME: Should set this after connection ok instead
+    endpoint_ = endpoint_iterator;
     socket_.async_connect(endpoint, bind(&PeerConnection::handle_connect, this,
                                          _1, ++endpoint_iterator));
   } else {
@@ -72,14 +83,16 @@ void PeerConnection::handle_connect(const asio::error_code& err,
     // The connection was successful. Send the request.
     asio::async_write(socket_, request_,
                       bind(&PeerConnection::handle_response, this, _1));
-    endpoint_ = endpoint_iterator;
   } else if (endpoint_iterator != tcp::resolver::iterator()) {
     // The connection failed. Try the next endpoint in the list.
     socket_.close();
     tcp::endpoint endpoint = *endpoint_iterator;
+    // FIXME: Should set this after connection ok instead
+    endpoint_ = endpoint_iterator;
     socket_.async_connect(endpoint, bind(&PeerConnection::handle_connect, this,
                                          _1, ++endpoint_iterator));
   } else {
+    endpoint_ = {};
     cout << "Error: " << err.message() << "\n";
   }
 }
@@ -136,6 +149,26 @@ void Peer::set_am_interested(bool am_interested) {
 }
 
 void Peer::set_choking(bool choking) {
+  if (m_choking && !choking) {  // Unchoked
+    cout << "unchoked, sending piece request\n";
+    // We can now start requesting pieces
+
+    // Initial test: Request piece 0
+    // TODO: find next piece and offset to request
+    auto len = to_big_endian(13);
+    auto index = to_big_endian(1);
+    auto begin = to_big_endian(0);
+    // 16 KiB (as recommended)
+    auto length = to_big_endian(1 << 14);
+    bytes request;
+    request.insert(request.end(), len.begin(), len.end());
+    request.push_back(static_cast<byte>(peer_wire_id::REQUEST));
+    request.insert(request.end(), index.begin(), index.end());
+    request.insert(request.end(), begin.begin(), begin.end());
+    request.insert(request.end(), length.begin(), length.end());
+    m_connection->write(request);
+  }
+
   m_choking = choking;
 }
 

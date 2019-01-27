@@ -2,11 +2,14 @@
 #pragma once
 
 #include <cstdint>  // uint8_t
+#include <iostream>
 #include <limits>
 #include <stdexcept>  // out_of_range
 #include <vector>
 
-#include <iostream>
+#include <asio.hpp>
+
+using asio::detail::socket_ops::host_to_network_long;
 
 namespace zit {
 
@@ -89,6 +92,9 @@ static constexpr std::byte operator"" _b(char arg) noexcept {
   return static_cast<std::byte>(arg);
 }
 
+/**
+ * Extract big endian value to int
+ */
 static inline uint32_t big_endian(const bytes& buf,
                                   bytes::size_type offset = 0) {
   if (offset + 4 > buf.size() ||
@@ -101,6 +107,17 @@ static inline uint32_t big_endian(const bytes& buf,
                                static_cast<uint8_t>(buf[offset + 2]) << 8 |
                                static_cast<uint8_t>(buf[offset + 1]) << 16 |
                                static_cast<uint8_t>(buf[offset + 0]) << 24);
+}
+
+/**
+ * Convert host int to 4 byte vector in network byte order.
+ */
+static inline bytes to_big_endian(uint32_t val) {
+  val = host_to_network_long(val);
+  return bytes{static_cast<std::byte>((val & 0x000000FF) >> 0),
+               static_cast<std::byte>((val & 0x0000FF00) >> 8),
+               static_cast<std::byte>((val & 0x00FF0000) >> 16),
+               static_cast<std::byte>((val & 0xFF000000) >> 24)};
 }
 
 }  // namespace zit

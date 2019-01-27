@@ -42,3 +42,21 @@ TEST(types, numeric_cast) {
   // unsigned <- unsigned
   EXPECT_THROW(numeric_cast<uint8_t>(256), std::out_of_range);
 }
+
+TEST(types, to_big_endian) {
+  auto ret = to_big_endian(1);
+  EXPECT_EQ(ret.size(), 4);
+  int sum = 0;
+  for (unsigned int i = 0; i < 4; ++i) {
+    sum += numeric_cast<int>(ret[i]);
+  }
+  EXPECT_EQ(sum, 1);
+
+  ret = to_big_endian(300);
+  EXPECT_EQ(ret.size(), 4);
+  sum = 0;
+  for (unsigned int i = 0; i < 4; ++i) {
+    sum += numeric_cast<int>(ret[i]);
+  }
+  EXPECT_EQ(sum, 45);  // 1 2C = 1 + 44
+}
