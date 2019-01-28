@@ -49,6 +49,23 @@ bitfield::proxy bitfield::operator[](bytes::size_type i) {
   return bitfield::proxy(*this, i);
 }
 
+std::optional<bytes::size_type> bitfield::next(bool val) {
+  // First find relevant byte
+  auto it = std::find_if(m_bytes.begin(), m_bytes.end(), [&val](const auto b) {
+    return val ? static_cast<uint8_t>(b) > 0 : static_cast<uint8_t>(b) < 255;
+  });
+  if (it != m_bytes.end()) {
+    auto offset =
+        numeric_cast<bytes::size_type>(std::distance(m_bytes.begin(), it) * 8);
+    for (unsigned short i = 0; i < 8; ++i) {
+      if (operator[](offset + i) == val) {
+        return std::make_optional<bytes::size_type>(offset + i);
+      }
+    }
+  }
+  return {};
+}
+
 std::ostream& operator<<(std::ostream& os, const bitfield& bf) {
   os << "-bitfield-\n";
   auto size = bf.size();

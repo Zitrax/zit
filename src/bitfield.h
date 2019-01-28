@@ -58,6 +58,11 @@ class bitfield {
 
   [[nodiscard]] auto size() const { return m_bytes.size() * 8; }
 
+  /**
+   * Return next index with value = val
+   */
+  std::optional<bytes::size_type> next(bool val);
+
  private:
   bytes m_bytes{};
 };

@@ -171,3 +171,27 @@ TEST(bitfield, assign) {
   EXPECT_FALSE(bf2[6]);
   EXPECT_FALSE(bf2[7]);
 }
+
+TEST(bitfield, next) {
+  bitfield bf{bytes{0_b}};
+  EXPECT_EQ(bf.size(), 8);
+  EXPECT_FALSE(bf.next(true));
+  EXPECT_EQ(*bf.next(false), 0);
+
+  bf[3] = true;
+  EXPECT_EQ(*bf.next(true), 3);
+  EXPECT_EQ(*bf.next(false), 0);
+
+  bf = bitfield();
+  bf[100] = true;
+  EXPECT_EQ(bf.size(), 104);  // 13 bytes
+  EXPECT_EQ(*bf.next(true), 100);
+
+  bf = bitfield(bytes{255_b, 255_b, 255_b, 255_b, 255_b});
+  EXPECT_EQ(bf.size(), 40);
+  EXPECT_FALSE(bf.next(false));
+  EXPECT_EQ(*bf.next(true), 0);
+  bf[33] = false;
+  EXPECT_EQ(*bf.next(false), 33);
+  EXPECT_EQ(*bf.next(true), 0);
+}
