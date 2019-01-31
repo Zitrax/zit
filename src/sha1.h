@@ -26,7 +26,7 @@ class Sha1 : public std::array<char, SHA_LENGTH> {
   /**
    * Extract a raw sha1 from a byte vector (no calculation involved).
    */
-  static Sha1 from_bytes(const bytes& buffer, bytes::size_type offset);
+  static Sha1 fromBytes(const bytes& buffer, bytes::size_type offset);
 };
 
 }  // namespace zit

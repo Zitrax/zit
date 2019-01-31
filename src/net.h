@@ -119,14 +119,14 @@ class Net {
   /**
    * URL encode string.
    */
-  static std::string url_encode(const std::string& value);
+  static std::string urlEncode(const std::string& value);
 
   /**
    * URL encode array.
    */
   template <std::size_t SIZE>
-  static std::string url_encode(const std::array<char, SIZE>& value) {
-    return url_encode(std::string(value.data(), value.size()));
+  static std::string urlEncode(const std::array<char, SIZE>& value) {
+    return urlEncode(std::string(value.data(), value.size()));
   };
 };
 

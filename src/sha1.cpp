@@ -51,7 +51,7 @@ Sha1 Sha1::calculate(const std::string& data) {
   return ret;
 }
 
-Sha1 Sha1::from_bytes(const bytes& buffer, bytes::size_type offset) {
+Sha1 Sha1::fromBytes(const bytes& buffer, bytes::size_type offset) {
   if (offset + SHA_LENGTH > buffer.size()) {
     throw invalid_argument("Buffer too small for extracting sha1");
   }

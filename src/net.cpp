@@ -117,7 +117,7 @@ std::tuple<std::string, std::string> Net::http_get(const string& server,
 }
 
 // Based on https://stackoverflow.com/a/17708801/11722
-string Net::url_encode(const string& value) {
+string Net::urlEncode(const string& value) {
   ostringstream escaped;
   escaped.fill('0');
   escaped << hex;

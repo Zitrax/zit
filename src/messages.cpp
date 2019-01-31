@@ -119,7 +119,7 @@ class HandshakeMsg {
       return {};
     }
     bytes reserved(&msg[20], &msg[28]);
-    Sha1 info_hash = Sha1::from_bytes(msg, 28);
+    Sha1 info_hash = Sha1::fromBytes(msg, 28);
     string peer_id = from_bytes(msg, 48, 68);
 
     if (msg.size() > 68) {

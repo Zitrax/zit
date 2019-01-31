@@ -127,7 +127,7 @@ auto Torrent::left() const {
 
 vector<Peer> Torrent::start() {
   Url url(m_announce);
-  url.add_param("info_hash=" + Net::url_encode(m_info_hash));
+  url.add_param("info_hash=" + Net::urlEncode(m_info_hash));
   url.add_param("peer_id=abcdefghijklmnopqrst");  // FIXME: Use proper id
   url.add_param("port=20000");                    // FIXME: configure this
   url.add_param("uploaded=0");
