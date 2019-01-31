@@ -95,7 +95,7 @@ std::ostream& operator<<(std::ostream& os, const peer_wire_id& id) {
  */
 class HandshakeMsg {
  public:
-  HandshakeMsg(bytes reserved, sha1 info_hash, string peer_id, bitfield bf = {})
+  HandshakeMsg(bytes reserved, Sha1 info_hash, string peer_id, Bitfield bf = {})
       : m_reserved(move(reserved)),
         m_info_hash(info_hash),
         m_peer_id(move(peer_id)),
@@ -119,7 +119,7 @@ class HandshakeMsg {
       return {};
     }
     bytes reserved(&msg[20], &msg[28]);
-    sha1 info_hash = sha1::from_bytes(msg, 28);
+    Sha1 info_hash = Sha1::from_bytes(msg, 28);
     string peer_id = from_bytes(msg, 48, 68);
 
     if (msg.size() > 68) {
@@ -135,7 +135,7 @@ class HandshakeMsg {
       }
       // 4-byte big endian
       auto len = big_endian(msg, 68);
-      bitfield bf(bytes(&msg[73], &msg[73 + len - 1]));
+      Bitfield bf(bytes(&msg[73], &msg[73 + len - 1]));
       cout << bf;
       return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, bf);
     }
@@ -145,9 +145,9 @@ class HandshakeMsg {
 
  private:
   bytes m_reserved;
-  sha1 m_info_hash;
+  Sha1 m_info_hash;
   string m_peer_id;
-  bitfield m_bitfield;
+  Bitfield m_bitfield;
 };
 
 void Message::parse(PeerConnection& connection) {

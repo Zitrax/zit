@@ -36,7 +36,7 @@ static const auto indent_index = std::ios_base::xalloc();
  * allow a char[] to use the std::string specialization.
  */
 template <class T>
-struct array_to_pointer_decay {
+struct ArrayToPointerDecay {
   using type = T;
 };
 
@@ -46,7 +46,7 @@ struct array_to_pointer_decay {
  */
 template <class T, std::size_t N>
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
-struct array_to_pointer_decay<T[N]> {
+struct ArrayToPointerDecay<T[N]> {
   using type = const T*;
 };
 
@@ -60,7 +60,7 @@ std::string encode_internal(const T& in) {
 
 template <typename T>
 std::string encode(const T& in) {
-  using src = typename array_to_pointer_decay<T>::type;
+  using src = typename ArrayToPointerDecay<T>::type;
   return encode_internal<src>(in);
 }
 
@@ -69,9 +69,9 @@ std::string encode(const T& in) {
 /**
  * Thrown when conversion between types happens.
  */
-class bencode_conversion_error : public std::runtime_error {
+class BencodeConversionError : public std::runtime_error {
  public:
-  explicit bencode_conversion_error(const std::string& what_arg)
+  explicit BencodeConversionError(const std::string& what_arg)
       : std::runtime_error(what_arg) {}
 };
 
@@ -95,7 +95,7 @@ class Element : public std::enable_shared_from_this<Element> {
                   "Can only return sublasses of Element");
     auto ptr = std::dynamic_pointer_cast<const T>(shared_from_this());
     if (!ptr) {
-      throw bencode_conversion_error("Could not convert to type");
+      throw BencodeConversionError("Could not convert to type");
     }
     return ptr;
   }

@@ -18,43 +18,43 @@ namespace zit {
  * std::vector<bool> does not seem to have a way to access the raw bytes, and
  * don't want any external lib so writing my own.
  */
-class bitfield {
+class Bitfield {
  public:
-  explicit bitfield(bytes raw) : m_bytes(std::move(raw)) {}
-  bitfield() = default;
+  explicit Bitfield(bytes raw) : m_bytes(std::move(raw)) {}
+  Bitfield() = default;
 
   /**
    * Proxy class to be able to use operator[] to set values.
    */
-  class proxy {
+  class Proxy {
    public:
-    proxy(bitfield& bf, bytes::size_type i);
+    Proxy(Bitfield& bf, bytes::size_type i);
 
     // Special member functions (cppcoreguidelines-special-member-functions)
-    ~proxy() = default;
-    proxy(const proxy& other) = delete;
-    proxy(const proxy&& other) = delete;
-    proxy& operator=(const proxy& rhs) = delete;
+    ~Proxy() = default;
+    Proxy(const Proxy& other) = delete;
+    Proxy(const Proxy&& other) = delete;
+    Proxy& operator=(const Proxy& rhs) = delete;
 
     // For lvalue uses
 
     // Should not need noexcept since the moved object is the proxy
     // not the underlying object.
     // NOLINTNEXTLINE(performance-noexcept-move-constructor)
-    proxy& operator=(proxy&& rhs);
-    proxy& operator=(bool b);
+    Proxy& operator=(Proxy&& rhs);
+    Proxy& operator=(bool b);
 
     // For rvalue uses
     // NOLINTNEXTLINE(hicpp-explicit-conversions)
     operator bool() const;
 
    private:
-    bitfield& m_bitfield;
+    Bitfield& m_bitfield;
     bytes::size_type m_i;
   };
 
-  proxy operator[](bytes::size_type i) const;
-  proxy operator[](bytes::size_type i);
+  Proxy operator[](bytes::size_type i) const;
+  Proxy operator[](bytes::size_type i);
 
   [[nodiscard]] auto size() const { return m_bytes.size() * 8; }
 
@@ -67,6 +67,6 @@ class bitfield {
   bytes m_bytes{};
 };
 
-std::ostream& operator<<(std::ostream& os, const bitfield& bf);
+std::ostream& operator<<(std::ostream& os, const Bitfield& bf);
 
 }  // namespace zit

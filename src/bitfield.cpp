@@ -7,16 +7,16 @@ namespace zit {
 
 // --- bitfield::proxy ---
 
-bitfield::proxy::proxy(bitfield& bf, bytes::size_type i)
+Bitfield::Proxy::Proxy(Bitfield& bf, bytes::size_type i)
     : m_bitfield(bf), m_i(i) {}
 
 // NOLINTNEXTLINE(performance-noexcept-move-constructor)
-bitfield::proxy& bitfield::proxy::operator=(bitfield::proxy&& rhs) {
+Bitfield::Proxy& Bitfield::Proxy::operator=(Bitfield::Proxy&& rhs) {
   operator=(static_cast<bool>(rhs));
   return *this;
 }
 
-bitfield::proxy& bitfield::proxy::operator=(bool b) {
+Bitfield::Proxy& Bitfield::Proxy::operator=(bool b) {
   // Get relevant byte
   auto byte_index = m_i / 8;
   if (m_bitfield.m_bytes.size() <= byte_index) {
@@ -33,23 +33,23 @@ bitfield::proxy& bitfield::proxy::operator=(bool b) {
   return *this;
 }
 
-bitfield::proxy::operator bool() const {
+Bitfield::Proxy::operator bool() const {
   auto byte = static_cast<uint8_t>(m_bitfield.m_bytes.at(m_i / 8));
   return byte & (1 << (m_i % 8));
 }
 
 // --- bitfield ---
 
-bitfield::proxy bitfield::operator[](bytes::size_type i) const {
+Bitfield::Proxy Bitfield::operator[](bytes::size_type i) const {
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-  return bitfield::proxy(const_cast<bitfield&>(*this), i);
+  return Bitfield::Proxy(const_cast<Bitfield&>(*this), i);
 }
 
-bitfield::proxy bitfield::operator[](bytes::size_type i) {
-  return bitfield::proxy(*this, i);
+Bitfield::Proxy Bitfield::operator[](bytes::size_type i) {
+  return Bitfield::Proxy(*this, i);
 }
 
-std::optional<bytes::size_type> bitfield::next(bool val) {
+std::optional<bytes::size_type> Bitfield::next(bool val) {
   // First find relevant byte
   auto it = std::find_if(m_bytes.begin(), m_bytes.end(), [&val](const auto b) {
     return val ? static_cast<uint8_t>(b) > 0 : static_cast<uint8_t>(b) < 255;
@@ -66,7 +66,7 @@ std::optional<bytes::size_type> bitfield::next(bool val) {
   return {};
 }
 
-std::ostream& operator<<(std::ostream& os, const bitfield& bf) {
+std::ostream& operator<<(std::ostream& os, const Bitfield& bf) {
   os << "-bitfield-\n";
   auto size = bf.size();
   for (unsigned long i = 0; i < size; ++i) {

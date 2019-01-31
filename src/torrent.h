@@ -142,7 +142,7 @@ class Torrent {
   int64_t m_length = 0;
   std::string m_md5sum{};
   std::vector<FileInfo> m_files{};
-  sha1 m_info_hash{};
+  Sha1 m_info_hash{};
 };
 
 class FileInfo {

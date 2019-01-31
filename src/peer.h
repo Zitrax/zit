@@ -70,7 +70,7 @@ class Peer {
    */
   [[nodiscard]] auto interested() const { return m_interested; }
 
-  void handshake(const sha1& info_hash);
+  void handshake(const Sha1& info_hash);
 
   void set_am_choking(bool am_choking);
   void set_am_interested(bool am_interested);
@@ -83,7 +83,7 @@ class Peer {
   bool m_am_interested = false;
   bool m_choking = true;
   bool m_interested = false;
-  bitfield m_pieces{};
+  Bitfield m_pieces{};
   std::unique_ptr<PeerConnection> m_connection{};
 };
 

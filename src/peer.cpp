@@ -8,7 +8,6 @@
 #include <optional>
 #include "messages.h"
 
-using asio::detail::socket_ops::host_to_network_long;
 using asio::ip::tcp;
 using namespace std;
 using std::placeholders::_1;
@@ -176,7 +175,7 @@ void Peer::set_interested(bool interested) {
   m_interested = interested;
 }
 
-void Peer::handshake(const sha1& info_hash) {
+void Peer::handshake(const Sha1& info_hash) {
   // The handshake should contain:
   // <pstrlen><pstr><reserved><info_hash><peer_id>
 

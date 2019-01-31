@@ -110,7 +110,7 @@ Torrent::Torrent(const filesystem::path& file) {
     });
   }
 
-  m_info_hash = sha1::calculate(encode(info));
+  m_info_hash = Sha1::calculate(encode(info));
 }
 
 auto Torrent::left() const {
@@ -157,7 +157,7 @@ vector<Peer> Torrent::start() {
     auto string_peers = peers_dict->to<TypedElement<BeDict>>()->val();
     // FIXME: implement
     throw runtime_error("Dict peers not implemented");
-  } catch (const bencode_conversion_error& ex) {
+  } catch (const BencodeConversionError& ex) {
     // This is fine - try the next format
   }
 
