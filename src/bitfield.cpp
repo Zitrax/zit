@@ -51,8 +51,8 @@ Bitfield::Proxy Bitfield::operator[](bytes::size_type i) {
 
 std::optional<bytes::size_type> Bitfield::next(bool val) {
   // First find relevant byte
-  auto it = std::find_if(m_bytes.begin(), m_bytes.end(), [&val](const auto b) {
-    return val ? static_cast<uint8_t>(b) > 0 : static_cast<uint8_t>(b) < 255;
+  auto it = std::find_if(m_bytes.begin(), m_bytes.end(), [&val](const auto B) {
+    return val ? static_cast<uint8_t>(B) > 0 : static_cast<uint8_t>(B) < 255;
   });
   if (it != m_bytes.end()) {
     auto offset =

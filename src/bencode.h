@@ -29,7 +29,7 @@ constexpr auto MAX_INVALID_STRING_LENGTH = 128;
 constexpr auto ASCII_LAST_CTRL_CHAR = 31;
 
 // For stream indentation level
-static const auto indent_index = std::ios_base::xalloc();
+static const auto INDENT_INDEX = std::ios_base::xalloc();
 
 /**
  * These two templates are used to convert arrays to pointer specifically to
@@ -138,13 +138,13 @@ class TypedElement : public Element {
   std::ostream& print(std::ostream& os) override {
     if constexpr (std::is_same<T, std::map<std::string, ElmPtr>>()) {
       auto indent = [&os]() {
-        for (long i = 0; i < os.iword(indent_index); ++i) {
+        for (long i = 0; i < os.iword(INDENT_INDEX); ++i) {
           os << " ";
         }
       };
 
       os << "{\n";
-      os.iword(indent_index) += 2;
+      os.iword(INDENT_INDEX) += 2;
       auto it = m_data.cbegin();
       if (it != m_data.cend()) {
         auto elm = *it++;
@@ -157,7 +157,7 @@ class TypedElement : public Element {
         indent();
         os << elm.first << " : " << elm.second;
       }
-      os.iword(indent_index) -= 2;
+      os.iword(INDENT_INDEX) -= 2;
       os << "\n";
       indent();
       os << "}";

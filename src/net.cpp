@@ -84,7 +84,7 @@ std::tuple<std::string, std::string> Net::http_get(const string& server,
   if (!response_stream || http_version.substr(0, 5) != "HTTP/") {
     throw runtime_error("invalid response");
   }
-  if (status_code != HTTP_STATUS_OK) {
+  if (status_code != m_m_http_status_ok) {
     throw runtime_error("response returned with status code " +
                         to_string(status_code));
   }
@@ -122,16 +122,16 @@ string Net::urlEncode(const string& value) {
   escaped.fill('0');
   escaped << hex;
 
-  for (const auto c : value) {
+  for (const auto C : value) {
     // Keep alphanumeric and other accepted characters intact
-    if (isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~') {
-      escaped << c;
+    if (isalnum(C) || C == '-' || C == '_' || C == '.' || C == '~') {
+      escaped << C;
       continue;
     }
 
     // Any other characters are percent-encoded
     escaped << uppercase;
-    escaped << '%' << setw(2) << int(static_cast<byte>(c));
+    escaped << '%' << setw(2) << int(static_cast<byte>(C));
     escaped << nouppercase;
   }
 

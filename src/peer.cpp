@@ -199,11 +199,11 @@ void Peer::handshake(const Sha1& info_hash) {
   // After the fixed headers come eight reserved bytes, which are all zero in
   // all current implementations.
   // However I see that vuze do not use all zeroes.
-  const string reserved = {0, 0, 0, 0, 0, 0, 0, 0};
+  const string RESERVED = {0, 0, 0, 0, 0, 0, 0, 0};
 
   stringstream hs;
   hs << static_cast<char>(19) << "BitTorrent protocol";
-  hs.write(reserved.c_str(), numeric_cast<std::streamsize>(reserved.length()));
+  hs.write(RESERVED.c_str(), numeric_cast<std::streamsize>(RESERVED.length()));
   hs << info_hash.str() << "abcdefghijklmnopqrst";  // FIXME: Use proper peer-id
 
   auto port = 20000;  // FIXME: configurable port
