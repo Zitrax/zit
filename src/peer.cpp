@@ -151,12 +151,16 @@ void Peer::set_choking(bool choking) {
   if (m_choking && !choking) {  // Unchoked
     cout << "unchoked, sending piece request\n";
     // We can now start requesting pieces
+    auto has_piece = next_piece();
+    if (!has_piece) {
+      cout << "No pieces left, nothing to do!\n";
+      return;
+    }
+    auto piece = *has_piece;
 
-    // Initial test: Request piece 0
-    // TODO: find next piece and offset to request
     auto len = to_big_endian(13);
-    auto index = to_big_endian(1);
-    auto begin = to_big_endian(0);
+    auto index = to_big_endian(piece->id());
+    auto begin = to_big_endian(piece->offset());
     // 16 KiB (as recommended)
     auto length = to_big_endian(1 << 14);
     bytes request;
@@ -221,6 +225,21 @@ void Peer::handshake(const Sha1& info_hash) {
   io_service.run();
 
   // First test ...
+}
+
+optional<shared_ptr<Piece>> Peer::next_piece() {
+  // Is there a piece to get
+  auto id = m_pieces.next(false);
+  if (!id) {
+    return {};
+  }
+  // Is the piece active or not
+  auto piece = m_active_pieces.find(*id);
+  if (piece == m_active_pieces.end()) {
+    auto it = m_active_pieces.emplace(make_pair(*id, make_shared<Piece>(*id)));
+    return make_optional(it.first->second);
+  }
+  return make_optional(m_active_pieces.at(*id));
 }
 
 }  // namespace zit

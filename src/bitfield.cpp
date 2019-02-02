@@ -49,7 +49,7 @@ Bitfield::Proxy Bitfield::operator[](bytes::size_type i) {
   return Bitfield::Proxy(*this, i);
 }
 
-std::optional<bytes::size_type> Bitfield::next(bool val) {
+std::optional<bytes::size_type> Bitfield::next(bool val) const {
   // First find relevant byte
   auto it = std::find_if(m_bytes.begin(), m_bytes.end(), [&val](const auto B) {
     return val ? static_cast<uint8_t>(B) > 0 : static_cast<uint8_t>(B) < 255;

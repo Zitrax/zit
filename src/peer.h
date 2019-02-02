@@ -3,6 +3,7 @@
 
 #include "bitfield.h"
 #include "net.h"
+#include "piece.h"
 #include "sha1.h"
 #include "types.h"
 
@@ -72,6 +73,11 @@ class Peer {
 
   void handshake(const Sha1& info_hash);
 
+  /**
+   * Return next piece index and offset.
+   */
+  [[nodiscard]] std::optional<std::shared_ptr<Piece>> next_piece();
+
   void set_am_choking(bool am_choking);
   void set_am_interested(bool am_interested);
   void set_choking(bool choking);
@@ -84,6 +90,7 @@ class Peer {
   bool m_choking = true;
   bool m_interested = false;
   Bitfield m_pieces{};
+  std::map<bytes::size_type, std::shared_ptr<Piece>> m_active_pieces;
   std::unique_ptr<PeerConnection> m_connection{};
 };
 

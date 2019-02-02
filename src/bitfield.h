@@ -61,7 +61,7 @@ class Bitfield {
   /**
    * Return next index with value = val
    */
-  std::optional<bytes::size_type> next(bool val);
+  [[nodiscard]] std::optional<bytes::size_type> next(bool val) const;
 
  private:
   bytes m_bytes{};
