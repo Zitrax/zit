@@ -53,7 +53,8 @@ Torrent::Torrent(const filesystem::path& file) {
 
   m_name = info.at("name")->to<TypedElement<string>>()->val();
   m_pieces = info.at("pieces")->to<TypedElement<string>>()->val();
-  m_piece_length = info.at("piece length")->to<TypedElement<int64_t>>()->val();
+  m_piece_length = numeric_cast<uint32_t>(
+      info.at("piece length")->to<TypedElement<int64_t>>()->val());
 
   // Either 'length' or 'files' is needed depending on mode
   if (info.find("length") != info.end()) {
@@ -169,7 +170,8 @@ vector<Peer> Torrent::start() {
   vector<Peer> peers;
   const int THREE_HEX_BYTES = 6;
   for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
-    peers.emplace_back(Url(binary_peers.substr(i, THREE_HEX_BYTES), true));
+    peers.emplace_back(Url(binary_peers.substr(i, THREE_HEX_BYTES), true),
+                       m_piece_length);
   }
 
   return peers;

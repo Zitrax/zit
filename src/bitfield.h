@@ -21,6 +21,10 @@ namespace zit {
 class Bitfield {
  public:
   explicit Bitfield(bytes raw) : m_bytes(std::move(raw)) {}
+  /**
+   * @param count Number of bytes of default initialized (0) bits.
+   */
+  explicit Bitfield(bytes::size_type count);
   Bitfield() = default;
 
   /**
@@ -56,7 +60,15 @@ class Bitfield {
   Proxy operator[](bytes::size_type i) const;
   Proxy operator[](bytes::size_type i);
 
+  /**
+   * Number of bits contained.
+   */
   [[nodiscard]] auto size() const { return m_bytes.size() * 8; }
+
+  /**
+   * Number of bytes contained.
+   */
+  [[nodiscard]] auto size_bytes() const { return m_bytes.size(); }
 
   /**
    * Return next index with value = val

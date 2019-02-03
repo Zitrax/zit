@@ -135,7 +135,7 @@ class Torrent {
   std::string m_comment{};
   std::string m_created_by{};
   std::string m_encoding{};
-  int64_t m_piece_length = 0;
+  uint32_t m_piece_length = 0;
   std::string m_pieces{};
   bool m_private = false;
   std::string m_name{};

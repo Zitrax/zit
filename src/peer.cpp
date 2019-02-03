@@ -160,9 +160,14 @@ void Peer::set_choking(bool choking) {
 
     auto len = to_big_endian(13);
     auto index = to_big_endian(piece->id());
-    auto begin = to_big_endian(piece->offset());
+    auto block_offset = piece->next_offset();
+    if (!block_offset) {
+      cout << "No block requests left to do!\n";
+      return;
+    }
+    auto begin = to_big_endian(*block_offset);
     // 16 KiB (as recommended)
-    auto length = to_big_endian(1 << 14);
+    auto length = to_big_endian(piece->block_size());
     bytes request;
     request.insert(request.end(), len.begin(), len.end());
     request.push_back(static_cast<byte>(peer_wire_id::REQUEST));
@@ -229,17 +234,19 @@ void Peer::handshake(const Sha1& info_hash) {
 
 optional<shared_ptr<Piece>> Peer::next_piece() {
   // Is there a piece to get
-  auto id = m_pieces.next(false);
-  if (!id) {
+  auto next_id = m_pieces.next(false);
+  if (!next_id) {
     return {};
   }
   // Is the piece active or not
-  auto piece = m_active_pieces.find(*id);
+  auto id = numeric_cast<uint32_t>(*next_id);
+  auto piece = m_active_pieces.find(id);
   if (piece == m_active_pieces.end()) {
-    auto it = m_active_pieces.emplace(make_pair(*id, make_shared<Piece>(*id)));
+    auto it = m_active_pieces.emplace(
+        make_pair(id, make_shared<Piece>(id, m_piece_length)));
     return make_optional(it.first->second);
   }
-  return make_optional(m_active_pieces.at(*id));
+  return make_optional(m_active_pieces.at(id));
 }
 
 }  // namespace zit

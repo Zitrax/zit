@@ -47,7 +47,8 @@ class PeerConnection {
 
 class Peer {
  public:
-  explicit Peer(Url url) : m_url(std::move(url)) {}
+  explicit Peer(Url url, uint32_t piece_length)
+      : m_url(std::move(url)), m_piece_length(piece_length) {}
 
   [[nodiscard]] auto url() const { return m_url; }
 
@@ -85,12 +86,13 @@ class Peer {
 
  private:
   Url m_url;
+  uint32_t m_piece_length;
   bool m_am_choking = true;
   bool m_am_interested = false;
   bool m_choking = true;
   bool m_interested = false;
   Bitfield m_pieces{};
-  std::map<bytes::size_type, std::shared_ptr<Piece>> m_active_pieces;
+  std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces;
   std::unique_ptr<PeerConnection> m_connection{};
 };
 
