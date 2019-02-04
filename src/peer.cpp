@@ -149,7 +149,7 @@ void Peer::set_am_interested(bool am_interested) {
 
 void Peer::set_choking(bool choking) {
   if (m_choking && !choking) {  // Unchoked
-    cout << "unchoked, sending piece request\n";
+    cout << "Unchoked\n";
     // We can now start requesting pieces
     auto has_piece = next_piece();
     if (!has_piece) {
@@ -165,6 +165,7 @@ void Peer::set_choking(bool choking) {
       cout << "No block requests left to do!\n";
       return;
     }
+    cout << "Sending piece request\n";
     auto begin = to_big_endian(*block_offset);
     // 16 KiB (as recommended)
     auto length = to_big_endian(piece->block_size());
@@ -182,6 +183,14 @@ void Peer::set_choking(bool choking) {
 
 void Peer::set_interested(bool interested) {
   m_interested = interested;
+}
+
+void Peer::set_remote_pieces(Bitfield bf)
+{
+  m_remote_pieces = bf;
+  if(!m_client_pieces.size()) {
+    m_client_pieces = Bitfield(m_client_pieces.size());
+  }
 }
 
 void Peer::handshake(const Sha1& info_hash) {
@@ -234,10 +243,13 @@ void Peer::handshake(const Sha1& info_hash) {
 
 optional<shared_ptr<Piece>> Peer::next_piece() {
   // Is there a piece to get
-  auto next_id = m_pieces.next(false);
+  auto next_id = m_client_pieces.next(false);
   if (!next_id) {
     return {};
   }
+  // FIXME: Need to check m_remote_pieces too. Should 
+  //        support m_remote_pieces - m_client_pieces
+
   // Is the piece active or not
   auto id = numeric_cast<uint32_t>(*next_id);
   auto piece = m_active_pieces.find(id);

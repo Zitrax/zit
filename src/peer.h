@@ -84,6 +84,8 @@ class Peer {
   void set_choking(bool choking);
   void set_interested(bool interested);
 
+  void set_remote_pieces(Bitfield bf);
+
  private:
   Url m_url;
   uint32_t m_piece_length;
@@ -91,8 +93,12 @@ class Peer {
   bool m_am_interested = false;
   bool m_choking = true;
   bool m_interested = false;
-  Bitfield m_pieces{};
+
+  // FIXME: The piece housekeeping should leter move up to the torrent
+  Bitfield m_remote_pieces{};
+  Bitfield m_client_pieces{};
   std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces;
+
   std::unique_ptr<PeerConnection> m_connection{};
 };
 
