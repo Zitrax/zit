@@ -195,3 +195,70 @@ TEST(Bitfield, next) {
   EXPECT_EQ(*bf.next(false), 33);
   EXPECT_EQ(*bf.next(true), 0);
 }
+
+TEST(Bitfield, subtraction) {
+  Bitfield bf1(bytes{255_b});
+  Bitfield bf2(bytes{0_b});
+  auto ret = bf1 - bf2;
+  EXPECT_TRUE(ret[0]);
+  EXPECT_TRUE(ret[1]);
+  EXPECT_TRUE(ret[2]);
+  EXPECT_TRUE(ret[3]);
+  EXPECT_TRUE(ret[4]);
+  EXPECT_TRUE(ret[5]);
+  EXPECT_TRUE(ret[6]);
+  EXPECT_TRUE(ret[7]);
+  ret = bf2 - bf1;
+  EXPECT_FALSE(ret[0]);
+  EXPECT_FALSE(ret[1]);
+  EXPECT_FALSE(ret[2]);
+  EXPECT_FALSE(ret[3]);
+  EXPECT_FALSE(ret[4]);
+  EXPECT_FALSE(ret[5]);
+  EXPECT_FALSE(ret[6]);
+  EXPECT_FALSE(ret[7]);
+  // All bit combinations in one byte 10 10 11 00
+  bf1 = Bitfield(bytes{3_b});  // 00000011
+  bf2 = Bitfield(bytes{5_b});  // 00000101
+  ret = bf1 - bf2;
+  EXPECT_FALSE(ret[0]);
+  EXPECT_TRUE(ret[1]);
+  EXPECT_FALSE(ret[2]);
+  EXPECT_FALSE(ret[3]);
+  EXPECT_FALSE(ret[4]);
+  EXPECT_FALSE(ret[5]);
+  EXPECT_FALSE(ret[6]);
+  EXPECT_FALSE(ret[7]);
+  ret = bf2 - bf1;
+  EXPECT_FALSE(ret[0]);
+  EXPECT_FALSE(ret[1]);
+  EXPECT_TRUE(ret[2]);
+  EXPECT_FALSE(ret[3]);
+  EXPECT_FALSE(ret[4]);
+  EXPECT_FALSE(ret[5]);
+  EXPECT_FALSE(ret[6]);
+  EXPECT_FALSE(ret[7]);
+  // Different sizes
+  bf1 = Bitfield(bytes{240_b, 10_b});  // 11110000 00001010
+  bf2 = Bitfield(bytes{85_b});         // 01010101
+  ret = bf1 - bf2;
+  EXPECT_EQ(ret.size_bytes(), 1);
+  EXPECT_FALSE(ret[0]);
+  EXPECT_FALSE(ret[1]);
+  EXPECT_FALSE(ret[2]);
+  EXPECT_FALSE(ret[3]);
+  EXPECT_FALSE(ret[4]);
+  EXPECT_TRUE(ret[5]);
+  EXPECT_FALSE(ret[6]);
+  EXPECT_TRUE(ret[7]);
+  ret = bf2 - bf1;
+  EXPECT_EQ(ret.size_bytes(), 1);
+  EXPECT_TRUE(ret[0]);
+  EXPECT_FALSE(ret[1]);
+  EXPECT_TRUE(ret[2]);
+  EXPECT_FALSE(ret[3]);
+  EXPECT_FALSE(ret[4]);
+  EXPECT_FALSE(ret[5]);
+  EXPECT_FALSE(ret[6]);
+  EXPECT_FALSE(ret[7]);
+}

@@ -53,6 +53,18 @@ Bitfield::Proxy Bitfield::operator[](bytes::size_type i) {
   return Bitfield::Proxy(*this, i);
 }
 
+Bitfield Bitfield::operator-(const Bitfield& other) const {
+  auto len = std::min(size_bytes(), other.size_bytes());
+  Bitfield ret;
+  ret.m_bytes.reserve(len);
+
+  for (typeof(len) i = 0; i < len; ++i) {
+    ret.m_bytes.emplace_back(m_bytes[i] ^ (m_bytes[i] & other.m_bytes[i]));
+  }
+
+  return ret;
+}
+
 std::optional<bytes::size_type> Bitfield::next(bool val) const {
   // First find relevant byte
   auto it = std::find_if(m_bytes.begin(), m_bytes.end(), [&val](const auto B) {

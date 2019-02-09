@@ -61,6 +61,11 @@ class Bitfield {
   Proxy operator[](bytes::size_type i);
 
   /**
+   * Subtract another bitfield.
+   */
+  Bitfield operator-(const Bitfield& other) const;
+
+  /**
    * Number of bits contained.
    */
   [[nodiscard]] auto size() const { return m_bytes.size() * 8; }
