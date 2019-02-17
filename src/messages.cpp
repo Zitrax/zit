@@ -156,7 +156,7 @@ void Message::parse(PeerConnection& connection) {
     cout << "Handshake\n";
     connection.peer().set_am_interested(true);
     auto bf = handshake.value().getBitfield();
-    if(bf.size()) {
+    if (bf.size()) {
       connection.peer().set_remote_pieces(bf);
     }
     return;

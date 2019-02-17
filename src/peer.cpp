@@ -185,11 +185,10 @@ void Peer::set_interested(bool interested) {
   m_interested = interested;
 }
 
-void Peer::set_remote_pieces(Bitfield bf)
-{
-  m_remote_pieces = bf;
-  if(!m_client_pieces.size()) {
-    m_client_pieces = Bitfield(m_client_pieces.size());
+void Peer::set_remote_pieces(Bitfield bf) {
+  m_remote_pieces = move(bf);
+  if (!m_client_pieces.size()) {
+    m_client_pieces = Bitfield(m_remote_pieces.size());
   }
 }
 
@@ -242,13 +241,14 @@ void Peer::handshake(const Sha1& info_hash) {
 }
 
 optional<shared_ptr<Piece>> Peer::next_piece() {
+  // Pieces the remote has minus the pieces we already got
+  Bitfield relevant_pieces = m_remote_pieces - m_client_pieces;
+
   // Is there a piece to get
-  auto next_id = m_client_pieces.next(false);
+  auto next_id = relevant_pieces.next(true);
   if (!next_id) {
     return {};
   }
-  // FIXME: Need to check m_remote_pieces too. Should 
-  //        support m_remote_pieces - m_client_pieces
 
   // Is the piece active or not
   auto id = numeric_cast<uint32_t>(*next_id);

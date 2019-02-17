@@ -41,7 +41,9 @@ Bitfield::Proxy::operator bool() const {
 // --- bitfield ---
 
 Bitfield::Bitfield(bytes::size_type count) {
-  m_bytes.resize(count);
+  // Number of bytes that will fit given number of bits
+  // i.e. ceil(count/8)
+  m_bytes.resize(count / 8 + (count % 8 != 0));
 }
 
 Bitfield::Proxy Bitfield::operator[](bytes::size_type i) const {

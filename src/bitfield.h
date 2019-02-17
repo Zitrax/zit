@@ -21,10 +21,14 @@ namespace zit {
 class Bitfield {
  public:
   explicit Bitfield(bytes raw) : m_bytes(std::move(raw)) {}
+
   /**
-   * @param count Number of bytes of default initialized (0) bits.
+   * @param count Number of default initialized (0) bits.
+   * @note The result will be a bitfield of the number of bytes fitting
+   *       the number of bits needed.
    */
   explicit Bitfield(bytes::size_type count);
+
   Bitfield() = default;
 
   /**
