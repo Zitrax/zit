@@ -23,7 +23,8 @@ static bool all_of(Container c, UnaryPredicate p) {
 
 template <typename T>
 static peer_wire_id to_peer_wire_id(const T& t) {
-  switch (numeric_cast<pwid_t>(t)) {
+  auto val = numeric_cast<pwid_t>(t);
+  switch (val) {
     case static_cast<pwid_t>(peer_wire_id::CHOKE):
       return peer_wire_id::CHOKE;
     case static_cast<pwid_t>(peer_wire_id::UNCHOKE):
@@ -44,8 +45,10 @@ static peer_wire_id to_peer_wire_id(const T& t) {
       return peer_wire_id::CANCEL;
     case static_cast<pwid_t>(peer_wire_id::PORT):
       return peer_wire_id::PORT;
+    default:
+      cerr << "Unknown id = " << to_string(val) << "\n";
+      return peer_wire_id::UNKNOWN;
   }
-  return peer_wire_id::UNKNOWN;
 }
 
 std::ostream& operator<<(std::ostream& os, const peer_wire_id& id) {
@@ -150,7 +153,7 @@ class HandshakeMsg {
   Bitfield m_bitfield;
 };
 
-void Message::parse(PeerConnection& connection) {
+bool Message::parse(PeerConnection& connection) {
   auto handshake = HandshakeMsg::parse(m_msg);
   if (handshake) {
     cout << "Handshake\n";
@@ -159,12 +162,18 @@ void Message::parse(PeerConnection& connection) {
     if (bf.size()) {
       connection.peer().set_remote_pieces(bf);
     }
-    return;
+    return true;
   }
 
   if (m_msg.size() >= 4) {
     // Read 4 byte length
     auto len = big_endian(m_msg);
+    cout << "Incoming length = " << len << ", message size = " << m_msg.size()
+         << "\n";
+    if (len > m_msg.size() + 4) {
+      // Not a full message - return and await more data
+      return false;
+    }
     if (len == 0 && m_msg.size() == 4) {
       cout << "Keep Alive\n";
     } else if (m_msg.size() >= 5) {
@@ -175,7 +184,7 @@ void Message::parse(PeerConnection& connection) {
           break;
         case peer_wire_id::UNCHOKE:
           connection.peer().set_choking(false);
-          return;
+          return true;
         case peer_wire_id::INTERESTED:
         case peer_wire_id::NOT_INTERESTED:
         case peer_wire_id::HAVE:
@@ -188,11 +197,12 @@ void Message::parse(PeerConnection& connection) {
           break;
       }
       cout << id << " is unhandled\n";
-      return;
+      return true;
     }
   }
 
   cout << "Unknown message of length " << m_msg.size() << "\n";
+  return true;
 }
 
 bool Message::is_keepalive(const bytes& msg) {

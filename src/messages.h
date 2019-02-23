@@ -28,7 +28,7 @@ class Message {
  public:
   explicit Message(const bytes& msg) : m_msg(msg) {}
 
-  void parse(PeerConnection& connection);
+  bool parse(PeerConnection& connection);
 
   bool is_keepalive(const bytes& msg);
 

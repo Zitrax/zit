@@ -102,13 +102,21 @@ void PeerConnection::handle_response(const asio::error_code& err) {
     if (response_.size()) {
       bytes response(response_.size());
       buffer_copy(asio::buffer(response), response_.data());
-      response_.consume(response_.size());
       Message msg(response);
-      msg.parse(*this);
+      auto done = msg.parse(*this);
       cout.flush();
+      // If we are done reading the current message we should return
+      // but if not we should read more from the socket.
+      if (done) {
+        response_.consume(response_.size());
+        return;
+      }
     }
 
     // Read remaining data until EOF.
+    // TODO: https://sourceforge.net/p/asio/mailman/message/23968189/
+    //       mentions that maybe socket.async_read_some is better to read > 512
+    //       bytes at a time
     asio::async_read(socket_, response_, asio::transfer_at_least(1),
                      bind(&PeerConnection::handle_response, this, _1));
   } else if (err != asio::error::eof) {
