@@ -26,7 +26,8 @@ int main() {
     std::filesystem::path p(__FILE__);
     p.remove_filename();
 
-    zit::Torrent torrent(p / ".." / "tests" / "data" / "test.torrent");
+    // zit::Torrent torrent(p / ".." / "tests" / "data" / "test.torrent");
+    zit::Torrent torrent(p / ".." / "random.torrent");
     cout << torrent << "\n";
     auto peers = torrent.start();
 
