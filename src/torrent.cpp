@@ -122,7 +122,7 @@ auto Torrent::left() const {
   }
 
   return accumulate(
-      m_files.begin(), m_files.end(), 0L,
+      m_files.begin(), m_files.end(), static_cast<int64_t>(0),
       [](int64_t a, const FileInfo& b) { return a + b.length(); });
 }
 
@@ -158,7 +158,7 @@ vector<Peer> Torrent::start() {
     auto string_peers = peers_dict->to<TypedElement<BeDict>>()->val();
     // FIXME: implement
     throw runtime_error("Dict peers not implemented");
-  } catch (const BencodeConversionError& ex) {
+  } catch (const BencodeConversionError&) {
     // This is fine - try the next format
   }
 

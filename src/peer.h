@@ -9,6 +9,7 @@
 
 #include <asio.hpp>
 
+#include <map>
 #include <memory>
 #include <optional>
 

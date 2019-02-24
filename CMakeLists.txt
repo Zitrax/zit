@@ -25,6 +25,28 @@ if(SANITIZED_LIBCXX)
   set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_LINKER_FLAGS} -fsanitize=memory -L${SANITIZED_LIBCXX}/lib -Wl,-rpath,${SANITIZED_LIBCXX}/lib -stdlib=libc++ -lc++abi")
 endif()
 
+if(WIN32)
+  find_path(ASIO_INCLUDE_DIR asio.hpp HINTS $ENV{USERPROFILE}/Source/asio-1.12.2/include)
+  if(NOT ASIO_INCLUDE_DIR)
+    messge(FATAL_ERROR "Need ASIO include directory")
+  else()
+    message(STATUS "asio.hpp found in ${ASIO_INCLUDE_DIR}")
+	  # Many warnings from asio regarding this using msvc
+    add_compile_options(-D_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
+    add_compile_options(-D_WIN32_WINNT=0x0501)
+  endif()
+  add_compile_options(-DASIO_STANDALONE)
+  include_directories(${ASIO_INCLUDE_DIR})
+
+  find_path(OPENSSL_INCLUDE_DIR sha.h HINTS $ENV{ProgramW6432}/OpenSSL-Win64/include/openssl)
+  if(NOT OPENSSL_INCLUDE_DIR)
+    message(FATAL_ERROR "Need OpenSSL include directory")
+  else()
+    message(STATUS "OpenSSL fund in ${OPENSSL_INCLUDE_DIR}")
+  endif()
+  include_directories(${OPENSSL_INCLUDE_DIR}/..)
+endif()
+
 add_subdirectory(src)
 add_subdirectory(tests)
 

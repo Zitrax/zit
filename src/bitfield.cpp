@@ -60,7 +60,7 @@ Bitfield Bitfield::operator-(const Bitfield& other) const {
   Bitfield ret;
   ret.m_bytes.reserve(len);
 
-  for (typeof(len) i = 0; i < len; ++i) {
+  for (decltype(len) i = 0; i < len; ++i) {
     ret.m_bytes.emplace_back(m_bytes[i] ^ (m_bytes[i] & other.m_bytes[i]));
   }
 

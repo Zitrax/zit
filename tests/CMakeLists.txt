@@ -50,14 +50,15 @@ if(COVERAGE)
 endif()
 
 # Should optimally share these with the src (but not pass to gtest)
-add_compile_options(-Wall -Wextra -Werror -Weffc++ -Wconversion -Wsign-conversion)
+if(UNIX)
+  add_compile_options(-Wall -Wextra -Werror -Weffc++ -Wconversion -Wsign-conversion)
+  # Test specific
+  add_compile_options(-Wno-unused-variable)
+endif()
 
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   add_compile_options(-Wno-non-virtual-dtor)
 endif()
-
-# Test specific
-add_compile_options(-Wno-unused-variable)
 
 # The test code
 include_directories("../src")

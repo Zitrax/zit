@@ -21,7 +21,7 @@ inline auto read_file(const std::filesystem::path& file_name) {
     std::ostringstream str_stream{};
     file_stream >> str_stream.rdbuf();
     return str_stream.str();
-  } catch (const std::exception& ex) {
+  } catch (const std::exception&) {
     std::throw_with_nested(
         std::runtime_error("Could not read: " + file_name.string()));
   }

@@ -13,6 +13,12 @@ using namespace std;
 using std::placeholders::_1;
 using std::placeholders::_2;
 
+#ifdef WIN32
+# define PRETTY_FUNCTION __FUNCSIG__
+#else
+# define PRETTY_FUNCTION __PRETTY_FUNCTION__
+#endif // WIN32
+
 namespace zit {
 
 // Note that since we are using asio without boost
@@ -43,7 +49,7 @@ void PeerConnection::write(const std::string& msg) {
 }
 
 void PeerConnection::write(const Url& url, const string& msg) {
-  cout << __PRETTY_FUNCTION__ << endl;
+  cout << PRETTY_FUNCTION << endl;
   ostream request_stream(&request_);
   request_stream << msg;
 
@@ -61,7 +67,7 @@ void PeerConnection::write(const Url& url, const string& msg) {
 
 void PeerConnection::handle_resolve(const asio::error_code& err,
                                     tcp::resolver::iterator endpoint_iterator) {
-  cout << __PRETTY_FUNCTION__ << endl;
+  cout << PRETTY_FUNCTION << endl;
   if (!err) {
     // Attempt a connection to the first endpoint in the list. Each endpoint
     // will be tried until we successfully establish a connection.
@@ -77,7 +83,7 @@ void PeerConnection::handle_resolve(const asio::error_code& err,
 
 void PeerConnection::handle_connect(const asio::error_code& err,
                                     tcp::resolver::iterator endpoint_iterator) {
-  cout << __PRETTY_FUNCTION__ << endl;
+  cout << PRETTY_FUNCTION << endl;
   if (!err) {
     // The connection was successful. Send the request.
     asio::async_write(socket_, request_,
@@ -97,7 +103,7 @@ void PeerConnection::handle_connect(const asio::error_code& err,
 }
 
 void PeerConnection::handle_response(const asio::error_code& err) {
-  cout << __PRETTY_FUNCTION__ << endl;
+  cout << PRETTY_FUNCTION << endl;
   if (!err) {
     if (response_.size()) {
       bytes response(response_.size());
@@ -247,7 +253,7 @@ void Peer::handshake(const Sha1& info_hash) {
   asio::io_service io_service;
   try {
     m_connection = make_unique<PeerConnection>(*this, io_service, port);
-  } catch (const asio::system_error& err) {
+  } catch (const asio::system_error&) {
     throw_with_nested(runtime_error("Creating peer connection to " +
                                     m_url.authority() + " from port " +
                                     to_string(port)));
