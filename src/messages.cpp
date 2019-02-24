@@ -185,12 +185,20 @@ bool Message::parse(PeerConnection& connection) {
         case peer_wire_id::UNCHOKE:
           connection.peer().set_choking(false);
           return true;
+        case peer_wire_id::PIECE: {
+          auto index = big_endian(m_msg, 5);
+          auto offset = big_endian(m_msg, 9);
+          // FIXME: Optimization:
+          //        Could pass the range instead of copying the data
+          auto data = bytes(m_msg.begin() + 13, m_msg.end());
+          connection.peer().set_block(index, offset, data);
+        }
+          return true;
         case peer_wire_id::INTERESTED:
         case peer_wire_id::NOT_INTERESTED:
         case peer_wire_id::HAVE:
         case peer_wire_id::BITFIELD:
         case peer_wire_id::REQUEST:
-        case peer_wire_id::PIECE:
         case peer_wire_id::CANCEL:
         case peer_wire_id::PORT:
         case peer_wire_id::UNKNOWN:

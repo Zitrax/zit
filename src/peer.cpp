@@ -200,6 +200,16 @@ void Peer::set_remote_pieces(Bitfield bf) {
   }
 }
 
+void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
+  // Look up relevant piece object among active pieces
+  if (m_active_pieces.find(piece_id) != m_active_pieces.end()) {
+    auto piece = m_active_pieces[piece_id];
+    piece->set_block(offset, data);
+  } else {
+    cerr << "Tried to set block for non active piece\n";
+  }
+}
+
 void Peer::handshake(const Sha1& info_hash) {
   // The handshake should contain:
   // <pstrlen><pstr><reserved><info_hash><peer_id>

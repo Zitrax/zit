@@ -86,6 +86,11 @@ class Peer {
 
   void set_remote_pieces(Bitfield bf);
 
+  /**
+   * Store a retrieved a block ( part of a piece )
+   */
+  void set_block(uint32_t piece_id, uint32_t offset, const bytes& data);
+
  private:
   Url m_url;
   uint32_t m_piece_length;
@@ -95,6 +100,7 @@ class Peer {
   bool m_interested = false;
 
   // FIXME: The piece housekeeping should leter move up to the torrent
+  //        to support more than one peer.
   Bitfield m_remote_pieces{};
   Bitfield m_client_pieces{};
 
