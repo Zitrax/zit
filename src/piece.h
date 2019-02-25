@@ -14,8 +14,8 @@ class Piece {
  public:
   explicit Piece(uint32_t id, uint32_t piece_size)
       : m_piece_size(piece_size),
-        m_blocks_requested(piece_size / m_block_size),
-        m_blocks_done(piece_size / m_block_size),
+        m_blocks_requested(block_count()),
+        m_blocks_done(block_count()),
         m_id(id) {
     m_data.reserve(m_piece_size);
   }
@@ -26,8 +26,15 @@ class Piece {
   [[nodiscard]] std::optional<uint32_t> next_offset();
   /** Total block size in bytes */
   [[nodiscard]] auto block_size() const { return m_block_size; }
-  /** Store incoming data */
-  void set_block(uint32_t offset, const bytes& data);
+  /** Total number of blocks in this piece */
+  [[nodiscard]] uint32_t block_count() const {
+    return m_piece_size / m_block_size;
+  }
+  /**
+   * Store incoming data
+   * @return true if this was the last remaining block for this piece
+   */
+  bool set_block(uint32_t offset, const bytes& data);
 
  private:
   const uint32_t m_block_size = 1 << 14;

@@ -14,10 +14,10 @@ using std::placeholders::_1;
 using std::placeholders::_2;
 
 #ifdef WIN32
-# define PRETTY_FUNCTION __FUNCSIG__
+#define PRETTY_FUNCTION __FUNCSIG__
 #else
-# define PRETTY_FUNCTION __PRETTY_FUNCTION__
-#endif // WIN32
+#define PRETTY_FUNCTION __PRETTY_FUNCTION__
+#endif  // WIN32
 
 namespace zit {
 
@@ -161,35 +161,39 @@ void Peer::set_am_interested(bool am_interested) {
   m_am_interested = am_interested;
 }
 
+void Peer::request_next_block() {
+  // We can now start requesting pieces
+  auto has_piece = next_piece();
+  if (!has_piece) {
+    cout << "No pieces left, nothing to do!\n";
+    return;
+  }
+  auto piece = *has_piece;
+
+  auto len = to_big_endian(13);
+  auto index = to_big_endian(piece->id());
+  auto block_offset = piece->next_offset();
+  if (!block_offset) {
+    cout << "No block requests left to do!\n";
+    return;
+  }
+  cout << "Sending piece request\n";
+  auto begin = to_big_endian(*block_offset);
+  // 16 KiB (as recommended)
+  auto length = to_big_endian(piece->block_size());
+  bytes request;
+  request.insert(request.end(), len.begin(), len.end());
+  request.push_back(static_cast<byte>(peer_wire_id::REQUEST));
+  request.insert(request.end(), index.begin(), index.end());
+  request.insert(request.end(), begin.begin(), begin.end());
+  request.insert(request.end(), length.begin(), length.end());
+  m_connection->write(request);
+}
+
 void Peer::set_choking(bool choking) {
   if (m_choking && !choking) {  // Unchoked
     cout << "Unchoked\n";
-    // We can now start requesting pieces
-    auto has_piece = next_piece();
-    if (!has_piece) {
-      cout << "No pieces left, nothing to do!\n";
-      return;
-    }
-    auto piece = *has_piece;
-
-    auto len = to_big_endian(13);
-    auto index = to_big_endian(piece->id());
-    auto block_offset = piece->next_offset();
-    if (!block_offset) {
-      cout << "No block requests left to do!\n";
-      return;
-    }
-    cout << "Sending piece request\n";
-    auto begin = to_big_endian(*block_offset);
-    // 16 KiB (as recommended)
-    auto length = to_big_endian(piece->block_size());
-    bytes request;
-    request.insert(request.end(), len.begin(), len.end());
-    request.push_back(static_cast<byte>(peer_wire_id::REQUEST));
-    request.insert(request.end(), index.begin(), index.end());
-    request.insert(request.end(), begin.begin(), begin.end());
-    request.insert(request.end(), length.begin(), length.end());
-    m_connection->write(request);
+    request_next_block();
   }
 
   m_choking = choking;
@@ -210,7 +214,11 @@ void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
   // Look up relevant piece object among active pieces
   if (m_active_pieces.find(piece_id) != m_active_pieces.end()) {
     auto piece = m_active_pieces[piece_id];
-    piece->set_block(offset, data);
+    if(piece->set_block(offset, data)) {
+      cerr << "Piece " << piece_id << " done!\n";
+      // FIXME: Store that we have the piece and request the next
+    }
+    request_next_block();
   } else {
     cerr << "Tried to set block for non active piece\n";
   }

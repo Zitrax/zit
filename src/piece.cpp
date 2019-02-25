@@ -15,7 +15,7 @@ optional<uint32_t> Piece::next_offset() {
   return *next * m_block_size;
 }
 
-void Piece::set_block(uint32_t offset, const bytes& data) {
+bool Piece::set_block(uint32_t offset, const bytes& data) {
   if (offset % m_block_size != 0) {
     throw runtime_error("Invalid block offset: " + to_string(offset));
   }
@@ -23,13 +23,19 @@ void Piece::set_block(uint32_t offset, const bytes& data) {
     throw runtime_error("Block too big: " + to_string(data.size()));
   }
   auto block_id = offset / m_block_size;
-  if (!m_blocks_requested[block_id]) {
-    cerr << "WARNING: Got data for non requested block?\n";
+  if (m_blocks_done[block_id]) {
+    cerr << "WARNING: Already got this block\n";
+  } else {
+    if (!m_blocks_requested[block_id]) {
+      cerr << "WARNING: Got data for non requested block?\n";
+    }
+    copy(data.cbegin(), data.cend(), m_data.begin() + offset);
+    m_blocks_done[block_id] = true;
+    cout << "Block " << block_id + 1 << "/" << block_count() << " of size "
+         << data.size() << " stored.\n";
   }
-  copy(data.cbegin(), data.cend(), m_data.begin() + offset);
-  m_blocks_done[block_id] = true;
-  cout << "Block " << block_id << "/" << m_piece_size / m_block_size
-       << " of size " << data.size() << " stored.\n";
+  auto next = m_blocks_done.next(false);
+  return !next || *next >= block_count();
 }
 
 }  // namespace zit

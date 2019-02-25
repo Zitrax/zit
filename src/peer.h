@@ -100,6 +100,8 @@ class Peer {
   bool m_choking = true;
   bool m_interested = false;
 
+  void request_next_block();
+
   // FIXME: The piece housekeeping should leter move up to the torrent
   //        to support more than one peer.
   Bitfield m_remote_pieces{};
