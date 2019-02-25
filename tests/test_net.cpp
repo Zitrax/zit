@@ -1,7 +1,4 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
-#ifndef WIN32
-# include <arpa/inet.h>
-#endif // WIN32
 #include "gtest/gtest.h"
 #include "net.h"
 
