@@ -32,7 +32,7 @@ bool Piece::set_block(uint32_t offset, const bytes& data) {
     copy(data.cbegin(), data.cend(), m_data.begin() + offset);
     m_blocks_done[block_id] = true;
     cout << "Block " << block_id + 1 << "/" << block_count() << " of size "
-         << data.size() << " stored.\n";
+         << data.size() << " stored for piece " << m_id << ".\n";
   }
   auto next = m_blocks_done.next(false);
   return !next || *next >= block_count();

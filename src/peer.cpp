@@ -214,9 +214,9 @@ void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
   // Look up relevant piece object among active pieces
   if (m_active_pieces.find(piece_id) != m_active_pieces.end()) {
     auto piece = m_active_pieces[piece_id];
-    if(piece->set_block(offset, data)) {
+    if (piece->set_block(offset, data)) {
       cerr << "Piece " << piece_id << " done!\n";
-      // FIXME: Store that we have the piece and request the next
+      m_client_pieces[piece_id] = true;
     }
     request_next_block();
   } else {
