@@ -71,5 +71,7 @@ CheckOptions:
     value:           lower_case
   - key:             readability-identifier-naming.ConstantMemberPrefix
     value:           m_
+  - key:             cppcoreguidelines-macro-usage.AllowedRegexp
+    value:           PRETTY_FUNCTION
 ...
 
