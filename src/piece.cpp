@@ -1,6 +1,8 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "piece.h"
 
+#include "spdlog/spdlog.h"
+
 using namespace std;
 
 namespace zit {
@@ -24,15 +26,15 @@ bool Piece::set_block(uint32_t offset, const bytes& data) {
   }
   auto block_id = offset / m_block_size;
   if (m_blocks_done[block_id]) {
-    cerr << "WARNING: Already got this block\n";
+    m_logger->warn("Already got this block");
   } else {
     if (!m_blocks_requested[block_id]) {
-      cerr << "WARNING: Got data for non requested block?\n";
+      m_logger->warn("Got data for non requested block?");
     }
     copy(data.cbegin(), data.cend(), m_data.begin() + offset);
     m_blocks_done[block_id] = true;
-    cout << "Block " << block_id + 1 << "/" << block_count() << " of size "
-         << data.size() << " stored for piece " << m_id << ".\n";
+    m_logger->info("Block {}/{} of size {} stored for piece {}", block_id + 1,
+                   block_count(), data.size(), m_id);
   }
   auto next = m_blocks_done.next(false);
   return !next || *next >= block_count();

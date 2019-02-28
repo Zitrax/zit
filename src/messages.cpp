@@ -5,6 +5,7 @@
 #include <cstring>
 #include <optional>
 
+#include "spdlog/spdlog.h"
 #include "string_utils.h"
 
 using namespace std;
@@ -46,7 +47,7 @@ static peer_wire_id to_peer_wire_id(const T& t) {
     case static_cast<pwid_t>(peer_wire_id::PORT):
       return peer_wire_id::PORT;
     default:
-      cerr << "Unknown id = " << to_string(val) << "\n";
+      spdlog::get("console")->error("Unknown id = {}", val);
       return peer_wire_id::UNKNOWN;
   }
 }
@@ -125,21 +126,23 @@ class HandshakeMsg {
     Sha1 info_hash = Sha1::fromBytes(msg, 28);
     string peer_id = from_bytes(msg, 48, 68);
 
+    auto console = spdlog::get("console");
+
     if (msg.size() > 68) {
       if (msg.size() < 73) {
-        cerr << "Invalid handshake length: " << msg.size() << "\n";
+        console->error("Invalid handshake length: {}", msg.size());
         return {};
       }
       if (to_peer_wire_id(msg[72]) != peer_wire_id::BITFIELD) {
-        cerr << "Expected bitfield id ("
-             << static_cast<pwid_t>(peer_wire_id::BITFIELD)
-             << ") but got: " << static_cast<uint8_t>(msg[72]) << "\n";
+        console->error("Expected bitfield id ({}) but got: {}",
+                       static_cast<pwid_t>(peer_wire_id::BITFIELD),
+                       static_cast<uint8_t>(msg[72]));
         return {};
       }
       // 4-byte big endian
       auto len = big_endian(msg, 68);
       Bitfield bf(bytes(&msg[73], &msg[73 + len - 1]));
-      cout << bf;
+      console->info("{}", bf);
       return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, bf);
     }
 
@@ -156,7 +159,7 @@ class HandshakeMsg {
 bool Message::parse(PeerConnection& connection) {
   auto handshake = HandshakeMsg::parse(m_msg);
   if (handshake) {
-    cout << "Handshake\n";
+    m_logger->info("Handshake");
     connection.peer().set_am_interested(true);
     auto bf = handshake.value().getBitfield();
     if (bf.size()) {
@@ -168,17 +171,17 @@ bool Message::parse(PeerConnection& connection) {
   if (m_msg.size() >= 4) {
     // Read 4 byte length
     auto len = big_endian(m_msg);
-    cout << "Incoming length = " << len << ", message size = " << m_msg.size()
-         << "\n";
+    m_logger->info("Incoming length = {}, message size = {}", len,
+                   m_msg.size());
     if (len > m_msg.size() + 4) {
       // Not a full message - return and await more data
       return false;
     }
     if (len == 0 && m_msg.size() == 4) {
-      cout << "Keep Alive\n";
+      m_logger->info("Keep Alive");
     } else if (m_msg.size() >= 5) {
       auto id = to_peer_wire_id(m_msg[4]);
-      cout << "Received: " << id << "\n";
+      m_logger->info("Received: {}", id);
       switch (id) {
         case peer_wire_id::CHOKE:
           break;
@@ -204,12 +207,12 @@ bool Message::parse(PeerConnection& connection) {
         case peer_wire_id::UNKNOWN:
           break;
       }
-      cout << id << " is unhandled\n";
+      m_logger->warn("{} is unhandled", id);
       return true;
     }
   }
 
-  cout << "Unknown message of length " << m_msg.size() << "\n";
+  m_logger->warn("Unknown message of length {}", m_msg.size());
   return true;
 }
 

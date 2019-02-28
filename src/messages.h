@@ -7,6 +7,8 @@
 
 #include "peer.h"
 
+#include "spdlog/spdlog.h"
+
 namespace zit {
 enum class peer_wire_id : uint8_t {
   CHOKE = 0,
@@ -26,7 +28,8 @@ using pwid_t = std::underlying_type_t<peer_wire_id>;
 
 class Message {
  public:
-  explicit Message(const bytes& msg) : m_msg(msg) {}
+  explicit Message(const bytes& msg)
+      : m_msg(msg), m_logger(spdlog::get("console")) {}
 
   bool parse(PeerConnection& connection);
 
@@ -34,6 +37,7 @@ class Message {
 
  private:
   const bytes& m_msg;
+  std::shared_ptr<spdlog::logger> m_logger;
 };
 
 }  // namespace zit

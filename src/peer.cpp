@@ -7,6 +7,7 @@
 #include <memory>
 #include <optional>
 #include "messages.h"
+#include "spdlog/spdlog.h"
 
 using asio::ip::tcp;
 using namespace std;
@@ -30,7 +31,8 @@ PeerConnection::PeerConnection(Peer& peer,
                                unsigned short port_num)
     : peer_(peer),
       resolver_(io_service),
-      socket_(io_service, tcp::endpoint(tcp::v4(), port_num)) {
+      socket_(io_service, tcp::endpoint(tcp::v4(), port_num)),
+      m_logger(spdlog::get("console")) {
   // TODO: This does not seem to help
   asio::socket_base::reuse_address option(true);
   socket_.set_option(option);
@@ -49,7 +51,7 @@ void PeerConnection::write(const std::string& msg) {
 }
 
 void PeerConnection::write(const Url& url, const string& msg) {
-  cout << PRETTY_FUNCTION << endl;
+  m_logger->debug(PRETTY_FUNCTION);
   ostream request_stream(&request_);
   request_stream << msg;
 
@@ -67,7 +69,7 @@ void PeerConnection::write(const Url& url, const string& msg) {
 
 void PeerConnection::handle_resolve(const asio::error_code& err,
                                     tcp::resolver::iterator endpoint_iterator) {
-  cout << PRETTY_FUNCTION << endl;
+  m_logger->debug(PRETTY_FUNCTION);
   if (!err) {
     // Attempt a connection to the first endpoint in the list. Each endpoint
     // will be tried until we successfully establish a connection.
@@ -77,13 +79,13 @@ void PeerConnection::handle_resolve(const asio::error_code& err,
     socket_.async_connect(endpoint, bind(&PeerConnection::handle_connect, this,
                                          _1, ++endpoint_iterator));
   } else {
-    cout << "Error: " << err.message() << "\n";
+    m_logger->error(err.message());
   }
 }
 
 void PeerConnection::handle_connect(const asio::error_code& err,
                                     tcp::resolver::iterator endpoint_iterator) {
-  cout << PRETTY_FUNCTION << endl;
+  m_logger->debug(PRETTY_FUNCTION);
   if (!err) {
     // The connection was successful. Send the request.
     asio::async_write(socket_, request_,
@@ -98,12 +100,12 @@ void PeerConnection::handle_connect(const asio::error_code& err,
                                          _1, ++endpoint_iterator));
   } else {
     endpoint_ = {};
-    cout << "Error: " << err.message() << "\n";
+    m_logger->error(err.message());
   }
 }
 
 void PeerConnection::handle_response(const asio::error_code& err) {
-  cout << PRETTY_FUNCTION << endl;
+  m_logger->debug(PRETTY_FUNCTION);
   if (!err) {
     if (response_.size()) {
       bytes response(response_.size());
@@ -126,9 +128,9 @@ void PeerConnection::handle_response(const asio::error_code& err) {
     asio::async_read(socket_, response_, asio::transfer_at_least(1),
                      bind(&PeerConnection::handle_response, this, _1));
   } else if (err != asio::error::eof) {
-    cout << "Error: " << err.message() << "\n";
+    m_logger->error(err.message());
   } else {
-    cout << "EOF\n";
+    m_logger->info("handle_response EOF");
   }
 }
 
@@ -165,7 +167,7 @@ void Peer::request_next_block() {
   // We can now start requesting pieces
   auto has_piece = next_piece();
   if (!has_piece) {
-    cout << "No pieces left, nothing to do!\n";
+    m_logger->info("No pieces left, nothing to do!");
     return;
   }
   auto piece = *has_piece;
@@ -174,10 +176,10 @@ void Peer::request_next_block() {
   auto index = to_big_endian(piece->id());
   auto block_offset = piece->next_offset();
   if (!block_offset) {
-    cout << "No block requests left to do!\n";
+    m_logger->info("No block requests left to do!");
     return;
   }
-  cout << "Sending piece request\n";
+  m_logger->info("Sending piece request");
   auto begin = to_big_endian(*block_offset);
   // 16 KiB (as recommended)
   auto length = to_big_endian(piece->block_size());
@@ -192,7 +194,7 @@ void Peer::request_next_block() {
 
 void Peer::set_choking(bool choking) {
   if (m_choking && !choking) {  // Unchoked
-    cout << "Unchoked\n";
+    m_logger->info("Unchoked");
     request_next_block();
   }
 
@@ -215,12 +217,12 @@ void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
   if (m_active_pieces.find(piece_id) != m_active_pieces.end()) {
     auto piece = m_active_pieces[piece_id];
     if (piece->set_block(offset, data)) {
-      cerr << "Piece " << piece_id << " done!\n";
+      m_logger->info("Piece {} done!", piece_id);
       m_client_pieces[piece_id] = true;
     }
     request_next_block();
   } else {
-    cerr << "Tried to set block for non active piece\n";
+    m_logger->warn("Tried to set block for non active piece");
   }
 }
 

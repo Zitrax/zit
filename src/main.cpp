@@ -5,13 +5,17 @@
 #include "net.h"
 #include "torrent.h"
 
+#include "spdlog/sinks/stdout_color_sinks.h"
+#include "spdlog/spdlog.h"
+
 using namespace std;
 using namespace bencode;
 
 // prints the explanatory string of an exception. If the exception is nested,
 // recurses to print the explanatory of the exception it holds
 void print_exception(const exception& e, string::size_type level = 0) {
-  cerr << string(level, ' ') << "exception: " << e.what() << '\n';
+  spdlog::get("console")->error("{}exception: {}", string(level, ' '),
+                                e.what());
   try {
     rethrow_if_nested(e);
   } catch (const exception& e) {
@@ -22,17 +26,18 @@ void print_exception(const exception& e, string::size_type level = 0) {
 
 int main() {
   try {
+    auto console = spdlog::stdout_color_mt("console");
     // Read .torrent file
     std::filesystem::path p(__FILE__);
     p.remove_filename();
 
     // zit::Torrent torrent(p / ".." / "tests" / "data" / "test.torrent");
     zit::Torrent torrent(p / ".." / "random.torrent");
-    cout << torrent << "\n";
+    console->info("\n{}", torrent);
     auto peers = torrent.start();
 
     for (const auto& peer : peers) {
-      cout << peer << "\n";
+      console->info("\n{}", peer);
     }
 
     peers[0].handshake(torrent.info_hash());

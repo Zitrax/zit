@@ -47,6 +47,8 @@ if(WIN32)
   include_directories(${OPENSSL_INCLUDE_DIR}/..)
 endif()
 
+include_directories("external")
+
 add_subdirectory(src)
 add_subdirectory(tests)
 
@@ -89,7 +91,7 @@ if(CLANG_TIDY)
   # of filtering that out. See https://reviews.llvm.org/D26418
   add_custom_target(tidy
     COMMENT "Tidying ${ALL_SRC_SOURCE_FILES}"
-    COMMAND ${CLANG_TIDY} -header-filter=.*
+    COMMAND ${CLANG_TIDY}
             -quiet
             -p ${CMAKE_CURRENT_BINARY_DIR}
             ${ALL_SRC_SOURCE_FILES}
@@ -97,7 +99,7 @@ if(CLANG_TIDY)
 
   add_custom_target(tidy_fix
     COMMENT "Tidying ${ALL_SRC_SOURCE_FILES}"
-    COMMAND ${CLANG_TIDY} -header-filter=.*
+    COMMAND ${CLANG_TIDY}
             -quiet -fix
             -p ${CMAKE_CURRENT_BINARY_DIR}
             ${ALL_SRC_SOURCE_FILES}

@@ -5,6 +5,8 @@
 #include "bitfield.h"
 #include "types.h"
 
+#include "spdlog/spdlog.h"
+
 namespace zit {
 
 /**
@@ -16,7 +18,8 @@ class Piece {
       : m_piece_size(piece_size),
         m_blocks_requested(block_count()),
         m_blocks_done(block_count()),
-        m_id(id) {
+        m_id(id),
+        m_logger(spdlog::get("console")) {
     m_data.reserve(m_piece_size);
   }
 
@@ -43,6 +46,7 @@ class Piece {
   Bitfield m_blocks_done;
   uint32_t m_id;
   bytes m_data{};
+  std::shared_ptr<spdlog::logger> m_logger;
 };
 
 }  // namespace zit

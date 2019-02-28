@@ -5,6 +5,9 @@
 
 #include <optional>
 
+// Needed for spdlog to handle operator<<
+#include "spdlog/fmt/ostr.h"
+
 namespace zit {
 
 /**

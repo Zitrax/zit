@@ -34,7 +34,7 @@ Checks:          '*,
                  -readability-misleading-indentation,
                  '
 WarningsAsErrors: ''
-HeaderFilterRegex: ''
+HeaderFilterRegex: '(src|tests)/*.h$'
 AnalyzeTemporaryDtors: false
 FormatStyle:     none
 User:            db

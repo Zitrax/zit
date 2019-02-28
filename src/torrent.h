@@ -8,6 +8,9 @@
 #include "peer.h"
 #include "sha1.h"
 
+// Needed for spdlog to handle operator<<
+#include "spdlog/fmt/ostr.h"
+
 namespace zit {
 
 class FileInfo;
@@ -143,6 +146,7 @@ class Torrent {
   std::string m_md5sum{};
   std::vector<FileInfo> m_files{};
   Sha1 m_info_hash{};
+  std::shared_ptr<spdlog::logger> m_logger;
 };
 
 class FileInfo {

@@ -5,6 +5,8 @@
 #include "peer.h"
 #include "sha1.h"
 
+#include "spdlog/spdlog.h"
+
 #include <algorithm>
 #include <iostream>
 #include <numeric>
@@ -43,6 +45,7 @@ static auto beDictToFileInfo(const Element& element) {
 }
 
 Torrent::Torrent(const filesystem::path& file) {
+  m_logger = spdlog::get("console");
   auto root = bencode::decode(read_file(file));
 
   const auto& root_dict = root->to<TypedElement<BeDict>>()->val();
@@ -136,15 +139,13 @@ vector<Peer> Torrent::start() {
   url.add_param("left=" + to_string(left()));
   url.add_param("event=started");
   url.add_param("compact=1");  // TODO: Look up what this really means
-  cout << url;
+  m_logger->info("\n{}", url);
 
   Net net;
   auto [headers, body] = net.http_get(url);
   auto reply = decode(body);
 
-  cout << "=====HEADER=====\n"
-       << headers << "\n=====BODY=====\n"
-       << reply << "\n";
+  m_logger->info("=====HEADER=====\n{}\n=====BODY=====\n{}", headers, reply);
 
   // The peers might be in binary or string form
   auto reply_dict = reply->to<TypedElement<BeDict>>()->val();

@@ -7,6 +7,8 @@
 #include "sha1.h"
 #include "types.h"
 
+#include "spdlog/spdlog.h"
+
 #include <asio.hpp>
 
 #include <map>
@@ -44,12 +46,15 @@ class PeerConnection {
   asio::streambuf response_{};
   asio::ip::tcp::socket socket_;
   asio::ip::tcp::resolver::iterator endpoint_{};
+  std::shared_ptr<spdlog::logger> m_logger;
 };
 
 class Peer {
  public:
   explicit Peer(Url url, uint32_t piece_length)
-      : m_url(std::move(url)), m_piece_length(piece_length) {}
+      : m_url(std::move(url)),
+        m_piece_length(piece_length),
+        m_logger(spdlog::get("console")) {}
 
   [[nodiscard]] auto url() const { return m_url; }
 
@@ -111,6 +116,7 @@ class Peer {
   std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces;
 
   std::unique_ptr<PeerConnection> m_connection{};
+  std::shared_ptr<spdlog::logger> m_logger;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Peer& url) {
