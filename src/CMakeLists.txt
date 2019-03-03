@@ -6,7 +6,7 @@ if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   add_compile_options(-Wno-non-virtual-dtor)
 endif()
 
-add_executable(zit main.cpp torrent.cpp net.cpp sha1.cpp peer.cpp bitfield.cpp messages.cpp piece.cpp)
+add_executable(zit main.cpp torrent.cpp net.cpp sha1.cpp peer.cpp bitfield.cpp messages.cpp piece.cpp file_writer.cpp)
 
 # Enable Link Time Optimization for release builds if supported
 # (Note: clang can even use -flto=full, but has to be manually
