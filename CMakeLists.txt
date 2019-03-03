@@ -47,7 +47,7 @@ if(WIN32)
   include_directories(${OPENSSL_INCLUDE_DIR}/..)
 endif()
 
-include_directories("external")
+include_directories(SYSTEM "external")
 
 add_subdirectory(src)
 add_subdirectory(tests)
