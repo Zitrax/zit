@@ -113,7 +113,7 @@ class Peer {
   Bitfield m_client_pieces{};
 
   /** Piece id -> Piece object */
-  std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces;
+  std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces{};
 
   std::unique_ptr<PeerConnection> m_connection{};
   std::shared_ptr<spdlog::logger> m_logger;

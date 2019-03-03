@@ -146,7 +146,7 @@ class Torrent {
   std::string m_md5sum{};
   std::vector<FileInfo> m_files{};
   Sha1 m_info_hash{};
-  std::shared_ptr<spdlog::logger> m_logger;
+  std::shared_ptr<spdlog::logger> m_logger{};
 };
 
 class FileInfo {
