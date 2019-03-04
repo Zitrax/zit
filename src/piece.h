@@ -33,6 +33,8 @@ class Piece {
   [[nodiscard]] uint32_t block_count() const {
     return m_piece_size / m_block_size;
   }
+  /** Return the data of the piece */
+  [[nodiscard]] auto data() const { return m_data; }
   /**
    * Store incoming data
    * @return true if this was the last remaining block for this piece

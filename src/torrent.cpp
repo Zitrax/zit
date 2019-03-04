@@ -46,6 +46,10 @@ static auto beDictToFileInfo(const Element& element) {
 
 Torrent::Torrent(const filesystem::path& file) {
   m_logger = spdlog::get("console");
+  // TODO: tmpnam is not fully safe - there is no replacement in std though so
+  //       would have to be manually implemented.
+  m_tmpfile = filesystem::path(tmpnam(nullptr));
+  m_logger->debug("Using tmpfile {} for {}", m_tmpfile, file);
   auto root = bencode::decode(read_file(file));
 
   const auto& root_dict = root->to<TypedElement<BeDict>>()->val();
@@ -115,6 +119,14 @@ Torrent::Torrent(const filesystem::path& file) {
   }
 
   m_info_hash = Sha1::calculate(encode(info));
+}
+
+int64_t Torrent::length() const {
+  return is_single_file() ? m_length
+                          : std::accumulate(m_files.cbegin(), m_files.cend(), 0,
+                                            [](int64_t a, const FileInfo& b) {
+                                              return a + b.length();
+                                            });
 }
 
 auto Torrent::left() const {

@@ -25,17 +25,54 @@ using TorrentPiece =
  */
 class FileWriter {
  public:
+  FileWriter() : m_logger(spdlog::get("console")) {}
+
   /**
-   * Add a pice to the queue for writing by the writer thread.
+   * Add a piece to the queue for writing by the writer thread.
    */
-  void add(std::shared_ptr<Torrent> torrent, std::shared_ptr<Piece> piece);
+  void add(const std::shared_ptr<Torrent>& torrent,
+           const std::shared_ptr<Piece>& piece);
+
+  /**
+   * Start FileWriter. It will pick pieces from the queue and write to disk as
+   * they arrive.
+   */
+  void run();
+
+  /**
+   * Call this to stop the FileWriter. If will stop after finishing current
+   * write.
+   */
+  void stop() {
+    m_stop = true;
+    m_condition.notify_one();
+  }
 
  private:
   void write_next_piece();
 
-  std::queue<TorrentPiece> m_queue;
-  std::mutex m_mutex;
-  std::condition_variable m_condition;
+  std::queue<TorrentPiece> m_queue{};
+  std::mutex m_mutex{};
+  std::condition_variable m_condition{};
+  std::shared_ptr<spdlog::logger> m_logger{};
+  std::atomic_bool m_stop = false;
+};
+
+class FileWriterThread {
+ public:
+  FileWriterThread()
+      : m_logger(spdlog::get("console")),
+        m_file_writer_thread([this]() { m_file_writer.run(); }) {}
+  ~FileWriterThread() {
+    m_logger->debug("FileWriter stopping");
+    m_file_writer.stop();
+    m_file_writer_thread.join();
+  }
+
+ private:
+  std::shared_ptr<spdlog::logger> m_logger{};
+  FileWriter m_file_writer{};
+  std::thread m_file_writer_thread;
 };
 
 }  // namespace zit

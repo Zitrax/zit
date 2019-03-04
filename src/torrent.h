@@ -84,9 +84,10 @@ class Torrent {
   [[nodiscard]] auto name() const { return m_name; }
 
   /**
-   * In single file mode the length of the file in bytes.
+   * In single file mode the length of the file in bytes, in multi file mode the
+   * combined length of all files.
    */
-  [[nodiscard]] auto length() const { return m_length; }
+  [[nodiscard]] int64_t length() const;
 
   /**
    * In single file mode the MD5 sum of the file. This is not used by
@@ -125,6 +126,11 @@ class Torrent {
   [[nodiscard]] auto left() const;
 
   /**
+   * File on disk to which the torrent is written during transfer
+   */
+  [[nodiscard]] auto tmpfile() const { return m_tmpfile; }
+
+  /**
    * The first request to the tracker.
    *
    * @return a list of peers for this torrent.
@@ -147,6 +153,7 @@ class Torrent {
   std::vector<FileInfo> m_files{};
   Sha1 m_info_hash{};
   std::shared_ptr<spdlog::logger> m_logger{};
+  std::filesystem::path m_tmpfile{};
 };
 
 class FileInfo {

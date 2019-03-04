@@ -2,6 +2,7 @@
 #include <iostream>
 #include <vector>
 #include "bencode.h"
+#include "file_writer.h"
 #include "net.h"
 #include "torrent.h"
 
@@ -27,6 +28,11 @@ void print_exception(const exception& e, string::size_type level = 0) {
 int main() {
   try {
     auto console = spdlog::stdout_color_mt("console");
+    console->set_level(spdlog::level::debug);
+
+    // TODO: Torrent/Peer must notify the FileWriter about new pieces
+    zit::FileWriterThread file_writer;
+
     // Read .torrent file
     std::filesystem::path p(__FILE__);
     p.remove_filename();
