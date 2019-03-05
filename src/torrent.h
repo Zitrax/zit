@@ -15,6 +15,10 @@ namespace zit {
 
 class FileInfo;
 class Peer;
+class Torrent;
+
+using PieceCallback =
+    std::function<void(Torrent*, const std::shared_ptr<Piece>&)>;
 
 class Torrent {
  public:
@@ -131,6 +135,20 @@ class Torrent {
   [[nodiscard]] auto tmpfile() const { return m_tmpfile; }
 
   /**
+   * Callback that will be called whenever a piece has finished downloading.
+   */
+  void set_piece_callback(PieceCallback piece_callback) {
+    m_piece_callback = piece_callback;
+  }
+
+  /**
+   * Callback that will be called whenever a piece has finished downloading.
+   */
+  [[nodiscard]] PieceCallback get_piece_callback() const {
+    return m_piece_callback;
+  }
+
+  /**
    * The first request to the tracker.
    *
    * @return a list of peers for this torrent.
@@ -154,6 +172,7 @@ class Torrent {
   Sha1 m_info_hash{};
   std::shared_ptr<spdlog::logger> m_logger{};
   std::filesystem::path m_tmpfile{};
+  PieceCallback m_piece_callback{};
 };
 
 class FileInfo {

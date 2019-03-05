@@ -18,6 +18,7 @@
 namespace zit {
 
 class Peer;
+class Torrent;
 
 class PeerConnection {
  public:
@@ -51,9 +52,10 @@ class PeerConnection {
 
 class Peer {
  public:
-  explicit Peer(Url url, uint32_t piece_length)
+  explicit Peer(Url url, uint32_t piece_length, Torrent& torrent)
       : m_url(std::move(url)),
         m_piece_length(piece_length),
+        m_torrent(torrent),
         m_logger(spdlog::get("console")) {}
 
   [[nodiscard]] auto url() const { return m_url; }
@@ -116,6 +118,7 @@ class Peer {
   std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces{};
 
   std::unique_ptr<PeerConnection> m_connection{};
+  Torrent& m_torrent;
   std::shared_ptr<spdlog::logger> m_logger;
 };
 

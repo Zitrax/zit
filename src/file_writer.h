@@ -10,8 +10,7 @@
 
 namespace zit {
 
-using TorrentPiece =
-    std::tuple<std::shared_ptr<Torrent>, std::shared_ptr<Piece>>;
+using TorrentPiece = std::tuple<Torrent*, std::shared_ptr<Piece>>;
 
 /**
  * Queue of pieces to write to disk.
@@ -30,8 +29,7 @@ class FileWriter {
   /**
    * Add a piece to the queue for writing by the writer thread.
    */
-  void add(const std::shared_ptr<Torrent>& torrent,
-           const std::shared_ptr<Piece>& piece);
+  void add(Torrent* torrent, const std::shared_ptr<Piece>& piece);
 
   /**
    * Start FileWriter. It will pick pieces from the queue and write to disk as
@@ -68,6 +66,8 @@ class FileWriterThread {
     m_file_writer.stop();
     m_file_writer_thread.join();
   }
+
+  FileWriter& get() { return m_file_writer; }
 
  private:
   std::shared_ptr<spdlog::logger> m_logger{};

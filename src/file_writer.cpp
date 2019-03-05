@@ -8,8 +8,7 @@ namespace zit {
 using namespace std;
 namespace fs = filesystem;
 
-void FileWriter::add(const shared_ptr<Torrent>& torrent,
-                     const shared_ptr<Piece>& piece) {
+void FileWriter::add(Torrent* torrent, const shared_ptr<Piece>& piece) {
   lock_guard<mutex> lock(m_mutex);
   m_queue.push(make_tuple(torrent, piece));
   m_condition.notify_one();

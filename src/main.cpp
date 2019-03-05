@@ -10,6 +10,7 @@
 #include "spdlog/spdlog.h"
 
 using namespace std;
+using namespace std::placeholders;
 using namespace bencode;
 
 // prints the explanatory string of an exception. If the exception is nested,
@@ -39,6 +40,8 @@ int main() {
 
     // zit::Torrent torrent(p / ".." / "tests" / "data" / "test.torrent");
     zit::Torrent torrent(p / ".." / "random.torrent");
+    torrent.set_piece_callback(
+        bind(&zit::FileWriter::add, &file_writer.get(), _1, _2));
     console->info("\n{}", torrent);
     auto peers = torrent.start();
 

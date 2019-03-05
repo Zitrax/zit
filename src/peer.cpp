@@ -8,6 +8,7 @@
 #include <optional>
 #include "messages.h"
 #include "spdlog/spdlog.h"
+#include "torrent.h"
 
 using asio::ip::tcp;
 using namespace std;
@@ -219,6 +220,7 @@ void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
     if (piece->set_block(offset, data)) {
       m_logger->info("Piece {} done!", piece_id);
       m_client_pieces[piece_id] = true;
+      m_torrent.get_piece_callback()(&m_torrent, piece);
     }
     request_next_block();
   } else {

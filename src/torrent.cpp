@@ -184,7 +184,7 @@ vector<Peer> Torrent::start() {
   const int THREE_HEX_BYTES = 6;
   for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
     peers.emplace_back(Url(binary_peers.substr(i, THREE_HEX_BYTES), true),
-                       m_piece_length);
+                       m_piece_length, *this);
   }
 
   return peers;
