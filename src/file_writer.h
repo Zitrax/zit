@@ -8,6 +8,8 @@
 #include <queue>
 #include <tuple>
 
+#include "spdlog/sinks/stdout_color_sinks.h"
+
 namespace zit {
 
 using TorrentPiece = std::tuple<Torrent*, std::shared_ptr<Piece>>;
@@ -24,7 +26,7 @@ using TorrentPiece = std::tuple<Torrent*, std::shared_ptr<Piece>>;
  */
 class FileWriter {
  public:
-  FileWriter() : m_logger(spdlog::get("console")) {}
+  FileWriter() : m_logger(spdlog::get("file_writer")) {}
 
   /**
    * Add a piece to the queue for writing by the writer thread.
@@ -59,8 +61,10 @@ class FileWriter {
 class FileWriterThread {
  public:
   FileWriterThread()
-      : m_logger(spdlog::get("console")),
-        m_file_writer_thread([this]() { m_file_writer.run(); }) {}
+      : m_logger(spdlog::stdout_color_mt("file_writer")),
+        m_file_writer_thread([this]() { m_file_writer.run(); }) {
+    m_logger->set_level(spdlog::level::debug);
+  }
   ~FileWriterThread() {
     m_logger->debug("FileWriter stopping");
     m_file_writer.stop();

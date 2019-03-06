@@ -2,6 +2,7 @@
 #include "file_writer.h"
 
 #include <cstdio>
+#include <fstream>
 
 namespace zit {
 
@@ -32,6 +33,7 @@ void FileWriter::write_next_piece() {
       return;
     }
     t_piece = m_queue.front();
+    m_queue.pop();
   }
 
   auto [torrent, piece] = t_piece;
@@ -41,38 +43,43 @@ void FileWriter::write_next_piece() {
 
     // Create zeroed file if not existing
     if (!fs::exists(tmpfile_name)) {
-      m_logger->info("Creating tmpfile {} for {}", tmpfile_name,
-                     torrent->name());
-      fs::resize_file(tmpfile_name, length);
+      m_logger->info("Creating tmpfile {} for '{}' with size {}", tmpfile_name,
+                     torrent->name(), length);
+      {
+        ofstream tmpfile(tmpfile_name, ios::binary | ios::out);
+        tmpfile.exceptions(ofstream::failbit | ofstream::badbit);
+      }
+      filesystem::resize_file(tmpfile_name, length);
     }
 
     // Verify correct file size
-    if (fs::file_size(tmpfile_name) != length) {
-      throw runtime_error("Unexpected file size");
+    auto fsize = fs::file_size(tmpfile_name);
+    if (fsize != length) {
+      throw runtime_error("Unexpected (A) file size " + to_string(fsize));
     }
 
-    // Open and write piece at corrext offset
-    auto tmpfile = fopen(tmpfile_name.c_str(), "w");
-    if (tmpfile) {
-      throw runtime_error("Could not open tmpfile " + tmpfile_name.string());
+    {
+      // Open and write piece at corrext offset
+      auto tmpfile = fstream(tmpfile_name);
+      tmpfile.exceptions(fstream::failbit | fstream::badbit);
+      tmpfile.seekp(piece->id() * torrent->piece_length());
+      auto data = piece->data();
+      // TODO: Can we just use operator<< ?
+      tmpfile.write(reinterpret_cast<char*>(data.data()),
+                    numeric_cast<streamsize>(data.size()));
     }
-    if (fseek(tmpfile, piece->id() * torrent->piece_length(), SEEK_SET)) {
-      fclose(tmpfile);
-      throw runtime_error("fseek failed");
+
+    fsize = fs::file_size(tmpfile_name);
+    if (fsize != length) {
+      throw runtime_error("Unexpected (B) file size " + to_string(fsize));
     }
-    auto data = piece->data();
-    if (fwrite(data.data(), sizeof data[0], data.size(), tmpfile) !=
-        data.size()) {
-      fclose(tmpfile);
-      throw runtime_error("fwrite failed");
-    }
-    fclose(tmpfile);
-    m_logger->debug("Wrote piece {} for {}", piece->id(), torrent->name());
+    m_logger->debug("Wrote piece {} for '{}'", piece->id(), torrent->name());
     // TODO: Notify torrent that piece was written
   } catch (const exception& err) {
     // TODO: Retry later ? Mark torrent as errored ?
-    m_logger->error("write_next_piece failed for {} with error: {}",
-                    torrent->name(), err.what());
+    m_logger->error(
+        "write_next_piece failed for piece {} and torrent '{}' with error: {}",
+        piece->id(), torrent->name(), err.what());
   }
 }
 
