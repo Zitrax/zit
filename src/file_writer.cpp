@@ -60,11 +60,13 @@ void FileWriter::write_next_piece() {
 
     {
       // Open and write piece at corrext offset
-      auto tmpfile = fstream(tmpfile_name);
+      auto tmpfile = fstream(tmpfile_name, ios::in | ios::out | ios::binary);
       tmpfile.exceptions(fstream::failbit | fstream::badbit);
       tmpfile.seekp(piece->id() * torrent->piece_length());
       auto data = piece->data();
-      // TODO: Can we just use operator<< ?
+      if (data.size() != torrent->piece_length()) {
+        throw runtime_error("Unexpected size: " + to_string(data.size()));
+      }
       tmpfile.write(reinterpret_cast<char*>(data.data()),
                     numeric_cast<streamsize>(data.size()));
     }
