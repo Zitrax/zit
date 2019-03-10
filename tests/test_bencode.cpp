@@ -95,7 +95,7 @@ TEST(bencode, decode_int) {
   EXPECT_EQ(*decode("i-3e")->to<TypedElement<int64_t>>(), -3);
   EXPECT_EQ(*decode("i1234567890123456789e")->to<TypedElement<int64_t>>(),
             1234567890123456789);
-  EXPECT_THROW(*decode("i3e")->to<TypedElement<string>>(),
+  EXPECT_THROW(auto ret = *decode("i3e")->to<TypedElement<string>>(),
                BencodeConversionError);
 }
 
