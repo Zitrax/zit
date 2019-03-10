@@ -77,10 +77,12 @@ add_executable(zitest
   ../src/sha1.cpp
   ../src/messages.cpp
   ../src/piece.cpp)
-target_link_libraries(zitest gtest gtest_main crypto)
-if(SANITIZED_LIBCXX)
-  target_link_libraries(zitest c++fs)
-else()
-  target_link_libraries(zitest stdc++fs)
+target_link_libraries(zitest gtest gtest_main ${OPENSSL_CRYPTO_LIBRARY})
+if(NOT WIN32)
+  if(SANITIZED_LIBCXX)
+    target_link_libraries(zitest c++fs)
+  else()
+    target_link_libraries(zitest stdc++fs)
+  endif()
 endif()
 add_test(NAME zitest COMMAND zitest)

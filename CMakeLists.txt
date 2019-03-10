@@ -38,14 +38,15 @@ if(WIN32)
   add_compile_options(-DASIO_STANDALONE)
   include_directories(${ASIO_INCLUDE_DIR})
 
-  find_path(OPENSSL_INCLUDE_DIR sha.h HINTS $ENV{ProgramW6432}/OpenSSL-Win64/include/openssl)
-  if(NOT OPENSSL_INCLUDE_DIR)
-    message(FATAL_ERROR "Need OpenSSL include directory")
-  else()
-    message(STATUS "OpenSSL fund in ${OPENSSL_INCLUDE_DIR}")
+  # Use default installation folder if existing
+  find_path(WIN_OPENSSL_DIR sha.h HINTS $ENV{ProgramW6432}/OpenSSL-Win64/include/openssl)
+  if(WIN_OPENSSL_DIR)
+    set(OPENSSL_ROOT_DIR "${WIN_OPENSSL_DIR}/../..")
   endif()
-  include_directories(${OPENSSL_INCLUDE_DIR}/..)
 endif()
+
+find_package(OpenSSL REQUIRED)
+include_directories(${OPENSSL_INCLUDE_DIR})
 
 include_directories(SYSTEM "external")
 
