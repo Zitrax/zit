@@ -51,7 +51,7 @@ TEST(torrent, construct_multi) {
   EXPECT_FALSE(t.pieces().empty());
   EXPECT_FALSE(t.is_private());
   EXPECT_EQ(t.name(), "kali-linux-2018-3a-amd64-iso");
-  EXPECT_EQ(t.length(), 0);
+  EXPECT_EQ(t.length(), 3192651871);
   EXPECT_EQ(t.md5sum(), "");
   EXPECT_FALSE(t.files().empty());
   EXPECT_FALSE(t.is_single_file());

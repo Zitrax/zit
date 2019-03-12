@@ -122,11 +122,11 @@ Torrent::Torrent(const filesystem::path& file) {
 }
 
 int64_t Torrent::length() const {
-  return is_single_file() ? m_length
-                          : std::accumulate(m_files.cbegin(), m_files.cend(), 0,
-                                            [](int64_t a, const FileInfo& b) {
-                                              return a + b.length();
-                                            });
+  return is_single_file()
+             ? m_length
+             : accumulate(
+                   m_files.cbegin(), m_files.cend(), static_cast<int64_t>(0),
+                   [](int64_t a, const FileInfo& b) { return a + b.length(); });
 }
 
 auto Torrent::left() const {
