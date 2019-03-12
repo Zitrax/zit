@@ -66,6 +66,7 @@ add_executable(zitest
   test_bencode.cpp
   test_bitfield.cpp
   test_torrent.cpp
+  test_main.cpp
   test_net.cpp
   test_peer.cpp
   test_string_utils.cpp
@@ -77,7 +78,7 @@ add_executable(zitest
   ../src/sha1.cpp
   ../src/messages.cpp
   ../src/piece.cpp)
-target_link_libraries(zitest gtest gtest_main ${OPENSSL_CRYPTO_LIBRARY})
+target_link_libraries(zitest gtest ${OPENSSL_CRYPTO_LIBRARY})
 if(NOT WIN32)
   if(SANITIZED_LIBCXX)
     target_link_libraries(zitest c++fs)
