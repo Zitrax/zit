@@ -142,13 +142,6 @@ class Torrent {
   }
 
   /**
-   * Callback that will be called whenever a piece has finished downloading.
-   */
-  //[[nodiscard]] PieceCallback get_piece_callback() const {
-  //  return m_piece_callback;
-  //}
-
-  /**
    * The first request to the tracker.
    *
    * @return a list of peers for this torrent.
