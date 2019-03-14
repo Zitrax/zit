@@ -109,11 +109,9 @@ class Peer {
 
   void request_next_block();
 
-  // FIXME: The piece housekeeping should leter move up to the torrent
-  //        to support more than one peer.
   Bitfield m_remote_pieces{};
-  Bitfield m_client_pieces{};
 
+  // TODO: Also move this up to the Torrent class
   /** Piece id -> Piece object */
   std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces{};
 

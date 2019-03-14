@@ -76,7 +76,7 @@ void FileWriter::write_next_piece() {
       throw runtime_error("Unexpected (B) file size " + to_string(fsize));
     }
     m_logger->debug("Wrote piece {} for '{}'", piece->id(), torrent->name());
-    // TODO: Notify torrent that piece was written
+    // TODO: Notify torrent that piece was written such that we can free up memory
   } catch (const exception& err) {
     // TODO: Retry later ? Mark torrent as errored ?
     m_logger->error(

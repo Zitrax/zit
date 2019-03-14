@@ -144,9 +144,9 @@ class Torrent {
   /**
    * Callback that will be called whenever a piece has finished downloading.
    */
-  [[nodiscard]] PieceCallback get_piece_callback() const {
-    return m_piece_callback;
-  }
+  //[[nodiscard]] PieceCallback get_piece_callback() const {
+  //  return m_piece_callback;
+  //}
 
   /**
    * The first request to the tracker.
@@ -154,6 +154,36 @@ class Torrent {
    * @return a list of peers for this torrent.
    */
   std::vector<Peer> start();
+
+  /**
+   * Peer received remote piece info, make sure we have a non empty client side
+   * bitfield of the same size.
+   *
+   * m_client_pieces is also accessed by the file_writer, thus we need to lock.
+   */
+  void init_client_pieces(bytes::size_type count) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    if (!m_client_pieces.size()) {
+      m_client_pieces = Bitfield(count);
+    }
+  }
+
+  /**
+   * Called by peer when one piece has been downloaded.
+   */
+  void piece_done(std::shared_ptr<Piece>& piece) {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    m_client_pieces[piece->id()] = true;
+    m_piece_callback(this, piece);
+  }
+
+  /**
+   * Information about what pieces we don't have that a remote has.
+   */
+  [[nodiscard]] Bitfield relevant_pieces(const Bitfield& remote_pieces) const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return remote_pieces - m_client_pieces;
+  }
 
  private:
   std::string m_announce{};
@@ -173,6 +203,10 @@ class Torrent {
   std::shared_ptr<spdlog::logger> m_logger{};
   std::filesystem::path m_tmpfile{};
   PieceCallback m_piece_callback{};
+
+  // Piece housekeeping
+  mutable std::mutex m_mutex{};
+  Bitfield m_client_pieces{};
 };
 
 class FileInfo {

@@ -208,9 +208,7 @@ void Peer::set_interested(bool interested) {
 
 void Peer::set_remote_pieces(Bitfield bf) {
   m_remote_pieces = move(bf);
-  if (!m_client_pieces.size()) {
-    m_client_pieces = Bitfield(m_remote_pieces.size());
-  }
+  m_torrent.init_client_pieces(m_remote_pieces.size());
 }
 
 void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
@@ -219,8 +217,7 @@ void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
     auto piece = m_active_pieces[piece_id];
     if (piece->set_block(offset, data)) {
       m_logger->info("Piece {} done!", piece_id);
-      m_client_pieces[piece_id] = true;
-      m_torrent.get_piece_callback()(&m_torrent, piece);
+      m_torrent.piece_done(piece);
     }
     request_next_block();
   } else {
@@ -278,7 +275,7 @@ void Peer::handshake(const Sha1& info_hash) {
 
 optional<shared_ptr<Piece>> Peer::next_piece() {
   // Pieces the remote has minus the pieces we already got
-  Bitfield relevant_pieces = m_remote_pieces - m_client_pieces;
+  Bitfield relevant_pieces = m_torrent.relevant_pieces(m_remote_pieces);
 
   // Is there a piece to get
   auto next_id = relevant_pieces.next(true);
