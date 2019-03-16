@@ -118,6 +118,7 @@ class Peer {
   std::unique_ptr<PeerConnection> m_connection{};
   Torrent& m_torrent;
   std::shared_ptr<spdlog::logger> m_logger;
+  std::unique_ptr<asio::io_service::work> m_work{};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Peer& url) {

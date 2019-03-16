@@ -262,6 +262,14 @@ void Peer::handshake(const Sha1& info_hash) {
 
   // Assume we need to start listening immediately, then send handshake
   asio::io_service io_service;
+  // The work object make sure that the service does not stop when running out
+  // of events but stay running until stop() is called on the io_service for a
+  // hard stop, or destory the work object for a graceful shutdown by handling
+  // the remaining events.
+  m_work.reset(new asio::io_service::work(io_service));
+  // FIXME: Destroy work object when whole file is done.
+  //        But also io_service should eventually be per parent or per process,
+  //        not for each perr.
   try {
     m_connection = make_unique<PeerConnection>(*this, io_service, port);
   } catch (const asio::system_error&) {
@@ -271,8 +279,6 @@ void Peer::handshake(const Sha1& info_hash) {
   }
   m_connection->write(m_url, hs.str());
   io_service.run();
-
-  // First test ...
 }
 
 optional<shared_ptr<Piece>> Peer::next_piece() {
