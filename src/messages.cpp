@@ -200,7 +200,12 @@ bool Message::parse(PeerConnection& connection) {
         case peer_wire_id::INTERESTED:
         case peer_wire_id::NOT_INTERESTED:
         case peer_wire_id::HAVE:
-        case peer_wire_id::BITFIELD:
+        case peer_wire_id::BITFIELD: {
+          auto bf = Bitfield(bytes(m_msg.begin() + 4, m_msg.end()));
+          connection.peer().set_remote_pieces(bf);
+          m_logger->info("{}", bf);
+          return true;
+        }
         case peer_wire_id::REQUEST:
         case peer_wire_id::CANCEL:
         case peer_wire_id::PORT:

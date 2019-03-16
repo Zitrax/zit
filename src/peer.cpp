@@ -226,6 +226,8 @@ void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
 }
 
 void Peer::handshake(const Sha1& info_hash) {
+  m_logger->info("Starting handshake with: {}:{}", m_url.host(), m_url.port());
+
   // The handshake should contain:
   // <pstrlen><pstr><reserved><info_hash><peer_id>
 
