@@ -35,23 +35,29 @@ std::string Sha1::str() const {
   return std::string(data(), SHA_LENGTH);
 }
 
-// We can't get away here without the reinterpret casts as long as we work with
-// std::strings. Using another library would work (but they would still do the
-// cast internally).
-Sha1 Sha1::calculate(const std::string& data) {
-  auto src = reinterpret_cast<const unsigned char*>(data.data());
-
+Sha1 Sha1::calculate(const unsigned char* src, size_t count) {
   Sha1 ret;
   auto dst = reinterpret_cast<unsigned char*>(ret.data());
 
-  if (SHA1(src, data.length(), dst) == nullptr) {
+  if (SHA1(src, count, dst) == nullptr) {
     throw runtime_error("SHA1 calculation failed");
   }
 
   return ret;
 }
 
-Sha1 Sha1::fromBytes(const bytes& buffer, bytes::size_type offset) {
+Sha1 Sha1::calculate(const std::string& data) {
+  return calculate(reinterpret_cast<const unsigned char*>(data.data()),
+                   data.size());
+}
+
+Sha1 Sha1::calculate(const bytes& data) {
+  return calculate(reinterpret_cast<const unsigned char*>(data.data()),
+                   data.size());
+}
+
+template <typename T>
+Sha1 Sha1::fromBuffer(const T& buffer, typename T::size_type offset) {
   if (offset + SHA_LENGTH > buffer.size()) {
     throw invalid_argument("Buffer too small for extracting sha1");
   }
@@ -59,5 +65,11 @@ Sha1 Sha1::fromBytes(const bytes& buffer, bytes::size_type offset) {
   copy_n(reinterpret_cast<const char*>(&buffer[offset]), SHA_LENGTH, &ret[0]);
   return ret;
 }
+
+// To keep the implementation in the .cpp file
+template Sha1 Sha1::fromBuffer<string>(const string& buffer,
+                                       string::size_type offset);
+template Sha1 Sha1::fromBuffer<bytes>(const bytes& buffer,
+                                      bytes::size_type offset);
 
 }  // namespace zit

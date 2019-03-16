@@ -21,12 +21,19 @@ class Sha1 : public std::array<char, SHA_LENGTH> {
 
   [[nodiscard]] std::string str() const;
 
-  static Sha1 calculate(const std::string& data);
+  [[nodiscard]] static Sha1 calculate(const std::string& data);
+  [[nodiscard]] static Sha1 calculate(const bytes& data);
 
   /**
    * Extract a raw sha1 from a byte vector (no calculation involved).
+   *
+   * Implemented for zit::bytes and std::strings.
    */
-  static Sha1 fromBytes(const bytes& buffer, bytes::size_type offset);
+  template <typename T>
+  static Sha1 fromBuffer(const T& buffer, typename T::size_type offset);
+
+ private:
+  [[nodiscard]] static Sha1 calculate(const unsigned char* src, size_t count);
 };
 
 }  // namespace zit

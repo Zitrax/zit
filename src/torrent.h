@@ -67,9 +67,7 @@ class Torrent {
   [[nodiscard]] auto piece_length() const { return m_piece_length; }
 
   /**
-   * String consisting of the concatenation of all 20-byte SHA1 hash values,
-   * one per piece (byte string, i.e. not urlencoded).
-   * FIXME: vector ?
+   * Vector consisting of all 20-byte SHA1 hash values one per piece.
    */
   [[nodiscard]] auto pieces() const { return m_pieces; }
 
@@ -186,7 +184,7 @@ class Torrent {
   std::string m_created_by{};
   std::string m_encoding{};
   uint32_t m_piece_length = 0;
-  std::string m_pieces{};
+  std::vector<Sha1> m_pieces{};
   bool m_private = false;
   std::string m_name{};
   int64_t m_length = 0;

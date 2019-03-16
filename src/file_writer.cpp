@@ -1,6 +1,8 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "file_writer.h"
 
+#include "sha1.h"
+
 #include <cstdio>
 #include <fstream>
 
@@ -38,6 +40,11 @@ void FileWriter::write_next_piece() {
 
   auto [torrent, piece] = t_piece;
   try {
+    auto sha = Sha1::calculate(piece->data());
+    if (sha != torrent->pieces()[piece->id()]) {
+      throw runtime_error("Piece data does not match expected Sha1");
+    }
+
     auto tmpfile_name = torrent->tmpfile();
     auto length = numeric_cast<uintmax_t>(torrent->length());
 
@@ -76,7 +83,8 @@ void FileWriter::write_next_piece() {
       throw runtime_error("Unexpected (B) file size " + to_string(fsize));
     }
     m_logger->debug("Wrote piece {} for '{}'", piece->id(), torrent->name());
-    // TODO: Notify torrent that piece was written such that we can free up memory
+    // TODO: Notify torrent that piece was written such that we can free up
+    // memory
   } catch (const exception& err) {
     // TODO: Retry later ? Mark torrent as errored ?
     m_logger->error(

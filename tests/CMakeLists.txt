@@ -69,6 +69,7 @@ add_executable(zitest
   test_main.cpp
   test_net.cpp
   test_peer.cpp
+  test_sha1.cpp
   test_string_utils.cpp
   test_types.cpp
   ../src/bitfield.cpp

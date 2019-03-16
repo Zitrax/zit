@@ -59,7 +59,13 @@ Torrent::Torrent(const filesystem::path& file) {
   const auto& info = root_dict.at("info")->to<TypedElement<BeDict>>()->val();
 
   m_name = info.at("name")->to<TypedElement<string>>()->val();
-  m_pieces = info.at("pieces")->to<TypedElement<string>>()->val();
+  auto pieces = info.at("pieces")->to<TypedElement<string>>()->val();
+  if (pieces.size() % 20) {
+    throw runtime_error("Unexpected pieces length");
+  }
+  for (string::size_type i = 0; i < pieces.size(); i += 20) {
+    m_pieces.push_back(Sha1::fromBuffer(pieces, i));
+  }
   m_piece_length = numeric_cast<uint32_t>(
       info.at("piece length")->to<TypedElement<int64_t>>()->val());
 
