@@ -33,21 +33,35 @@ class Piece {
   [[nodiscard]] uint32_t block_count() const {
     return m_piece_size / m_block_size;
   }
+
   /** Return the data of the piece */
-  [[nodiscard]] auto data() const { return m_data; }
+  [[nodiscard]] bytes data() const;
+
   /**
    * Store incoming data
    * @return true if this was the last remaining block for this piece
    */
   bool set_block(uint32_t offset, const bytes& data);
 
+  /**
+   * Update status whether the piece has been written to disk or not.
+   */
+  void set_piece_written(bool written);
+
+  /**
+   * Return whether this piece has been written to disk or not.
+   */
+  [[nodiscard]] bool piece_written() const { return m_piece_written; }
+
  private:
   const uint32_t m_block_size = 1 << 14;
   uint32_t m_piece_size;
   Bitfield m_blocks_requested;
   Bitfield m_blocks_done;
-  uint32_t m_id;
+  const uint32_t m_id;
+  mutable std::mutex m_mutex;
   bytes m_data{};
+  std::atomic_bool m_piece_written = false;
   std::shared_ptr<spdlog::logger> m_logger;
 };
 
