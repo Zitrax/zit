@@ -31,7 +31,10 @@ class Message {
   explicit Message(const bytes& msg)
       : m_msg(msg), m_logger(spdlog::get("console")) {}
 
-  bool parse(PeerConnection& connection);
+  /**
+   * Parse the message and return the number of bytes consumed.
+   */
+  size_t parse(PeerConnection& connection);
 
   bool is_keepalive(const bytes& msg);
 

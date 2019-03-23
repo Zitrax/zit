@@ -89,9 +89,23 @@ void PeerConnection::handle_connect(const asio::error_code& err,
   m_logger->debug(PRETTY_FUNCTION);
   if (!err) {
     // The connection was successful. Send the request.
-    asio::async_write(socket_, request_,
-                      bind(&PeerConnection::handle_response, this, _1));
+    if (!m_connected) {
+      m_connected = true;
+      m_logger->debug("Connected");
+      asio::async_write(socket_, request_,
+                        bind(&PeerConnection::handle_response, this, _1));
+    } else {
+      m_logger->debug("Already connected");
+      asio::async_write(socket_, request_, [this](auto err, auto len) {
+        if (!err) {
+          m_logger->debug("Data of len {} sent", len);
+        } else {
+          m_logger->error(err.message());
+        }
+      });
+    }
   } else if (endpoint_iterator != tcp::resolver::iterator()) {
+    m_logger->debug("Trying next endpoint");
     // The connection failed. Try the next endpoint in the list.
     socket_.close();
     tcp::endpoint endpoint = *endpoint_iterator;
@@ -112,14 +126,10 @@ void PeerConnection::handle_response(const asio::error_code& err) {
       bytes response(response_.size());
       buffer_copy(asio::buffer(response), response_.data());
       Message msg(response);
-      auto done = msg.parse(*this);
+      size_t consumed = msg.parse(*this);
       cout.flush();
-      // If we are done reading the current message we should return
-      // but if not we should read more from the socket.
-      if (done) {
-        response_.consume(response_.size());
-        return;
-      }
+      m_logger->debug("Consuming {}/{}", consumed, response.size());
+      response_.consume(consumed);
     }
 
     // Read remaining data until EOF.
@@ -266,7 +276,7 @@ void Peer::handshake(const Sha1& info_hash) {
   // of events but stay running until stop() is called on the io_service for a
   // hard stop, or destory the work object for a graceful shutdown by handling
   // the remaining events.
-  m_work.reset(new asio::io_service::work(io_service));
+  m_work = make_unique<asio::io_service::work>(io_service);
   // FIXME: Destroy work object when whole file is done.
   //        But also io_service should eventually be per parent or per process,
   //        not for each perr.

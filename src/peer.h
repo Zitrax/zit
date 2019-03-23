@@ -47,6 +47,7 @@ class PeerConnection {
   asio::streambuf response_{};
   asio::ip::tcp::socket socket_;
   asio::ip::tcp::resolver::iterator endpoint_{};
+  bool m_connected = false;
   std::shared_ptr<spdlog::logger> m_logger;
 };
 
