@@ -122,7 +122,7 @@ string Net::urlEncode(const string& value) {
   escaped.fill('0');
   escaped << hex;
 
-  for (const auto C : value) {
+  for (const unsigned char C : value) {
     // Keep alphanumeric and other accepted characters intact
     if (isalnum(C) || C == '-' || C == '_' || C == '.' || C == '~') {
       escaped << C;

@@ -26,7 +26,7 @@ inline std::string from_bytes(const bytes& buffer,
     throw std::invalid_argument(__FUNCTION__ + ": end > size"s);
   }
   return std::string(
-      reinterpret_cast<const char*>(&buffer[start]),
-      reinterpret_cast<const char*>(&buffer[end == 0 ? buffer.size() : end]));
+	  buffer.cbegin() + start,
+	  buffer.cbegin() + (end == 0 ? buffer.size() : end));
 }
 }  // namespace zit
