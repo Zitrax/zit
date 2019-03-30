@@ -18,7 +18,8 @@ inline auto read_file(const std::filesystem::path& file_name) {
   try {
     // Important to open in binary mode due to line endings
     // differing on windows and linux.
-    std::ifstream file_stream{file_name, std::ios_base::in|std::ios_base::binary};
+    std::ifstream file_stream{file_name,
+                              std::ios_base::in | std::ios_base::binary};
     file_stream.exceptions(std::ifstream::failbit);
     std::ostringstream str_stream{};
     file_stream >> str_stream.rdbuf();

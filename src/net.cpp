@@ -122,7 +122,10 @@ string Net::urlEncode(const string& value) {
   escaped.fill('0');
   escaped << hex;
 
-  for (const unsigned char C : value) {
+  for (const auto VAL : value) {
+    // Windows need C to be unsigned or it will assert. This extra cast
+    // was measured in quickbench to only have 0.1% impact.
+    const auto C = static_cast<unsigned char>(VAL);
     // Keep alphanumeric and other accepted characters intact
     if (isalnum(C) || C == '-' || C == '_' || C == '.' || C == '~') {
       escaped << C;

@@ -25,8 +25,17 @@ inline std::string from_bytes(const bytes& buffer,
   if (end > buffer.size()) {
     throw std::invalid_argument(__FUNCTION__ + ": end > size"s);
   }
+
+  // Here Visual Studio 2017 and Clang 8 neither compile the other version
+  // thus using ifdefs for now.
+
+#ifdef WIN32
+  return std::string(buffer.cbegin() + start,
+                     buffer.cbegin() + (end == 0 ? buffer.size() : end));
+#else
   return std::string(
-	  buffer.cbegin() + start,
-	  buffer.cbegin() + (end == 0 ? buffer.size() : end));
+      reinterpret_cast<const char*>(&buffer[start]),
+      reinterpret_cast<const char*>(&buffer[end == 0 ? buffer.size() : end]));
+#endif  // WIN32
 }
 }  // namespace zit
