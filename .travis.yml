@@ -23,11 +23,11 @@ matrix:
       addons:
         apt:
           sources:
-            - ubuntu-toolchain-r-test
+            - llvm-toolchain-xenial
           packages:
-            - clang-7
+            - clang-8
             - libasio-dev
             - libboost-dev
       script:
-        - CXX=clang++-7 cmake .
+        - CXX=clang++-8 cmake .
         - cmake --build .

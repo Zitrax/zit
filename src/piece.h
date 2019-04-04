@@ -59,7 +59,7 @@ class Piece {
   Bitfield m_blocks_requested;
   Bitfield m_blocks_done;
   const uint32_t m_id;
-  mutable std::mutex m_mutex;
+  mutable std::mutex m_mutex{};
   bytes m_data{};
   std::atomic_bool m_piece_written = false;
   std::shared_ptr<spdlog::logger> m_logger;
