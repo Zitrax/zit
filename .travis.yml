@@ -16,18 +16,18 @@ matrix:
             - libboost-dev
       script:
         - CXX=g++-8 cmake .
-        - cmake --build .
+        - cmake --build . -- -j$(nproc)
 
     - name: clang-8
       os: linux
       addons:
         apt:
           sources:
-            - llvm-toolchain-xenial
+            - llvm-toolchain-xenial-8
           packages:
             - clang-8
             - libasio-dev
             - libboost-dev
       script:
         - CXX=clang++-8 cmake .
-        - cmake --build .
+        - cmake --build . -- -j$(nproc)
