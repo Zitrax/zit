@@ -17,6 +17,7 @@ matrix:
       script:
         - CXX=g++-8 cmake .
         - cmake --build . -- -j$(nproc)
+        - ctest
 
     - name: clang-8
       os: linux
@@ -34,3 +35,4 @@ matrix:
       script:
         - CXX=clang++-8 cmake .
         - cmake --build . -- -j$(nproc)
+        - ctest
