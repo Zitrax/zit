@@ -11,6 +11,7 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-8
+            - libasio-dev
       script:
         - CXX=g++-8 cmake .
         - cmake --build .
@@ -21,7 +22,8 @@ matrix:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - clang-8
+            - clang-7
+            - libasio-dev
       script:
-        - CXX=clang++-8 cmake .
+        - CXX=clang++-7 cmake .
         - cmake --build .
