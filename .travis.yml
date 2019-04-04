@@ -11,8 +11,10 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-8
-      env:
-        - MATRIX_EVAL = "CC=gcc-8 && CXX=g++-8"
+      script:
+        - CXX=g++-8 cmake .
+        - cmake --build .
+
     - os: linux
       addons:
         apt:
@@ -20,8 +22,6 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - clang-8
-      env:
-        - MATRIX_EVAL = "CC=clang-8 && CXX=clang++-8"
-
-before_install:
-  - eval "${MATRIX_EVAL}"
+      script:
+        - CXX=clang++-8 cmake .
+        - cmake --build .
