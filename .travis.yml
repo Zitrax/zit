@@ -23,6 +23,7 @@ matrix:
       addons:
         apt:
           sources:
+            - ubuntu-toolchain-r-test  # for libstdc++
             - llvm-toolchain-xenial-8
           packages:
             - clang-8
