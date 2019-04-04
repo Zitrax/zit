@@ -1,5 +1,3 @@
-enable_testing()
-
 option(COVERAGE "Enable coverage of unit tests" OFF)
 
 # Download and unpack googletest at configure time

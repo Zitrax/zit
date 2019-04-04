@@ -31,7 +31,7 @@ matrix:
             - clang-tidy-8
             - libasio-dev
             - libboost-dev
-            - libstdc++-8-dev
+            - libstdc++-8-dev  # for <filesystem>
       script:
         - CXX=clang++-8 cmake .
         - cmake --build . -- -j$(nproc)
