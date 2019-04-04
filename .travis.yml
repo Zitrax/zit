@@ -1,0 +1,38 @@
+language: cpp
+dist: xenial
+sudo: false
+
+matrix:
+  include:
+    - name: g++-8
+      os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test
+          packages:
+            - g++-8
+            - libasio-dev
+            - libboost-dev
+      script:
+        - CXX=g++-8 cmake .
+        - cmake --build . -- -j$(nproc)
+        - ctest
+
+    - name: clang-8
+      os: linux
+      addons:
+        apt:
+          sources:
+            - ubuntu-toolchain-r-test  # for libstdc++
+            - llvm-toolchain-xenial-8
+          packages:
+            - clang-8
+            - clang-tidy-8
+            - libasio-dev
+            - libboost-dev
+            - libstdc++-8-dev  # for <filesystem>
+      script:
+        - CXX=clang++-8 cmake .
+        - cmake --build . -- -j$(nproc)
+        - ctest

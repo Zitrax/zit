@@ -51,6 +51,7 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 include_directories(SYSTEM "external")
 
 add_subdirectory(src)
+enable_testing()
 add_subdirectory(tests)
 
 file(GLOB_RECURSE ALL_SRC_SOURCE_FILES src/*.cpp)
