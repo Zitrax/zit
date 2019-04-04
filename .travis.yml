@@ -26,8 +26,10 @@ matrix:
             - llvm-toolchain-xenial-8
           packages:
             - clang-8
+            - clang-tidy-8
             - libasio-dev
             - libboost-dev
+            - libstdc++-8-dev
       script:
         - CXX=clang++-8 cmake .
         - cmake --build . -- -j$(nproc)
