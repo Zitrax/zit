@@ -4,7 +4,8 @@ sudo: false
 
 matrix:
   include:
-    - os: linux
+    - name: g++-8
+      os: linux
       addons:
         apt:
           sources:
@@ -12,11 +13,13 @@ matrix:
           packages:
             - g++-8
             - libasio-dev
+            - libboost-dev
       script:
         - CXX=g++-8 cmake .
         - cmake --build .
 
-    - os: linux
+    - name: clang-8
+      os: linux
       addons:
         apt:
           sources:
@@ -24,6 +27,7 @@ matrix:
           packages:
             - clang-7
             - libasio-dev
+            - libboost-dev
       script:
         - CXX=clang++-7 cmake .
         - cmake --build .
