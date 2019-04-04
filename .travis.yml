@@ -2,7 +2,6 @@ language: cpp
 dist: xenial
 sudo: false
 
-
 matrix:
   include:
     - os: linux
