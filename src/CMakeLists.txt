@@ -11,6 +11,8 @@ endif()
 
 add_executable(zit main.cpp torrent.cpp net.cpp sha1.cpp peer.cpp bitfield.cpp messages.cpp piece.cpp file_writer.cpp)
 
+install(TARGETS zit RUNTIME DESTINATION bin)
+
 # Enable Link Time Optimization for release builds if supported
 # (Note: clang can even use -flto=full, but has to be manually
 #        added - no cmake support for that)
