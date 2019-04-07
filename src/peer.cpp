@@ -276,8 +276,6 @@ void Peer::handshake(const Sha1& info_hash) {
   hs.write(RESERVED.c_str(), numeric_cast<std::streamsize>(RESERVED.length()));
   hs << info_hash.str() << "abcdefghijklmnopqrst";  // FIXME: Use proper peer-id
 
-  auto port = 20000;  // FIXME: configurable port
-
   // Assume we need to start listening immediately, then send handshake
   asio::io_service io_service;
   // The work object make sure that the service does not stop when running out
@@ -289,11 +287,11 @@ void Peer::handshake(const Sha1& info_hash) {
   //        But also io_service should eventually be per parent or per process,
   //        not for each perr.
   try {
-    m_connection = make_unique<PeerConnection>(*this, io_service, port);
+    m_connection = make_unique<PeerConnection>(*this, io_service, m_port);
   } catch (const asio::system_error&) {
     throw_with_nested(runtime_error("Creating peer connection to " +
                                     m_url.authority() + " from port " +
-                                    to_string(port)));
+                                    to_string(m_port)));
   }
   m_connection->write(m_url, hs.str());
   io_service.run();

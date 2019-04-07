@@ -81,6 +81,11 @@ class Peer {
    */
   [[nodiscard]] auto interested() const { return m_interested; }
 
+  /**
+   * Port that we listen to.
+   */
+  [[nodiscard]] auto port() const { return m_port; }
+
   void handshake(const Sha1& info_hash);
 
   /**
@@ -120,6 +125,7 @@ class Peer {
   Torrent& m_torrent;
   std::shared_ptr<spdlog::logger> m_logger;
   std::unique_ptr<asio::io_service::work> m_work{};
+  unsigned short m_port = 20000;  // FIXME: configurable port
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Peer& url) {
