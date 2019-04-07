@@ -49,7 +49,14 @@ int main() {
       console->info("\n{}", peer);
     }
 
-    peers[0].handshake(torrent.info_hash());
+    for (auto& peer : peers) {
+      if (!(peer.url().host() == "127.0.0.1" &&
+            peer.url().port() == peer.port())) {
+        peer.handshake(torrent.info_hash());
+        break;
+      }
+      console->debug("Ignored own peer");
+    }
 
   } catch (const exception& e) {
     print_exception(e);
