@@ -12,3 +12,9 @@
 ** Need to at least maintain four booleans, 'choking' and 'interested' both ways
 ** Peer handshake
 *** <pstrlen><pstr><reserved><info_hash><peer_id>
+* It would be nice to automate testing. For that I optimaly need:
+** Create a torrent using cli:
+*** It seems that ctorrent can do that: ctorrent -t -u "http://localhost:8000/announce" -s test.torrent file
+** Launch a cli tracker
+*** Seems that https://github.com/webtorrent/bittorrent-tracker might work (npm install -g bittorrent-tracker)
+** Seed the file with 1..N clients with different amount of data
