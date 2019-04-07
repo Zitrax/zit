@@ -226,7 +226,8 @@ size_t Message::parse(PeerConnection& connection) {
         }
           return m_msg.size();
         case peer_wire_id::INTERESTED:
-          break;
+          connection.peer().set_interested(true);
+          return m_msg.size();
         case peer_wire_id::NOT_INTERESTED:
           break;
         case peer_wire_id::HAVE:

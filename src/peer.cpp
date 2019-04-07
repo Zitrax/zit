@@ -213,6 +213,14 @@ void Peer::set_choking(bool choking) {
 }
 
 void Peer::set_interested(bool interested) {
+  if (!m_interested && interested) {
+    m_logger->info("Peer is Interested");
+    // TODO: Unchoke the peer so it can request pieces from us
+  }
+  if (m_interested && !interested) {
+    m_logger->info("Peer is Not interested");
+    // TODO: Choke the peer to stop it requesting pieces from us
+  }
   m_interested = interested;
 }
 
