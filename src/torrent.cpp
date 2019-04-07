@@ -8,6 +8,7 @@
 #include "spdlog/spdlog.h"
 
 #include <algorithm>
+#include <iomanip>
 #include <iostream>
 #include <numeric>
 
@@ -216,7 +217,9 @@ ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
       os << "  " << fi << "\n";
     }
   }
-  os << "Creation date: " << torrent.creation_date() << "\n";
+  auto creation = torrent.creation_date();
+  os << "Creation date: " << creation << " ("
+     << put_time(localtime(&creation), "%F %T %Z") << ")\n";
   os << "Comment:       " << torrent.comment() << "\n";
   if (!torrent.created_by().empty()) {
     os << "Created by:    " << torrent.created_by() << "\n";
