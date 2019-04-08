@@ -1,6 +1,7 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
+#include <iomanip>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -38,4 +39,19 @@ inline std::string from_bytes(const bytes& buffer,
       reinterpret_cast<const char*>(&buffer[end == 0 ? buffer.size() : end]));
 #endif  // WIN32
 }
+
+/**
+ * Convert string to hexadecimal byte representation.
+ */
+inline std::string to_hex(const std::string& str) {
+  std::stringstream ss;
+  ss << std::setfill('0') << std::hex << std::uppercase;
+
+  for(auto ch : str) {
+    ss << std::setw(2) << static_cast<int>(ch);
+  }
+
+  return ss.str();
+}
+
 }  // namespace zit
