@@ -13,18 +13,42 @@ TEST(Bitfield, construct) {
   Bitfield bf2(b);
 }
 
+// Ensure the bits are handled/read in the correct order
+TEST(Bitfield, order) {
+  bytes b{0xFF_b, 0xFE_b};
+  Bitfield bf(b);
+
+  EXPECT_TRUE(bf[0]);
+  EXPECT_TRUE(bf[1]);
+  EXPECT_TRUE(bf[2]);
+  EXPECT_TRUE(bf[3]);
+  EXPECT_TRUE(bf[4]);
+  EXPECT_TRUE(bf[5]);
+  EXPECT_TRUE(bf[6]);
+  EXPECT_TRUE(bf[7]);
+
+  EXPECT_TRUE(bf[8]);
+  EXPECT_TRUE(bf[9]);
+  EXPECT_TRUE(bf[10]);
+  EXPECT_TRUE(bf[11]);
+  EXPECT_TRUE(bf[12]);
+  EXPECT_TRUE(bf[13]);
+  EXPECT_TRUE(bf[14]);
+  EXPECT_FALSE(bf[15]);
+}
+
 TEST(Bitfield, single_byte_read_1) {
   bytes b{1_b};
   Bitfield bf(b);
 
-  EXPECT_TRUE(bf[0]);
+  EXPECT_FALSE(bf[0]);
   EXPECT_FALSE(bf[1]);
   EXPECT_FALSE(bf[2]);
   EXPECT_FALSE(bf[3]);
   EXPECT_FALSE(bf[4]);
   EXPECT_FALSE(bf[5]);
   EXPECT_FALSE(bf[6]);
-  EXPECT_FALSE(bf[7]);
+  EXPECT_TRUE(bf[7]);
   // Need to assign to trigger exception since
   // the use of proxy makes the throw lazy
   EXPECT_THROW(bool b = bf[8], std::out_of_range);
@@ -34,14 +58,14 @@ TEST(Bitfield, single_byte_read_2) {
   bytes b{5_b};
   Bitfield bf(b);
 
-  EXPECT_TRUE(bf[0]);
+  EXPECT_FALSE(bf[0]);
   EXPECT_FALSE(bf[1]);
-  EXPECT_TRUE(bf[2]);
+  EXPECT_FALSE(bf[2]);
   EXPECT_FALSE(bf[3]);
   EXPECT_FALSE(bf[4]);
-  EXPECT_FALSE(bf[5]);
+  EXPECT_TRUE(bf[5]);
   EXPECT_FALSE(bf[6]);
-  EXPECT_FALSE(bf[7]);
+  EXPECT_TRUE(bf[7]);
   // Need to assign to trigger exception since
   // the use of proxy makes the throw lazy
   EXPECT_THROW(bool b = bf[8], std::out_of_range);
@@ -51,22 +75,23 @@ TEST(Bitfield, multi_byte_read) {
   bytes b{7_b, 9_b};
   Bitfield bf(b);
 
-  EXPECT_TRUE(bf[0]);
-  EXPECT_TRUE(bf[1]);
-  EXPECT_TRUE(bf[2]);
+  EXPECT_FALSE(bf[0]);
+  EXPECT_FALSE(bf[1]);
+  EXPECT_FALSE(bf[2]);
   EXPECT_FALSE(bf[3]);
   EXPECT_FALSE(bf[4]);
-  EXPECT_FALSE(bf[5]);
-  EXPECT_FALSE(bf[6]);
-  EXPECT_FALSE(bf[7]);
-  EXPECT_TRUE(bf[8]);
+  EXPECT_TRUE(bf[5]);
+  EXPECT_TRUE(bf[6]);
+  EXPECT_TRUE(bf[7]);
+
+  EXPECT_FALSE(bf[8]);
   EXPECT_FALSE(bf[9]);
   EXPECT_FALSE(bf[10]);
-  EXPECT_TRUE(bf[11]);
-  EXPECT_FALSE(bf[12]);
+  EXPECT_FALSE(bf[11]);
+  EXPECT_TRUE(bf[12]);
   EXPECT_FALSE(bf[13]);
   EXPECT_FALSE(bf[14]);
-  EXPECT_FALSE(bf[15]);
+  EXPECT_TRUE(bf[15]);
   // Need to assign to trigger exception since
   // the use of proxy makes the throw lazy
   EXPECT_THROW(bool b = bf[16], std::out_of_range);
@@ -222,27 +247,14 @@ TEST(Bitfield, subtraction) {
   bf2 = Bitfield(bytes{5_b});  // 00000101
   ret = bf1 - bf2;
   EXPECT_FALSE(ret[0]);
-  EXPECT_TRUE(ret[1]);
+  EXPECT_FALSE(ret[1]);
   EXPECT_FALSE(ret[2]);
   EXPECT_FALSE(ret[3]);
   EXPECT_FALSE(ret[4]);
   EXPECT_FALSE(ret[5]);
-  EXPECT_FALSE(ret[6]);
+  EXPECT_TRUE(ret[6]);
   EXPECT_FALSE(ret[7]);
   ret = bf2 - bf1;
-  EXPECT_FALSE(ret[0]);
-  EXPECT_FALSE(ret[1]);
-  EXPECT_TRUE(ret[2]);
-  EXPECT_FALSE(ret[3]);
-  EXPECT_FALSE(ret[4]);
-  EXPECT_FALSE(ret[5]);
-  EXPECT_FALSE(ret[6]);
-  EXPECT_FALSE(ret[7]);
-  // Different sizes
-  bf1 = Bitfield(bytes{240_b, 10_b});  // 11110000 00001010
-  bf2 = Bitfield(bytes{85_b});         // 01010101
-  ret = bf1 - bf2;
-  EXPECT_EQ(ret.size_bytes(), 1);
   EXPECT_FALSE(ret[0]);
   EXPECT_FALSE(ret[1]);
   EXPECT_FALSE(ret[2]);
@@ -250,8 +262,11 @@ TEST(Bitfield, subtraction) {
   EXPECT_FALSE(ret[4]);
   EXPECT_TRUE(ret[5]);
   EXPECT_FALSE(ret[6]);
-  EXPECT_TRUE(ret[7]);
-  ret = bf2 - bf1;
+  EXPECT_FALSE(ret[7]);
+  // Different sizes
+  bf1 = Bitfield(bytes{240_b, 10_b});  // 11110000 00001010
+  bf2 = Bitfield(bytes{85_b});         // 01010101
+  ret = bf1 - bf2;
   EXPECT_EQ(ret.size_bytes(), 1);
   EXPECT_TRUE(ret[0]);
   EXPECT_FALSE(ret[1]);
@@ -261,4 +276,14 @@ TEST(Bitfield, subtraction) {
   EXPECT_FALSE(ret[5]);
   EXPECT_FALSE(ret[6]);
   EXPECT_FALSE(ret[7]);
+  ret = bf2 - bf1;
+  EXPECT_EQ(ret.size_bytes(), 1);
+  EXPECT_FALSE(ret[0]);
+  EXPECT_FALSE(ret[1]);
+  EXPECT_FALSE(ret[2]);
+  EXPECT_FALSE(ret[3]);
+  EXPECT_FALSE(ret[4]);
+  EXPECT_TRUE(ret[5]);
+  EXPECT_FALSE(ret[6]);
+  EXPECT_TRUE(ret[7]);
 }

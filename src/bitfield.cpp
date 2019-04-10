@@ -25,9 +25,9 @@ Bitfield::Proxy& Bitfield::Proxy::operator=(bool b) {
   auto byte_val = static_cast<uint8_t>(m_bitfield.m_bytes[byte_index]);
   // Update bit
   if (b) {
-    byte_val |= static_cast<uint8_t>(1 << (m_i % 8));
+    byte_val |= bit();
   } else {
-    byte_val &= static_cast<uint8_t>(~(1 << (m_i % 8)));
+    byte_val &= ~bit();
   }
   m_bitfield.m_bytes[byte_index] = static_cast<std::byte>(byte_val);
   return *this;
@@ -35,7 +35,11 @@ Bitfield::Proxy& Bitfield::Proxy::operator=(bool b) {
 
 Bitfield::Proxy::operator bool() const {
   auto byte = static_cast<uint8_t>(m_bitfield.m_bytes.at(m_i / 8));
-  return byte & (1 << (m_i % 8));
+  return byte & bit();
+}
+
+uint8_t Bitfield::Proxy::bit() const {
+  return static_cast<uint8_t>(1 << (7 - (m_i % 8)));
 }
 
 // --- bitfield ---
