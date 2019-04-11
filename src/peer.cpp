@@ -190,16 +190,24 @@ void Peer::request_next_block() {
     m_logger->info("No block requests left to do!");
     return;
   }
-  m_logger->info("Sending piece request");
   auto begin = to_big_endian(*block_offset);
-  // 16 KiB (as recommended)
-  auto length = to_big_endian(piece->block_size());
+  uint32_t length;
+  if (*block_offset + piece->block_size() > piece->piece_size()) {
+    // Last block - so reduce request size
+    length = piece->piece_size() % piece->block_size();
+  } else {
+    // 16 KiB (as recommended)
+    length = piece->block_size();
+  }
+  m_logger->info("Sending piece request for piece {} with size {}",
+                 piece->id(), length);
+  auto blength = to_big_endian(length);
   bytes request;
   request.insert(request.end(), len.begin(), len.end());
   request.push_back(static_cast<byte>(peer_wire_id::REQUEST));
   request.insert(request.end(), index.begin(), index.end());
   request.insert(request.end(), begin.begin(), begin.end());
-  request.insert(request.end(), length.begin(), length.end());
+  request.insert(request.end(), blength.begin(), blength.end());
   m_connection->write(request);
 }
 
@@ -311,8 +319,14 @@ optional<shared_ptr<Piece>> Peer::next_piece() {
   auto id = numeric_cast<uint32_t>(*next_id);
   auto piece = m_active_pieces.find(id);
   if (piece == m_active_pieces.end()) {
+    auto piece_length = m_piece_length;
+    if (id == m_torrent.pieces().size() - 1) {
+      // Last piece
+      piece_length = m_torrent.length() % m_piece_length;
+      m_logger->debug("Last piece length = {}", piece_length);
+    }
     auto it = m_active_pieces.emplace(
-        make_pair(id, make_shared<Piece>(id, m_piece_length)));
+        make_pair(id, make_shared<Piece>(id, piece_length)));
     return make_optional(it.first->second);
   }
   return make_optional(m_active_pieces.at(id));

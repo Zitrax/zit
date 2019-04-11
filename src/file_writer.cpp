@@ -69,13 +69,17 @@ void FileWriter::write_next_piece() {
       // Open and write piece at corrext offset
       auto tmpfile = fstream(tmpfile_name, ios::in | ios::out | ios::binary);
       tmpfile.exceptions(fstream::failbit | fstream::badbit);
-      tmpfile.seekp(piece->id() * torrent->piece_length());
+      auto offset = piece->id() * torrent->piece_length();
+      tmpfile.seekp(offset);
       auto data = piece->data();
-      if (data.size() != torrent->piece_length()) {
-        throw runtime_error("Unexpected size: " + to_string(data.size()));
+      if (data.size() != piece->piece_size()) {
+        throw runtime_error("Unexpected size: " + to_string(data.size()) +
+                            " != " + to_string(piece->piece_size()));
       }
       tmpfile.write(reinterpret_cast<char*>(data.data()),
                     numeric_cast<streamsize>(data.size()));
+      m_logger->debug("Writing: {} -> {} ({})", offset, offset + data.size(),
+                      data.size());
     }
 
     fsize = fs::file_size(tmpfile_name);

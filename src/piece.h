@@ -31,11 +31,15 @@ class Piece {
   [[nodiscard]] auto block_size() const { return m_block_size; }
   /** Total number of blocks in this piece */
   [[nodiscard]] uint32_t block_count() const {
-    return m_piece_size / m_block_size;
+    return (m_piece_size / m_block_size) +
+           (m_piece_size % m_block_size ? 1 : 0);
   }
 
   /** Return the data of the piece */
   [[nodiscard]] bytes data() const;
+
+  /** Size of this piece in bytes */
+  [[nodiscard]] auto piece_size() const { return m_piece_size; }
 
   /**
    * Store incoming data
