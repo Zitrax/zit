@@ -319,7 +319,7 @@ optional<shared_ptr<Piece>> Peer::next_piece() {
   auto id = numeric_cast<uint32_t>(*next_id);
   auto piece = m_active_pieces.find(id);
   if (piece == m_active_pieces.end()) {
-    auto piece_length = m_piece_length;
+    int64_t piece_length = m_piece_length;
     if (id == m_torrent.pieces().size() - 1) {
       // Last piece
       piece_length = m_torrent.length() % m_piece_length;

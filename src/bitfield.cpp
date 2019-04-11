@@ -24,10 +24,11 @@ Bitfield::Proxy& Bitfield::Proxy::operator=(bool b) {
   }
   auto byte_val = static_cast<uint8_t>(m_bitfield.m_bytes[byte_index]);
   // Update bit
+  uint8_t cb = bit();
   if (b) {
-    byte_val |= bit();
+    byte_val |= static_cast<uint8_t>(cb);
   } else {
-    byte_val &= ~bit();
+    byte_val &= static_cast<uint8_t>(~cb);
   }
   m_bitfield.m_bytes[byte_index] = static_cast<std::byte>(byte_val);
   return *this;
