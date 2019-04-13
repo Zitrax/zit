@@ -13,6 +13,7 @@ namespace fs = filesystem;
 
 void FileWriter::add(Torrent* torrent, const shared_ptr<Piece>& piece) {
   lock_guard<mutex> lock(m_mutex);
+  m_logger->debug("Piece {} added to queue", piece->id());
   m_queue.push(make_tuple(torrent, piece));
   m_condition.notify_one();
 }
@@ -87,7 +88,7 @@ void FileWriter::write_next_piece() {
       throw runtime_error("Unexpected (B) file size " + to_string(fsize));
     }
     piece->set_piece_written(true);
-    m_logger->debug("Wrote piece {} for '{}'", piece->id(), torrent->name());
+    m_logger->info("Wrote piece {} for '{}'", piece->id(), torrent->name());
   } catch (const exception& err) {
     // TODO: Retry later ? Mark torrent as errored ?
     m_logger->error(

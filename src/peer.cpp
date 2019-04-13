@@ -192,7 +192,7 @@ void Peer::request_next_block(unsigned short count) {
 
     auto block_offset = piece->next_offset();
     if (!block_offset) {
-      m_logger->info("No block requests left to do!");
+      m_logger->debug("No block requests left to do!");
       break;
     }
     auto len = to_big_endian(13);
@@ -206,7 +206,7 @@ void Peer::request_next_block(unsigned short count) {
       // 16 KiB (as recommended)
       length = piece->block_size();
     }
-    m_logger->info(
+    m_logger->debug(
         "Sending block request for piece {} with size {} and offset {}",
         piece->id(), length, *block_offset);
     auto blength = to_big_endian(length);

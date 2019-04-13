@@ -63,7 +63,7 @@ class FileWriterThread {
   FileWriterThread()
       : m_logger(spdlog::stdout_color_mt("file_writer")),
         m_file_writer_thread([this]() { m_file_writer.run(); }) {
-    m_logger->set_level(spdlog::level::debug);
+    m_logger->set_level(spdlog::level::info);
   }
   ~FileWriterThread() {
     m_logger->debug("FileWriter stopping");

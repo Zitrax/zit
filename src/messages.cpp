@@ -199,8 +199,8 @@ size_t Message::parse(PeerConnection& connection) {
 
   if (m_msg.size() >= 4) {
     auto len = big_endian(m_msg);
-    m_logger->info("Incoming length = {}, message/buffer size = {}", len,
-                   m_msg.size());
+    m_logger->debug("Incoming length = {}, message/buffer size = {}", len,
+                    m_msg.size());
     if (len > m_msg.size() + 4) {
       // Not a full message - return and await more data
       return 0;
