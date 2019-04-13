@@ -122,7 +122,10 @@ void PeerConnection::handle_connect(const asio::error_code& err,
 void PeerConnection::handle_response(const asio::error_code& err) {
   m_logger->debug(PRETTY_FUNCTION);
   if (!err) {
-    if (response_.size()) {
+    // Loop over buffer since we might have zero, one or more
+    // messages waiting.
+    bool done = false;
+    while (!done && response_.size()) {
       bytes response(response_.size());
       buffer_copy(asio::buffer(response), response_.data());
       Message msg(response);
@@ -130,6 +133,7 @@ void PeerConnection::handle_response(const asio::error_code& err) {
       cout.flush();
       m_logger->debug("Consuming {}/{}", consumed, response.size());
       response_.consume(consumed);
+      done = consumed == 0;
     }
 
     // Read remaining data until EOF.
@@ -174,41 +178,48 @@ void Peer::set_am_interested(bool am_interested) {
   m_am_interested = am_interested;
 }
 
-void Peer::request_next_block() {
-  // We can now start requesting pieces
-  auto has_piece = next_piece();
-  if (!has_piece) {
-    m_logger->info("No pieces left, nothing to do!");
-    return;
-  }
-  auto piece = *has_piece;
-
-  auto len = to_big_endian(13);
-  auto index = to_big_endian(piece->id());
-  auto block_offset = piece->next_offset();
-  if (!block_offset) {
-    m_logger->info("No block requests left to do!");
-    return;
-  }
-  auto begin = to_big_endian(*block_offset);
-  uint32_t length;
-  if (*block_offset + piece->block_size() > piece->piece_size()) {
-    // Last block - so reduce request size
-    length = piece->piece_size() % piece->block_size();
-  } else {
-    // 16 KiB (as recommended)
-    length = piece->block_size();
-  }
-  m_logger->info("Sending piece request for piece {} with size {}",
-                 piece->id(), length);
-  auto blength = to_big_endian(length);
+void Peer::request_next_block(unsigned short count) {
   bytes request;
-  request.insert(request.end(), len.begin(), len.end());
-  request.push_back(static_cast<byte>(peer_wire_id::REQUEST));
-  request.insert(request.end(), index.begin(), index.end());
-  request.insert(request.end(), begin.begin(), begin.end());
-  request.insert(request.end(), blength.begin(), blength.end());
-  m_connection->write(request);
+  for (int i = 0; i < count; i++) {
+    // We can now start requesting pieces
+    auto has_piece = next_piece();
+    if (!has_piece) {
+      m_logger->info("No pieces left, nothing to do!");
+      // exit(0);
+      break;
+    }
+    auto piece = *has_piece;
+
+    auto block_offset = piece->next_offset();
+    if (!block_offset) {
+      m_logger->info("No block requests left to do!");
+      break;
+    }
+    auto len = to_big_endian(13);
+    auto index = to_big_endian(piece->id());
+    auto begin = to_big_endian(*block_offset);
+    uint32_t length;
+    if (*block_offset + piece->block_size() > piece->piece_size()) {
+      // Last block - so reduce request size
+      length = piece->piece_size() % piece->block_size();
+    } else {
+      // 16 KiB (as recommended)
+      length = piece->block_size();
+    }
+    m_logger->info(
+        "Sending block request for piece {} with size {} and offset {}",
+        piece->id(), length, *block_offset);
+    auto blength = to_big_endian(length);
+    request.insert(request.end(), len.begin(), len.end());
+    request.push_back(static_cast<byte>(peer_wire_id::REQUEST));
+    request.insert(request.end(), index.begin(), index.end());
+    request.insert(request.end(), begin.begin(), begin.end());
+    request.insert(request.end(), blength.begin(), blength.end());
+  }
+  // Important to write only once (to match write/read calls)
+  if (!request.empty()) {
+    m_connection->write(request);
+  }
 }
 
 void Peer::set_choking(bool choking) {

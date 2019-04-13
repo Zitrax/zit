@@ -221,10 +221,12 @@ size_t Message::parse(PeerConnection& connection) {
           auto offset = big_endian(m_msg, 9);
           // FIXME: Optimization:
           //        Could pass the range instead of copying the data
-          auto data = bytes(m_msg.begin() + 13, m_msg.end());
+          auto start = m_msg.begin() + 13;
+          auto end = start + (len - 9);
+          auto data = bytes(start, end);
           connection.peer().set_block(index, offset, data);
         }
-          return m_msg.size();
+          return len + 4;
         case peer_wire_id::INTERESTED:
           connection.peer().set_interested(true);
           return m_msg.size();
@@ -233,10 +235,12 @@ size_t Message::parse(PeerConnection& connection) {
         case peer_wire_id::HAVE:
           break;
         case peer_wire_id::BITFIELD: {
-          auto bf = Bitfield(bytes(m_msg.begin() + 4, m_msg.end()));
+          auto start = m_msg.begin() + 5;
+          auto end = start + len - 1;
+          auto bf = Bitfield(bytes(start, end));
           connection.peer().set_remote_pieces(bf);
           m_logger->info("{}", bf);
-          return m_msg.size();
+          return len + 4;
         }
         case peer_wire_id::REQUEST:
         case peer_wire_id::CANCEL:

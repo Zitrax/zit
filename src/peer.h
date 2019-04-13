@@ -113,7 +113,7 @@ class Peer {
   bool m_choking = true;
   bool m_interested = false;
 
-  void request_next_block();
+  void request_next_block(unsigned short count = 5);
 
   Bitfield m_remote_pieces{};
 

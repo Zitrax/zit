@@ -13,6 +13,12 @@ optional<uint32_t> Piece::next_offset() {
   if (!next) {
     return {};
   }
+  // The current bitfield only stores whole bytes
+  // but the last piece might contain fewer blocks
+  // thus this extra check.
+  if (*next > (block_count() - 1)) {
+    return {};
+  }
   // Mark block as requested
   m_blocks_requested[*next] = true;
   return *next * m_block_size;
@@ -37,7 +43,7 @@ bool Piece::set_block(uint32_t offset, const bytes& data) {
 
   lock_guard<mutex> lock(m_mutex);
   if (m_blocks_done[block_id]) {
-    m_logger->warn("Already got this block");
+    m_logger->warn("Already got block {} for piece {}", block_id, m_id);
   } else {
     if (!m_blocks_requested[block_id]) {
       m_logger->warn("Got data for non requested block?");
