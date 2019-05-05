@@ -96,9 +96,15 @@ TEST(integrate, transfer) {
     }
   }
 
-  // Transfer done
-  // TODO: Verify checksum of original and downloaded file
-  //       Either here or perhaps in zit itself.
+  // Transfer done - Verify content
+  auto source = data_dir / "1MiB.dat";
+  auto target = torrent.tmpfile();
+  auto source_sha1 = zit::Sha1::calculate(source).hex();
+  auto target_sha1 = zit::Sha1::calculate(target).hex();
+  EXPECT_EQ(source_sha1, target_sha1);
+
+  // Delete downloaded file
+  filesystem::remove(target);
 
   // Stop seeder
   kill(seeder, SIGTERM);
