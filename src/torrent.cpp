@@ -191,10 +191,66 @@ vector<Peer> Torrent::start() {
   const int THREE_HEX_BYTES = 6;
   for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
     peers.emplace_back(Url(binary_peers.substr(i, THREE_HEX_BYTES), true),
-                       m_piece_length, *this);
+                       *this);
   }
 
   return peers;
+}
+
+bool Torrent::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  // Look up relevant piece object among active pieces
+  if (m_active_pieces.find(piece_id) != m_active_pieces.end()) {
+    auto piece = m_active_pieces[piece_id];
+    if (piece->set_block(offset, data)) {
+      m_logger->info("Piece {} done!", piece_id);
+      piece_done(piece);
+    }
+    return true;
+  }
+  m_logger->warn("Tried to set block for non active piece");
+  return false;
+}
+
+std::shared_ptr<Piece> Torrent::active_piece(uint32_t id) {
+  std::lock_guard<std::mutex> lock(m_mutex);
+  auto piece = m_active_pieces.find(id);
+  if (piece == m_active_pieces.end()) {
+    int64_t piece_length = m_piece_length;
+    if (id == pieces().size() - 1) {
+      // Last piece
+      auto mod = length() % m_piece_length;
+      piece_length = mod ? mod : m_piece_length;
+      m_logger->debug("Last piece {} with length = {}", id, piece_length);
+    }
+    auto it = m_active_pieces.emplace(
+        make_pair(id, make_shared<Piece>(id, piece_length)));
+    return it.first->second;
+  }
+  return m_active_pieces.at(id);
+}
+
+bool Torrent::done() const {
+  std::lock_guard<std::mutex> lock(m_mutex);
+
+  // If we haven't started on all pieces we are not done
+  if (m_active_pieces.size() != m_pieces.size()) {
+    return false;
+  }
+
+  // If any piece has not been written we are not done
+  for (const auto& piece : m_active_pieces) {
+    if (!piece.second->piece_written()) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+void Torrent::piece_done(std::shared_ptr<Piece>& piece) {
+  m_client_pieces[piece->id()] = true;
+  m_piece_callback(this, piece);
 }
 
 ostream& operator<<(ostream& os, const zit::FileInfo& file_info) {

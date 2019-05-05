@@ -2,6 +2,7 @@
 #include "file_writer.h"
 
 #include "sha1.h"
+#include "string_utils.h"
 
 #include <cstdio>
 #include <fstream>
@@ -89,6 +90,13 @@ void FileWriter::write_next_piece() {
     }
     piece->set_piece_written(true);
     m_logger->info("Wrote piece {} for '{}'", piece->id(), torrent->name());
+
+    if (torrent->done()) {
+      m_logger->info("Final piece written");
+      if (m_torrent_written_callback) {
+        m_torrent_written_callback(*torrent);
+      }
+    }
   } catch (const exception& err) {
     // TODO: Retry later ? Mark torrent as errored ?
     m_logger->error(

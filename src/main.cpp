@@ -10,7 +10,6 @@
 #include "spdlog/spdlog.h"
 
 using namespace std;
-using namespace std::placeholders;
 using namespace bencode;
 
 // prints the explanatory string of an exception. If the exception is nested,
@@ -31,16 +30,14 @@ int main() {
     auto console = spdlog::stdout_color_mt("console");
     console->set_level(spdlog::level::info);
 
-    zit::FileWriterThread file_writer;
-
     // Read .torrent file
     std::filesystem::path p(__FILE__);
     p.remove_filename();
 
-    // zit::Torrent torrent(p / ".." / "tests" / "data" / "test.torrent");
-    zit::Torrent torrent(p / ".." / "random.torrent");
-    torrent.set_piece_callback(
-        bind(&zit::FileWriter::add, &file_writer.get(), _1, _2));
+    zit::Torrent torrent(p / ".." / "tests" / "data" / "test.torrent");
+    // zit::Torrent torrent(p / ".." / "random.torrent");
+    // zit::Torrent torrent(p / ".." / "test2.torrent");
+    zit::FileWriterThread file_writer(torrent);
     console->info("\n{}", torrent);
     auto peers = torrent.start();
 

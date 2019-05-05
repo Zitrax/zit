@@ -343,7 +343,7 @@ inline ElmPtr decode_internal(std::istringstream& iss) {
  * @param str Bencoded string to decode.
  *
  * @return ElmPtr to the root element. @ref Element::to() can then be used to
- *   conver this to the underlying value.
+ *   convert this to the underlying value.
  *
  * @throws std::invalid_argument if the input string is not valid bencode
  *   format.

@@ -53,9 +53,8 @@ class PeerConnection {
 
 class Peer {
  public:
-  explicit Peer(Url url, uint32_t piece_length, Torrent& torrent)
+  explicit Peer(Url url, Torrent& torrent)
       : m_url(std::move(url)),
-        m_piece_length(piece_length),
         m_torrent(torrent),
         m_logger(spdlog::get("console")) {}
 
@@ -105,9 +104,13 @@ class Peer {
    */
   void set_block(uint32_t piece_id, uint32_t offset, const bytes& data);
 
+  /**
+   * Stop this connection.
+   */
+  void stop();
+
  private:
   Url m_url;
-  uint32_t m_piece_length;
   bool m_am_choking = true;
   bool m_am_interested = false;
   bool m_choking = true;
@@ -117,13 +120,10 @@ class Peer {
 
   Bitfield m_remote_pieces{};
 
-  // TODO: Also move this up to the Torrent class
-  /** Piece id -> Piece object */
-  std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces{};
-
   std::unique_ptr<PeerConnection> m_connection{};
   Torrent& m_torrent;
   std::shared_ptr<spdlog::logger> m_logger;
+  std::unique_ptr<asio::io_service> m_io_service{};
   std::unique_ptr<asio::io_service::work> m_work{};
   unsigned short m_port = 20000;  // FIXME: configurable port
 };

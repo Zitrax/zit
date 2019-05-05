@@ -10,9 +10,12 @@
 
 #include "spdlog/sinks/stdout_color_sinks.h"
 
+using namespace std::placeholders;
+
 namespace zit {
 
 using TorrentPiece = std::tuple<Torrent*, std::shared_ptr<Piece>>;
+using TorrentWrittenCallback = std::function<void(Torrent&)>;
 
 /**
  * Queue of pieces to write to disk.
@@ -26,7 +29,8 @@ using TorrentPiece = std::tuple<Torrent*, std::shared_ptr<Piece>>;
  */
 class FileWriter {
  public:
-  FileWriter() : m_logger(spdlog::get("file_writer")) {}
+  FileWriter(TorrentWrittenCallback cb)
+      : m_logger(spdlog::get("file_writer")), m_torrent_written_callback(cb) {}
 
   /**
    * Add a piece to the queue for writing by the writer thread.
@@ -56,14 +60,17 @@ class FileWriter {
   std::condition_variable m_condition{};
   std::shared_ptr<spdlog::logger> m_logger{};
   std::atomic_bool m_stop = false;
+  TorrentWrittenCallback m_torrent_written_callback{};
 };
 
 class FileWriterThread {
  public:
-  FileWriterThread()
+  FileWriterThread(Torrent& torrent, TorrentWrittenCallback cb = {})
       : m_logger(spdlog::stdout_color_mt("file_writer")),
+        m_file_writer(cb),
         m_file_writer_thread([this]() { m_file_writer.run(); }) {
     m_logger->set_level(spdlog::level::info);
+    torrent.set_piece_callback(bind(&FileWriter::add, &m_file_writer, _1, _2));
   }
   ~FileWriterThread() {
     m_logger->debug("FileWriter stopping");
@@ -71,11 +78,9 @@ class FileWriterThread {
     m_file_writer_thread.join();
   }
 
-  FileWriter& get() { return m_file_writer; }
-
  private:
   std::shared_ptr<spdlog::logger> m_logger{};
-  FileWriter m_file_writer{};
+  FileWriter m_file_writer;
   std::thread m_file_writer_thread;
 };
 

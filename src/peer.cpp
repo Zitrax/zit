@@ -249,21 +249,18 @@ void Peer::set_remote_pieces(Bitfield bf) {
 }
 
 void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
-  // Look up relevant piece object among active pieces
-  if (m_active_pieces.find(piece_id) != m_active_pieces.end()) {
-    auto piece = m_active_pieces[piece_id];
-    if (piece->set_block(offset, data)) {
-      m_logger->info("Piece {} done!", piece_id);
-      m_torrent.piece_done(piece);
-    }
+  if (m_torrent.set_block(piece_id, offset, data)) {
     request_next_block();
-  } else {
-    m_logger->warn("Tried to set block for non active piece");
   }
 }
 
+void Peer::stop() {
+  m_logger->info("Stopping peer {}", m_url.authority());
+  m_io_service->stop();
+}
+
 void Peer::handshake(const Sha1& info_hash) {
-  m_logger->info("Starting handshake with: {}:{}", m_url.host(), m_url.port());
+  m_logger->info("Starting handshake with: {}", m_url.authority());
 
   // The handshake should contain:
   // <pstrlen><pstr><reserved><info_hash><peer_id>
@@ -296,24 +293,22 @@ void Peer::handshake(const Sha1& info_hash) {
   hs << info_hash.str() << "abcdefghijklmnopqrst";  // FIXME: Use proper peer-id
 
   // Assume we need to start listening immediately, then send handshake
-  asio::io_service io_service;
+  m_io_service = make_unique<asio::io_service>();
   // The work object make sure that the service does not stop when running out
   // of events but stay running until stop() is called on the io_service for a
-  // hard stop, or destory the work object for a graceful shutdown by handling
+  // hard stop, or destroy the work object for a graceful shutdown by handling
   // the remaining events.
-  m_work = make_unique<asio::io_service::work>(io_service);
-  // FIXME: Destroy work object when whole file is done.
-  //        But also io_service should eventually be per parent or per process,
-  //        not for each perr.
+  m_work = make_unique<asio::io_service::work>(*m_io_service);
   try {
-    m_connection = make_unique<PeerConnection>(*this, io_service, m_port);
+    m_connection = make_unique<PeerConnection>(*this, *m_io_service, m_port);
   } catch (const asio::system_error&) {
     throw_with_nested(runtime_error("Creating peer connection to " +
                                     m_url.authority() + " from port " +
                                     to_string(m_port)));
   }
   m_connection->write(m_url, hs.str());
-  io_service.run();
+  m_io_service->run();
+  m_logger->info("Peer {} stopped", m_url.authority());
 }
 
 optional<shared_ptr<Piece>> Peer::next_piece() {
@@ -328,19 +323,7 @@ optional<shared_ptr<Piece>> Peer::next_piece() {
 
   // Is the piece active or not
   auto id = numeric_cast<uint32_t>(*next_id);
-  auto piece = m_active_pieces.find(id);
-  if (piece == m_active_pieces.end()) {
-    int64_t piece_length = m_piece_length;
-    if (id == m_torrent.pieces().size() - 1) {
-      // Last piece
-      piece_length = m_torrent.length() % m_piece_length;
-      m_logger->debug("Last piece length = {}", piece_length);
-    }
-    auto it = m_active_pieces.emplace(
-        make_pair(id, make_shared<Piece>(id, piece_length)));
-    return make_optional(it.first->second);
-  }
-  return make_optional(m_active_pieces.at(id));
+  return make_optional(m_torrent.active_piece(id));
 }
 
 }  // namespace zit

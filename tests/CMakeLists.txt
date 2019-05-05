@@ -63,6 +63,7 @@ include_directories("../src")
 add_executable(zitest
   test_bencode.cpp
   test_bitfield.cpp
+  test_integrate.cpp
   test_torrent.cpp
   test_main.cpp
   test_net.cpp
@@ -71,6 +72,7 @@ add_executable(zitest
   test_string_utils.cpp
   test_types.cpp
   ../src/bitfield.cpp
+  ../src/file_writer.cpp
   ../src/torrent.cpp
   ../src/net.cpp
   ../src/peer.cpp

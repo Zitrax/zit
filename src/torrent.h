@@ -20,6 +20,16 @@ class Torrent;
 using PieceCallback =
     std::function<void(Torrent*, const std::shared_ptr<Piece>&)>;
 
+/**
+ * Represents one torrent. Bookeeps all pieces and block information.
+ *
+ * @note About locking; implemented as suggested in
+ *  https://stackoverflow.com/a/14600868/11722
+ *
+ * Public function locks, private functions do not; this
+ * should avoid problems with double locking and need
+ * for reentrant mutexes.
+ */
 class Torrent {
  public:
   /**
@@ -160,15 +170,6 @@ class Torrent {
   }
 
   /**
-   * Called by peer when one piece has been downloaded.
-   */
-  void piece_done(std::shared_ptr<Piece>& piece) {
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_client_pieces[piece->id()] = true;
-    m_piece_callback(this, piece);
-  }
-
-  /**
    * Information about what pieces we don't have that a remote has.
    */
   [[nodiscard]] Bitfield relevant_pieces(const Bitfield& remote_pieces) const {
@@ -176,7 +177,29 @@ class Torrent {
     return remote_pieces - m_client_pieces;
   }
 
+  /**
+   * Store a retrieved block (part of a piece).
+   *
+   * @return true if the block was stored
+   */
+  bool set_block(uint32_t piece_id, uint32_t offset, const bytes& data);
+
+  /**
+   * Create or return active piece for specific id.
+   */
+  [[nodiscard]] std::shared_ptr<Piece> active_piece(uint32_t id);
+
+  /**
+   * Return true if all pieces have been written to disk.
+   */
+  [[nodiscard]] bool done() const;
+
  private:
+  /**
+   * Called when one piece has been downloaded.
+   */
+  void piece_done(std::shared_ptr<Piece>& piece);
+
   std::string m_announce{};
   std::vector<std::vector<std::string>> m_announce_list{};
   int64_t m_creation_date = 0;
@@ -198,6 +221,8 @@ class Torrent {
   // Piece housekeeping
   mutable std::mutex m_mutex{};
   Bitfield m_client_pieces{};
+  /** Piece id -> Piece object */
+  std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces{};
 };
 
 class FileInfo {
