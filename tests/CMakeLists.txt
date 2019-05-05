@@ -1,4 +1,5 @@
 option(COVERAGE "Enable coverage of unit tests" OFF)
+option(INTEGRATION_TESTS "Enable integration tests" OFF)
 
 # Download and unpack googletest at configure time
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
@@ -88,3 +89,7 @@ if(NOT WIN32)
   endif()
 endif()
 add_test(NAME zitest COMMAND zitest)
+
+if(INTEGRATION_TESTS)
+  target_compile_definitions(zitest PUBLIC INTEGRATION_TESTS)
+endif()

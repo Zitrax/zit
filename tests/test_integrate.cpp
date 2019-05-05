@@ -54,7 +54,11 @@ static pid_t start_process(vector<const char*> argv,
   return pid;
 }
 
-TEST(integrate, transfer) {
+#ifdef INTEGRATION_TESTS
+TEST(integrate, download) {
+#else
+TEST(integrate, DISABLED_download) {
+#endif // INTEGRATION_TESTS
   auto console = spdlog::get("console");
   console->set_level(spdlog::level::info);
 
