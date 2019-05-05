@@ -2,10 +2,13 @@
 #include "sha1.h"
 
 #include <algorithm>
+#include <fstream>
 #include <iterator>
 #include <string>
 
 #include <openssl/sha.h>
+
+#include "string_utils.h"
 
 using namespace std;
 
@@ -35,6 +38,10 @@ std::string Sha1::str() const {
   return std::string(data(), SHA_LENGTH);
 }
 
+std::string Sha1::hex() const {
+  return to_hex(str());
+}
+
 Sha1 Sha1::calculate(const unsigned char* src, size_t count) {
   Sha1 ret;
   auto dst = reinterpret_cast<unsigned char*>(ret.data());
@@ -46,7 +53,7 @@ Sha1 Sha1::calculate(const unsigned char* src, size_t count) {
   return ret;
 }
 
-Sha1 Sha1::calculate(const std::string& data) {
+Sha1 Sha1::calculate(const string& data) {
   return calculate(reinterpret_cast<const unsigned char*>(data.data()),
                    data.size());
 }
@@ -54,6 +61,29 @@ Sha1 Sha1::calculate(const std::string& data) {
 Sha1 Sha1::calculate(const bytes& data) {
   return calculate(reinterpret_cast<const unsigned char*>(data.data()),
                    data.size());
+}
+
+Sha1 Sha1::calculate(const filesystem::path& file) {
+  // Important to open in binary mode due to line endings
+  // differing on windows and linux.
+  ifstream file_stream{file, ios_base::in | ios_base::binary};
+  // file_stream.exceptions(ifstream::failbit);
+
+  SHA_CTX ctxt;
+  SHA1_Init(&ctxt);
+  const int buffer_size = 1024;
+  vector<char> buffer(buffer_size, 0);
+
+  while (file_stream.read(&buffer[0], buffer_size)) {
+    SHA1_Update(&ctxt, buffer.data(), buffer_size);
+  }
+
+  // Remainder
+  SHA1_Update(&ctxt, buffer.data(), numeric_cast<size_t>(file_stream.gcount()));
+
+  Sha1 ret;
+  SHA1_Final(reinterpret_cast<unsigned char*>(&ret[0]), &ctxt);
+  return ret;
 }
 
 template <typename T>

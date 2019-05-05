@@ -48,7 +48,7 @@ inline std::string to_hex(const std::string& str) {
   ss << std::setfill('0') << std::hex << std::uppercase;
 
   for (auto ch : str) {
-    ss << std::setw(2) << static_cast<int>(ch);
+    ss << std::setw(2) << static_cast<int>(static_cast<unsigned char>(ch));
   }
 
   return ss.str();

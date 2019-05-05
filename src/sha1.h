@@ -2,6 +2,7 @@
 #pragma once
 
 #include <array>
+#include <filesystem>
 
 #include "types.h"
 
@@ -20,9 +21,11 @@ class Sha1 : public std::array<char, SHA_LENGTH> {
   explicit Sha1(const std::string& val);
 
   [[nodiscard]] std::string str() const;
+  [[nodiscard]] std::string hex() const;
 
   [[nodiscard]] static Sha1 calculate(const std::string& data);
   [[nodiscard]] static Sha1 calculate(const bytes& data);
+  [[nodiscard]] static Sha1 calculate(const std::filesystem::path& file);
 
   /**
    * Extract a raw sha1 from a byte vector (no calculation involved).
