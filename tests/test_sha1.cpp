@@ -20,8 +20,13 @@ TEST(sha1, equality) {
 TEST(sha1, file) {
   std::filesystem::path p(__FILE__);
 
+  // Non - existing file
+  auto test_file = p.parent_path() / "data" / "nope";
+  EXPECT_THROW(auto _ = Sha1::calculate(test_file).hex(),
+               std::invalid_argument);
+
   // Exactly 1 MiB ( n % 1024 = 0 )
-  auto test_file = p.parent_path() / "data" / "1MiB.dat";
+  test_file = p.parent_path() / "data" / "1MiB.dat";
   auto sha1 = Sha1::calculate(test_file).hex();
   EXPECT_EQ("3C1F02DFDF5306F8655F33A5830AD9542AD04567", sha1);
 
