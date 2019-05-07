@@ -42,8 +42,9 @@ static pid_t start_process(vector<const char*> argv,
     if (getppid() != ppid) {
       exit(1);
     }
-    if (cwd) {
-      chdir(cwd);
+    if (cwd && chdir(cwd) == -1) {
+      perror("chdir failed");
+      exit(1);
     }
     argv.push_back(nullptr);
     int status = execvp(argv[0], const_cast<char* const*>(argv.data()));
@@ -58,7 +59,7 @@ static pid_t start_process(vector<const char*> argv,
 TEST(integrate, download) {
 #else
 TEST(integrate, DISABLED_download) {
-#endif // INTEGRATION_TESTS
+#endif  // INTEGRATION_TESTS
   auto console = spdlog::get("console");
   console->set_level(spdlog::level::info);
 
