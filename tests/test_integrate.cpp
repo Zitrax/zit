@@ -55,6 +55,26 @@ static pid_t start_process(vector<const char*> argv,
   return pid;
 }
 
+static auto start_tracker() {
+  pid_t tracker = start_process({"bittorrent-tracker", "--http"});
+  // Allow some time for the tracker to start
+  this_thread::sleep_for(1s);
+  return tracker;
+}
+
+static auto start_seeder(const std::filesystem::path& data_dir,
+                         const std::filesystem::path& torrent_file) {
+  return start_process({"ctorrent", torrent_file.c_str()}, data_dir.c_str());
+}
+
+static void start(zit::Torrent& torrent) {
+  torrent.start();
+  for (auto& p : torrent.peers()) {
+    p.handshake(torrent.info_hash());
+  }
+  torrent.run();
+}
+
 #ifdef INTEGRATION_TESTS
 TEST(integrate, download) {
 #else
@@ -63,43 +83,26 @@ TEST(integrate, DISABLED_download) {
   auto console = spdlog::get("console");
   console->set_level(spdlog::level::info);
 
-  // Launch tracker
-  pid_t tracker = start_process({"bittorrent-tracker", "--http"});
+  pid_t tracker = start_tracker();
 
-  // Allow some time for the tracker to start
-  this_thread::sleep_for(1s);
-
-  // Seed the torrent
   filesystem::path p(__FILE__);
   auto data_dir = p.parent_path() / "data";
   auto torrent_file = data_dir / "1MiB.torrent";
-  pid_t seeder =
-      start_process({"ctorrent", torrent_file.c_str()}, data_dir.c_str());
+
+  pid_t seeder = start_seeder(data_dir, torrent_file);
 
   // Allow some time for the seeder to start
   this_thread::sleep_for(1s);
 
   // Download torrent with zit
-  zit::Peer* peer = nullptr;
   zit::Torrent torrent(torrent_file);
-  zit::FileWriterThread file_writer(torrent, [&console, &peer](zit::Torrent&) {
-    console->info("Download completed");
-    if (peer) {
-      peer->stop();
-    }
-  });
-  auto peers = torrent.start();
-  for (auto& p : peers) {
-    if (!(p.url().host() == "127.0.0.1" && p.url().port() == p.port())) {
-      peer = &p;
-      // TODO: If the transfer does not finish for some reason we will hang
-      //       here. Should have some timeout functionality. googletest
-      //       does not have anything for that so I need to implement it.
-      //       See: https://github.com/google/googletest/issues/348
-      p.handshake(torrent.info_hash());
-      break;
-    }
-  }
+  zit::FileWriterThread file_writer(
+      torrent, [&console, &torrent](zit::Torrent&) {
+        console->info("Download completed");
+        for_each(torrent.peers().begin(), torrent.peers().end(),
+                 [](auto& peer) { peer.stop(); });
+      });
+  start(torrent);
 
   // Transfer done - Verify content
   auto source = data_dir / "1MiB.dat";
@@ -113,16 +116,16 @@ TEST(integrate, DISABLED_download) {
 
   // Stop seeder
   kill(seeder, SIGTERM);
-  cout << "Waiting for seeder" << endl;
+  console->info("Waiting for seeder");
   int status;
   waitpid(seeder, &status, 0);
-  cout << "Seeder exited with status: " << status << endl;
+  console->info("Seeder exited with status: {}", status);
 
   // Stop tracker
   kill(tracker, SIGTERM);
-  cout << "Waiting for tracker" << endl;
+  console->info("Waiting for tracker");
   waitpid(tracker, &status, 0);
-  cout << "Tracker exited with status: " << status << endl;
+  console->info("Tracker exited with status: {}", status);
 }
 
 #endif  // __linux__

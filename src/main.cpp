@@ -37,23 +37,21 @@ int main() {
     zit::Torrent torrent(p / ".." / "tests" / "data" / "test.torrent");
     // zit::Torrent torrent(p / ".." / "random.torrent");
     // zit::Torrent torrent(p / ".." / "test2.torrent");
-    zit::FileWriterThread file_writer(torrent);
+    zit::FileWriterThread file_writer(
+        torrent, [&console, &torrent](zit::Torrent&) {
+          console->info("Download completed");
+          for_each(torrent.peers().begin(), torrent.peers().end(),
+                   [](auto& peer) { peer.stop(); });
+        });
     console->info("\n{}", torrent);
-    auto peers = torrent.start();
+    torrent.start();
 
-    for (const auto& peer : peers) {
+    for (auto& peer : torrent.peers()) {
       console->info("\n{}", peer);
+      peer.handshake(torrent.info_hash());
     }
 
-    for (auto& peer : peers) {
-      if (!(peer.url().host() == "127.0.0.1" &&
-            peer.url().port() == peer.port())) {
-        peer.handshake(torrent.info_hash());
-        break;
-      }
-      console->debug("Ignored own peer");
-    }
-
+    torrent.run();
   } catch (const exception& e) {
     print_exception(e);
     return 1;

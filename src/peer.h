@@ -80,11 +80,6 @@ class Peer {
    */
   [[nodiscard]] auto interested() const { return m_interested; }
 
-  /**
-   * Port that we listen to.
-   */
-  [[nodiscard]] auto port() const { return m_port; }
-
   void handshake(const Sha1& info_hash);
 
   /**
@@ -108,6 +103,13 @@ class Peer {
    * Stop this connection.
    */
   void stop();
+
+  [[nodiscard]] asio::io_service& io_service() {
+    if (!m_io_service) {
+      throw std::invalid_argument("null io_service");
+    }
+    return *m_io_service;
+  }
 
  private:
   Url m_url;

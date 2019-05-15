@@ -148,11 +148,11 @@ auto Torrent::left() const {
       [](int64_t a, const FileInfo& b) { return a + b.length(); });
 }
 
-vector<Peer> Torrent::start() {
+void Torrent::start() {
   Url url(m_announce);
   url.add_param("info_hash=" + Net::urlEncode(m_info_hash));
   url.add_param("peer_id=abcdefghijklmnopqrst");  // FIXME: Use proper id
-  url.add_param("port=20000");                    // FIXME: configure this
+  url.add_param("port=" + to_string(m_port));
   url.add_param("uploaded=0");
   url.add_param("downloaded=0");
   url.add_param("left=" + to_string(left()));
@@ -187,14 +187,31 @@ vector<Peer> Torrent::start() {
     throw runtime_error("Peer list is empty");
   }
 
-  vector<Peer> peers;
-  const int THREE_HEX_BYTES = 6;
-  for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
-    peers.emplace_back(Url(binary_peers.substr(i, THREE_HEX_BYTES), true),
-                       *this);
+  if (!m_peers.empty()) {
+    throw runtime_error("Local peer vector not empty");
   }
 
-  return peers;
+  const int THREE_HEX_BYTES = 6;
+  for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
+    auto url = Url(binary_peers.substr(i, THREE_HEX_BYTES), true);
+    if (!(url.host() == "127.0.0.1" && url.port() == m_port)) {
+      m_peers.emplace_back(url, *this);
+    }
+  }
+}
+
+void Torrent::run() {
+  while (!all_of(m_peers.begin(), m_peers.end(),
+                 [](auto& p) { return p.io_service().stopped(); })) {
+    std::size_t ran = 0;
+    for (auto& p : m_peers) {
+      ran += p.io_service().poll_one();
+    }
+    // If no handlers ran, then sleep.
+    if (!ran) {
+      this_thread::sleep_for(100ms);
+    }
+  }
 }
 
 bool Torrent::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {

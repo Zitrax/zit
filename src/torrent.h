@@ -143,6 +143,11 @@ class Torrent {
   [[nodiscard]] auto tmpfile() const { return m_tmpfile; }
 
   /**
+   * List of connected peers
+   */
+  [[nodiscard]] auto& peers() { return m_peers; }
+
+  /**
    * Callback that will be called whenever a piece has finished downloading.
    */
   void set_piece_callback(PieceCallback piece_callback) {
@@ -150,11 +155,15 @@ class Torrent {
   }
 
   /**
-   * The first request to the tracker.
-   *
-   * @return a list of peers for this torrent.
+   * The first request to the tracker. After calling this the peer list
+   * has been populated.
    */
-  std::vector<Peer> start();
+  void start();
+
+  /**
+   * Will run this torrent until all peer connections have stopped.
+   */
+  void run();
 
   /**
    * Peer received remote piece info, make sure we have a non empty client side
@@ -194,6 +203,11 @@ class Torrent {
    */
   [[nodiscard]] bool done() const;
 
+  /**
+   * Port that we listen to.
+   */
+  [[nodiscard]] auto port() const { return m_port; }
+
  private:
   /**
    * Called when one piece has been downloaded.
@@ -217,6 +231,8 @@ class Torrent {
   std::shared_ptr<spdlog::logger> m_logger{};
   std::filesystem::path m_tmpfile{};
   PieceCallback m_piece_callback{};
+  unsigned short m_port = 20000;
+  std::vector<Peer> m_peers{};
 
   // Piece housekeeping
   mutable std::mutex m_mutex{};

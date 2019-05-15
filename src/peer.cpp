@@ -307,8 +307,6 @@ void Peer::handshake(const Sha1& info_hash) {
                                     to_string(m_port)));
   }
   m_connection->write(m_url, hs.str());
-  m_io_service->run();
-  m_logger->info("Peer {} stopped", m_url.authority());
 }
 
 optional<shared_ptr<Piece>> Peer::next_piece() {
