@@ -122,10 +122,12 @@ class Peer {
 
   Bitfield m_remote_pieces{};
 
+  // order important - connection need to be destroyed first
+  std::unique_ptr<asio::io_service> m_io_service{};
   std::unique_ptr<PeerConnection> m_connection{};
+
   Torrent& m_torrent;
   std::shared_ptr<spdlog::logger> m_logger;
-  std::unique_ptr<asio::io_service> m_io_service{};
   std::unique_ptr<asio::io_service::work> m_work{};
   unsigned short m_port = 20000;  // FIXME: configurable port
 };
