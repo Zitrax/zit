@@ -5,6 +5,7 @@
 int main(int argc, char** argv) {
   // Needed since the code assumes a global log object
   auto console = spdlog::stdout_color_mt("console");
+  console->set_level(spdlog::level::info);
 
   // Run the tests
   ::testing::InitGoogleTest(&argc, argv);
