@@ -32,11 +32,13 @@ PeerConnection::PeerConnection(Peer& peer,
                                unsigned short port_num)
     : peer_(peer),
       resolver_(io_service),
-      socket_(io_service, tcp::endpoint(tcp::v4(), port_num)),
+      socket_(io_service, tcp::v4()),
       m_logger(spdlog::get("console")) {
-  // TODO: This does not seem to help
+  // Note use of socket consturcot that does not bind such
+  // that we can set the options before that.
   asio::socket_base::reuse_address option(true);
   socket_.set_option(option);
+  socket_.bind(tcp::endpoint(tcp::v4(), port_num));
 }
 
 void PeerConnection::write(const Url& url, const bytes& msg) {
