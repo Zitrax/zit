@@ -20,7 +20,7 @@ class Piece {
         m_blocks_done(block_count()),
         m_id(id),
         m_logger(spdlog::get("console")) {
-    m_data.reserve(m_piece_size);
+    m_data.resize(m_piece_size);
   }
 
   /** Piece id */

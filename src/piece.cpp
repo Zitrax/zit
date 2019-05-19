@@ -39,6 +39,9 @@ bool Piece::set_block(uint32_t offset, const bytes& data) {
   if (data.size() > m_block_size) {
     throw runtime_error("Block too big: " + to_string(data.size()));
   }
+  if (data.size() + offset > m_piece_size) {
+    throw runtime_error("Block overflows piece");
+  }
   auto block_id = offset / m_block_size;
 
   lock_guard<mutex> lock(m_mutex);
@@ -48,7 +51,7 @@ bool Piece::set_block(uint32_t offset, const bytes& data) {
     if (!m_blocks_requested[block_id]) {
       m_logger->warn("Got data for non requested block?");
     }
-    m_data.insert(m_data.begin() + offset, data.cbegin(), data.cend());
+    copy(data.cbegin(), data.cend(), m_data.begin() + offset);
     m_blocks_done[block_id] = true;
     m_logger->info("Block {}/{} of size {} stored for piece {}", block_id + 1,
                    block_count(), data.size(), m_id);
