@@ -64,14 +64,24 @@ class FileWriter {
 };
 
 class FileWriterThread {
+ private:
+  auto init_logger() {
+    auto logger = spdlog::get("file_writer");
+    if (!logger) {
+      logger = spdlog::stdout_color_mt("file_writer");
+    }
+    logger->set_level(spdlog::level::info);
+    return logger;
+  }
+
  public:
   FileWriterThread(Torrent& torrent, TorrentWrittenCallback cb = {})
-      : m_logger(spdlog::stdout_color_mt("file_writer")),
+      : m_logger(init_logger()),
         m_file_writer(cb),
         m_file_writer_thread([this]() { m_file_writer.run(); }) {
-    m_logger->set_level(spdlog::level::info);
     torrent.set_piece_callback(bind(&FileWriter::add, &m_file_writer, _1, _2));
   }
+
   ~FileWriterThread() {
     m_logger->debug("FileWriter stopping");
     m_file_writer.stop();

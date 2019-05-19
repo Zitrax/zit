@@ -62,7 +62,9 @@ class Process {
   Process(const Process&) = delete;
   Process& operator=(const Process&) = delete;
   // But allow moving
-  Process(Process&& rhs) = default;
+  Process(Process&& rhs) : m_pid(rhs.m_pid), m_name(rhs.m_name) {
+    rhs.m_pid = 0;  // Ensure we wont kill the moved from process
+  }
 
   ~Process() {
     if (m_pid) {
@@ -101,10 +103,13 @@ static void start(zit::Torrent& torrent) {
   torrent.run();
 }
 
+class IntegrateF : public ::testing::Test,
+                   public ::testing::WithParamInterface<uint8_t> {};
+
 #ifdef INTEGRATION_TESTS
-TEST(integrate, download) {
+TEST_P(IntegrateF, download) {
 #else
-TEST(integrate, DISABLED_download) {
+TEST_P(IntegrateF, DISABLED_download) {
 #endif  // INTEGRATION_TESTS
   auto tracker = start_tracker();
 
@@ -112,10 +117,14 @@ TEST(integrate, DISABLED_download) {
   auto data_dir = p.parent_path() / "data";
   auto torrent_file = data_dir / "1MiB.torrent";
 
-  auto seeder = start_seeder(data_dir, torrent_file);
-  // auto seeder2 = start_seeder(data_dir, torrent_file);
+  const uint8_t max = GetParam();
+  spdlog::get("console")->info("Starting {} seeders...", max);
+  vector<Process> seeders;
+  for (int i = 0; i < max; ++i) {
+    seeders.emplace_back(start_seeder(data_dir, torrent_file));
+  }
 
-  // Allow some time for the seeder to start
+  // Allow some time for the seeders to start
   this_thread::sleep_for(1s);
 
   // Download torrent with zit
@@ -137,5 +146,9 @@ TEST(integrate, DISABLED_download) {
   // Delete downloaded file
   filesystem::remove(target);
 }
+
+INSTANTIATE_TEST_SUITE_P(SeedCount,
+                         IntegrateF,
+                         ::testing::Values<uint8_t>(1, 2, 5, 10));
 
 #endif  // __linux__
