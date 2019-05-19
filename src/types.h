@@ -78,8 +78,7 @@ static constexpr std::byte operator"" _b(unsigned long long arg) {
   // Still we want to ensure that the input fits in one byte, so using uint8_t
   // instead for the check.
   static_assert(sizeof(uint8_t) == sizeof(std::byte));
-  if (arg > std::numeric_limits<uint8_t>::max() ||
-      arg < std::numeric_limits<uint8_t>::min()) {
+  if (arg > std::numeric_limits<uint8_t>::max()) {
     throw std::out_of_range("Value " + std::to_string(arg) +
                             " not in the range of a byte");
   }

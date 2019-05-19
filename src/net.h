@@ -127,7 +127,7 @@ class Net {
   template <std::size_t SIZE>
   static std::string urlEncode(const std::array<char, SIZE>& value) {
     return urlEncode(std::string(value.data(), value.size()));
-  };
+  }
 };
 
 }  // namespace zit
