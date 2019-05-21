@@ -27,12 +27,16 @@ inline std::string from_bytes(const bytes& buffer,
     throw std::invalid_argument(__FUNCTION__ + ": end > size"s);
   }
 
-  // Here Visual Studio 2017 and Clang 8 neither compile the other version
-  // thus using ifdefs for now.
+  // Visual Studio 2019 crashes using the string constructor
+  // below; thus the iterator loop instead.
 
 #ifdef WIN32
-  return std::string(buffer.cbegin() + start,
-                     buffer.cbegin() + (end == 0 ? buffer.size() : end));
+  std::stringstream ss;
+  auto it_end = buffer.cbegin() + (end == 0 ? buffer.size() : end);
+  for (auto it = buffer.cbegin() + start; it != it_end; ++it) {
+	  ss << static_cast<char>(*it);
+  }
+  return ss.str();
 #else
   return std::string(
       reinterpret_cast<const char*>(&buffer[start]),

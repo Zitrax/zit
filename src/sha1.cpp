@@ -70,7 +70,7 @@ Sha1 Sha1::calculate(const filesystem::path& file) {
   file_stream.exceptions(ifstream::badbit);
 
   if (!file_stream) {
-    throw invalid_argument("No such file: "s + file.c_str());
+    throw invalid_argument("No such file: "s + file.string());
   }
 
   SHA_CTX ctxt;
