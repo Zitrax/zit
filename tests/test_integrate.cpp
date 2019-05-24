@@ -54,6 +54,16 @@ class Process {
       int status = execvp(argv[0], const_cast<char* const*>(argv.data()));
       cerr << "Failed launching " << argv[0] << ": " << strerror(errno) << endl;
       exit(1);
+    } else {
+      // Slight delay to verify that process did not immediately die
+      // for more clear and faster error response.
+      this_thread::sleep_for(200ms);
+      int wstatus;
+      auto status = waitpid(m_pid, &wstatus, WNOHANG);
+      if (WIFEXITED(wstatus) || WIFSTOPPED(wstatus) || WIFSIGNALED(wstatus)) {
+        throw runtime_error("Process " + m_name +
+                            " is already dead. Aborting!");
+      }
     }
   }
 
