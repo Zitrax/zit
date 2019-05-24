@@ -20,6 +20,10 @@ namespace zit {
 class Peer;
 class Torrent;
 
+/**
+ * Each Peer uses a PeerConnection to handle the network connection and
+ * traffic.
+ */
 class PeerConnection {
  public:
   PeerConnection(Peer& peer,
@@ -51,6 +55,9 @@ class PeerConnection {
   std::shared_ptr<spdlog::logger> m_logger;
 };
 
+/**
+ * A peer that the torrent can connect to either to send to or download from.
+ */
 class Peer {
  public:
   explicit Peer(Url url, Torrent& torrent)

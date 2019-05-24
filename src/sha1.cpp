@@ -53,7 +53,7 @@ Sha1 Sha1::calculate(const unsigned char* src, size_t count) {
   return ret;
 }
 
-Sha1 Sha1::calculate(const string& data) {
+Sha1 Sha1::calculate(const std::string& data) {
   return calculate(reinterpret_cast<const unsigned char*>(data.data()),
                    data.size());
 }
@@ -63,7 +63,7 @@ Sha1 Sha1::calculate(const bytes& data) {
                    data.size());
 }
 
-Sha1 Sha1::calculate(const filesystem::path& file) {
+Sha1 Sha1::calculate(const std::filesystem::path& file) {
   // Important to open in binary mode due to line endings
   // differing on windows and linux.
   ifstream file_stream{file, ios_base::in | ios_base::binary};

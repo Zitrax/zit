@@ -63,6 +63,9 @@ class FileWriter {
   TorrentWrittenCallback m_torrent_written_callback{};
 };
 
+/**
+ * Managing the thread running  FileWriter
+ */
 class FileWriterThread {
  private:
   auto init_logger() {

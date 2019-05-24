@@ -76,6 +76,10 @@ class BencodeConversionError : public std::runtime_error {
 };
 
 // Classes
+
+/**
+ * One element/value in the Bencoded file.
+ */
 class Element : public std::enable_shared_from_this<Element> {
  public:
   virtual ~Element() = default;

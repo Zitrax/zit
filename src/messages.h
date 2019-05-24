@@ -26,6 +26,10 @@ enum class peer_wire_id : uint8_t {
 
 using pwid_t = std::underlying_type_t<peer_wire_id>;
 
+/**
+ * Incoming torrent message from the network. Main entry point is
+ * Message::parse().
+ */
 class Message {
  public:
   explicit Message(const bytes& msg)

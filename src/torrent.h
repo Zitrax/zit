@@ -241,6 +241,9 @@ class Torrent {
   std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces{};
 };
 
+/**
+ * Information object for each file in the torrent.
+ */
 class FileInfo {
  public:
   FileInfo(int64_t length, std::filesystem::path path, std::string md5sum = "")

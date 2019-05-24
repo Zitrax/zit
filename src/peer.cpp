@@ -53,7 +53,7 @@ void PeerConnection::write(const std::string& msg) {
   write(peer_.url(), msg);
 }
 
-void PeerConnection::write(const Url& url, const string& msg) {
+void PeerConnection::write(const Url& url, const std::string& msg) {
   m_logger->debug(PRETTY_FUNCTION);
   ostream request_stream(&request_);
   request_stream << msg;
