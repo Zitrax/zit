@@ -4,6 +4,15 @@
  */
 #ifdef __linux__
 
+/**
+ * Note that the integration tests depend on a third party tracker and seeder:
+ *
+ *  - Tracker (bittorrent-tracker)
+ *    - sudo npm install -g bittorrent-tracker
+ *  - Seeder (ctorrent)
+ *    - sudo apt install ctorrent
+ */
+
 #include <sys/prctl.h>
 #include <unistd.h>
 #include <chrono>
