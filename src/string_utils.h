@@ -34,7 +34,7 @@ inline std::string from_bytes(const bytes& buffer,
   std::stringstream ss;
   auto it_end = buffer.cbegin() + (end == 0 ? buffer.size() : end);
   for (auto it = buffer.cbegin() + start; it != it_end; ++it) {
-	  ss << static_cast<char>(*it);
+    ss << static_cast<char>(*it);
   }
   return ss.str();
 #else
