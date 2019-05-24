@@ -60,7 +60,7 @@ class Process {
       this_thread::sleep_for(200ms);
       int wstatus;
       auto status = waitpid(m_pid, &wstatus, WNOHANG);
-      if (WIFEXITED(wstatus) || WIFSTOPPED(wstatus) || WIFSIGNALED(wstatus)) {
+      if (WIFEXITED(wstatus)) {
         throw runtime_error("Process " + m_name +
                             " is already dead. Aborting!");
       }
