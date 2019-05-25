@@ -93,3 +93,11 @@ add_test(NAME zitest COMMAND zitest)
 if(INTEGRATION_TESTS)
   target_compile_definitions(zitest PUBLIC INTEGRATION_TESTS)
 endif()
+
+# For getting backtraces use:
+# sudo ln -s /usr/bin/llvm-symbolizer-3.8 /usr/bin/llvm-symbolizer
+# export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer
+# export ASAN_OPTIONS=symbolize=1
+add_executable(zit_libfuzzer EXCLUDE_FROM_ALL main_libfuzzer.cpp)
+target_compile_options(zit_libfuzzer PUBLIC -fsanitize=address,fuzzer)
+target_link_options(zit_libfuzzer PUBLIC -fsanitize=address,fuzzer)
