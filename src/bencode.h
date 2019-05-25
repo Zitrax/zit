@@ -258,6 +258,10 @@ inline ElmPtr decodeString(std::istringstream& iss) {
   if (iss.get() != ':') {
     throw std::invalid_argument("No string length end marker");
   }
+  if (strlen > 100'000'000) {
+    throw std::invalid_argument("String length " + std::to_string(strlen) +
+                                " larger than max size");
+  }
   std::string str(strlen, '\0');
   iss.read(&str[0], zit::numeric_cast<std::streamsize>(strlen));
   if (iss.eof()) {
