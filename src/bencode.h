@@ -285,14 +285,14 @@ inline ElmPtr decodeString(std::istringstream& iss) {
                               "' at position " + std::to_string(pos) + "\n");
 }
 
-ElmPtr decode_internal(std::istringstream& iss);
+ElmPtr decode_internal(std::istringstream& iss, unsigned int);
 
-inline ElmPtr decodeList(std::istringstream& iss) {
+inline ElmPtr decodeList(std::istringstream& iss, const unsigned int depth) {
   iss.ignore();
   auto v = BeList();
   if (iss.peek() != 'e') {
     while (true) {
-      v.push_back(decode_internal(iss));
+      v.push_back(decode_internal(iss, depth));
       if (iss.eof()) {
         throw std::invalid_argument("Unexpected eof: " + iss.str());
       }
@@ -305,13 +305,13 @@ inline ElmPtr decodeList(std::istringstream& iss) {
   return Element::build(v);
 }
 
-inline ElmPtr decodeDict(std::istringstream& iss) {
+inline ElmPtr decodeDict(std::istringstream& iss, const unsigned int depth) {
   iss.ignore();
   auto m = BeDict();
   if (iss.peek() != 'e') {
     while (true) {
       auto key = decodeString(iss);
-      auto val = decode_internal(iss);
+      auto val = decode_internal(iss, depth);
       m[key->to<TypedElement<std::string>>()->val()] = val;
       if (iss.eof()) {
         throw std::invalid_argument("Unexpected eof: " + iss.str());
@@ -328,7 +328,10 @@ inline ElmPtr decodeDict(std::istringstream& iss) {
 /**
  * @note Do not call this directly, use @ref decode() instead.
  */
-inline ElmPtr decode_internal(std::istringstream& iss) {
+inline ElmPtr decode_internal(std::istringstream& iss, unsigned int depth) {
+  if (depth++ > 200) {
+    throw std::invalid_argument("Recursion limit reached");
+  }
   if (iss.peek() == 'i') {
     iss.ignore();
     return decodeInt(iss);
@@ -337,10 +340,10 @@ inline ElmPtr decode_internal(std::istringstream& iss) {
     return decodeString(iss);
   }
   if (iss.peek() == 'l') {
-    return decodeList(iss);
+    return decodeList(iss, depth);
   }
   if (iss.peek() == 'd') {
-    return decodeDict(iss);
+    return decodeDict(iss, depth);
   }
   throw_invalid_string(iss);
 }
@@ -358,7 +361,7 @@ inline ElmPtr decode_internal(std::istringstream& iss) {
  */
 inline ElmPtr decode(const std::string& str) {
   std::istringstream iss(str);
-  auto elm = decode_internal(iss);
+  auto elm = decode_internal(iss, 0);
   if (!elm || !iss.ignore().eof()) {
     throw_invalid_string(iss);
   }

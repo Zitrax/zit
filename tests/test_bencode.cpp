@@ -171,6 +171,12 @@ TEST(bencode, decode_dict) {
   EXPECT_EQ(*v->to<TypedElement<int64_t>>(), 7);
 }
 
+TEST(bencode, decode_recursion) {
+  std::filesystem::path p(__FILE__);
+  auto s = read_file(p.parent_path() / "data" / "bencode_recursion.txt");
+  EXPECT_THROW(decode(s), std::invalid_argument);
+}
+
 TEST(bencode, decode_real) {
   std::filesystem::path p(__FILE__);
   auto s = read_file(p.parent_path() / "data" / "test.torrent");
