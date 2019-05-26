@@ -100,4 +100,6 @@ endif()
 # export ASAN_OPTIONS=symbolize=1
 add_executable(zit_libfuzzer EXCLUDE_FROM_ALL main_libfuzzer.cpp)
 target_compile_options(zit_libfuzzer PUBLIC -fsanitize=address,fuzzer)
-target_link_options(zit_libfuzzer PUBLIC -fsanitize=address,fuzzer)
+set_target_properties(zit_libfuzzer PROPERTIES LINK_FLAGS -fsanitize=address,fuzzer)
+# TODO: Better - but only in CMake >= 3.13 ( travis is on 3.12 )
+# target_link_options(zit_libfuzzer PUBLIC -fsanitize=address,fuzzer)
