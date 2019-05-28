@@ -42,7 +42,7 @@ void FileWriter::write_next_piece() {
 
   auto [torrent, piece] = t_piece;
   try {
-    auto sha = Sha1::calculate(piece->data());
+    auto sha = Sha1::calculate_data(piece->data());
     if (sha != torrent->pieces()[piece->id()]) {
       throw runtime_error("Piece data does not match expected Sha1");
     }
@@ -93,6 +93,7 @@ void FileWriter::write_next_piece() {
 
     if (torrent->done()) {
       m_logger->info("Final piece written");
+      filesystem::rename(tmpfile_name, torrent->name());
       if (m_torrent_written_callback) {
         m_torrent_written_callback(*torrent);
       }

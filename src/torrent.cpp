@@ -47,9 +47,6 @@ static auto beDictToFileInfo(const Element& element) {
 
 Torrent::Torrent(const filesystem::path& file) {
   m_logger = spdlog::get("console");
-  // TODO: tmpnam is not fully safe - there is no replacement in std though so
-  //       would have to be manually implemented.
-  m_tmpfile = filesystem::path(tmpnam(nullptr));
   m_logger->debug("Using tmpfile {} for {}", m_tmpfile, file);
   auto root = bencode::decode(read_file(file));
 
@@ -60,6 +57,7 @@ Torrent::Torrent(const filesystem::path& file) {
   const auto& info = root_dict.at("info")->to<TypedElement<BeDict>>()->val();
 
   m_name = info.at("name")->to<TypedElement<string>>()->val();
+  m_tmpfile = m_name + ".zit_downloading";
   auto pieces = info.at("pieces")->to<TypedElement<string>>()->val();
   if (pieces.size() % 20) {
     throw runtime_error("Unexpected pieces length");
@@ -125,7 +123,7 @@ Torrent::Torrent(const filesystem::path& file) {
     });
   }
 
-  m_info_hash = Sha1::calculate(encode(info));
+  m_info_hash = Sha1::calculate_data(encode(info));
 }
 
 int64_t Torrent::length() const {
