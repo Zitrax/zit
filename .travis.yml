@@ -13,7 +13,7 @@ matrix:
           packages:
             - g++-8
       install:
-        - pip install conan
+        - pip install --user conan
         - conan user
       script:
         - conan install .
@@ -33,7 +33,7 @@ matrix:
             - clang-tidy-8
             - libstdc++-8-dev  # for <filesystem>
       install:
-        - pip install conan
+        - pip install --user conan
         - conan user
       script:
         - conan install .
