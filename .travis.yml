@@ -16,7 +16,7 @@ matrix:
         - pip install --user conan
         - conan user
       script:
-        - conan install .
+        - conan install . -pr conan_profiles/linux_gcc
         - CXX=g++-8 cmake .
         - cmake --build . -- -j$(nproc)
         - ctest --output-on-failure
@@ -36,7 +36,7 @@ matrix:
         - pip install --user conan
         - conan user
       script:
-        - conan install .
+        - conan install .  -pr conan_profiles/linux_clang
         - CXX=clang++-8 cmake .
         - cmake --build . -- -j$(nproc)
         - ctest --output-on-failure
