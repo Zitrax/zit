@@ -12,9 +12,10 @@ matrix:
             - ubuntu-toolchain-r-test
           packages:
             - g++-8
-            - libasio-dev
-            - libboost-dev
+      install:
+        - pip install --user conan
       script:
+        - conan install . -pr conan_profiles/linux_gcc
         - CXX=g++-8 cmake .
         - cmake --build . -- -j$(nproc)
         - ctest --output-on-failure
@@ -29,10 +30,11 @@ matrix:
           packages:
             - clang-8
             - clang-tidy-8
-            - libasio-dev
-            - libboost-dev
             - libstdc++-8-dev  # for <filesystem>
+      install:
+        - pip install --user conan
       script:
+        - conan install .  -pr conan_profiles/linux_clang
         - CXX=clang++-8 cmake .
         - cmake --build . -- -j$(nproc)
         - ctest --output-on-failure
