@@ -2,6 +2,12 @@ cmake_minimum_required (VERSION 3.10)
 set(CMAKE_CXX_STANDARD 17)
 project(zit CXX)
 
+if(EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+  include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+  set(CONAN_SYSTEM_INCLUDES ON)
+  conan_basic_setup()
+endif()
+
 set(SANITIZED_LIBCXX "" CACHE PATH "Path to custom sanitized libc++ install directory")
 
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
@@ -31,7 +37,7 @@ if(WIN32)
     messge(FATAL_ERROR "Need ASIO include directory")
   else()
     message(STATUS "asio.hpp found in ${ASIO_INCLUDE_DIR}")
-	  # Many warnings from asio regarding this using msvc
+    # Many warnings from asio regarding this using msvc
     add_compile_options(-D_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
     add_compile_options(-D_WIN32_WINNT=0x0501)
   endif()
