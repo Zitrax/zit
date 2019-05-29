@@ -42,7 +42,7 @@ void FileWriter::write_next_piece() {
 
   auto [torrent, piece] = t_piece;
   try {
-    auto sha = Sha1::calculate_data(piece->data());
+    auto sha = Sha1::calculateData(piece->data());
     if (sha != torrent->pieces()[piece->id()]) {
       throw runtime_error("Piece data does not match expected Sha1");
     }

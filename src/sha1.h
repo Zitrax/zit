@@ -26,17 +26,17 @@ class Sha1 : public std::array<char, SHA_LENGTH> {
   /**
    * Calculate SHA1 of the string content.
    */
-  [[nodiscard]] static Sha1 calculate_data(const std::string& data);
+  [[nodiscard]] static Sha1 calculateData(const std::string& data);
 
   /**
    * Calculate SHA1 of the byte vector content.
    */
-  [[nodiscard]] static Sha1 calculate_data(const bytes& data);
+  [[nodiscard]] static Sha1 calculateData(const bytes& data);
 
   /**
    * Calculate SHA1 of the content of the file.
    */
-  [[nodiscard]] static Sha1 calculate_file(const std::filesystem::path& file);
+  [[nodiscard]] static Sha1 calculateFile(const std::filesystem::path& file);
 
   /**
    * Extract a raw sha1 from a byte vector (no calculation involved).

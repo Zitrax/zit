@@ -123,7 +123,7 @@ Torrent::Torrent(const filesystem::path& file) {
     });
   }
 
-  m_info_hash = Sha1::calculate_data(encode(info));
+  m_info_hash = Sha1::calculateData(encode(info));
 }
 
 int64_t Torrent::length() const {

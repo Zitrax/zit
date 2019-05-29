@@ -158,8 +158,8 @@ TEST_P(IntegrateF, DISABLED_download) {
   // Transfer done - Verify content
   auto source = data_dir / "1MiB.dat";
   auto target = torrent.name();
-  auto source_sha1 = zit::Sha1::calculate_file(source).hex();
-  auto target_sha1 = zit::Sha1::calculate_file(target).hex();
+  auto source_sha1 = zit::Sha1::calculateFile(source).hex();
+  auto target_sha1 = zit::Sha1::calculateFile(target).hex();
   EXPECT_EQ(source_sha1, target_sha1);
 
   // Delete downloaded file
