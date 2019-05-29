@@ -14,7 +14,6 @@ matrix:
             - g++-8
       install:
         - pip install --user conan
-        - conan user
       script:
         - conan install . -pr conan_profiles/linux_gcc
         - CXX=g++-8 cmake .
@@ -34,7 +33,6 @@ matrix:
             - libstdc++-8-dev  # for <filesystem>
       install:
         - pip install --user conan
-        - conan user
       script:
         - conan install .  -pr conan_profiles/linux_clang
         - CXX=clang++-8 cmake .
