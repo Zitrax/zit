@@ -86,32 +86,3 @@ if(CLANG_FORMAT)
 else()
   message(WARNING "Could not find clang-format, formatting not available")
 endif()
-
-find_program(CLANG_TIDY run-clang-tidy)
-
-if(CLANG_TIDY)
-  if(NOT CMAKE_EXPORT_COMPILE_COMMANDS)
-    message(FATAL_ERROR "Need to pass -DCMAKE_EXPORT_COMPILE_COMMANDS=ON to run clang-tidy")
-  endif()
-
-  # For now running this only on the src/ files since the googletest
-  # macros generate tons of issues and clang-tidy has no good mechanism
-  # of filtering that out. See https://reviews.llvm.org/D26418
-  add_custom_target(tidy
-    COMMENT "Tidying ${ALL_SRC_SOURCE_FILES}"
-    COMMAND ${CLANG_TIDY}
-            -quiet
-            -p ${CMAKE_CURRENT_BINARY_DIR}
-            ${ALL_SRC_SOURCE_FILES}
-    )
-
-  add_custom_target(tidy_fix
-    COMMENT "Tidying ${ALL_SRC_SOURCE_FILES}"
-    COMMAND ${CLANG_TIDY}
-            -quiet -fix
-            -p ${CMAKE_CURRENT_BINARY_DIR}
-            ${ALL_SRC_SOURCE_FILES}
-    )
-else()
-    message(WARNING "Could not find clang-tidy, tidy checking not available")
-endif()

@@ -1,3 +1,23 @@
+option(USE_CLANG_TIDY "Use clang-tidy if available" ON)
+
+# Clang tidy only in the src dir since it can't run on the gtest sources
+# used in the tests folder. Not possible yet to exclude only
+# those headers at the moment, see https://reviews.llvm.org/D26418.
+#
+# Using this is costly in compile time though. Using 6 cores
+# the compile time went from 16s to 48s.
+#
+if(USE_CLANG_TIDY)
+  find_program(CLANG_TIDY clang-tidy)
+
+  if(CLANG_TIDY)
+    message(STATUS "Enabling clang-tidy: ${CLANG_TIDY}")
+    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY}")
+  else()
+      message(WARNING "Could not find clang-tidy, tidy checking not available")
+  endif()
+endif()
+
 if(UNIX)
   add_compile_options(-Wall -Wextra -Werror -Weffc++ -Wconversion -Wsign-conversion)
 endif()
