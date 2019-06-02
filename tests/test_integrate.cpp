@@ -85,14 +85,33 @@ class Process {
     rhs.m_pid = 0;  // Ensure we wont kill the moved from process
   }
 
+  /**
+   * Terminate the process. Try to be nice and send SIGTERM first, and SIGKILL
+   * later if that did not help.
+   */
   ~Process() {
     if (m_pid) {
       auto console = spdlog::get("console");
       kill(m_pid, SIGTERM);
       console->info("Waiting for {}", m_name);
       int status;
+      for (int i = 0; i < 500; ++i) {
+        auto ret = waitpid(m_pid, &status, WNOHANG);
+        if (ret > 0) {
+          console->info("{} exited with status: {}", m_name,
+                        WEXITSTATUS(status));
+          return;
+        }
+        if (ret == -1) {
+          console->error("waitpid errored");
+          return;
+        }
+        std::this_thread::sleep_for(10ms);
+      }
+      console->info("{} still not dead, sending SIGKILL", m_name);
+      kill(m_pid, SIGKILL);
       waitpid(m_pid, &status, 0);
-      console->info("{} exited with status: {}", m_name, status);
+      console->info("{} exited with status: {}", m_name, WEXITSTATUS(status));
     }
   }
 
