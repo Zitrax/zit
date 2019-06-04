@@ -2,6 +2,7 @@
 #pragma once
 
 #include <cstdint>
+#include <filesystem>
 #include "bitfield.h"
 #include "types.h"
 
@@ -46,6 +47,16 @@ class Piece {
    * @return true if this was the last remaining block for this piece
    */
   bool set_block(uint32_t offset, const bytes& data);
+
+  /**
+   * Return a specific block. Can return empty vector if
+   * the block is not yet done.
+   *
+   * @param offset the piece offset for the block
+   * @param filename the file to read data from if not in memory
+   */
+  [[nodiscard]] bytes get_block(uint32_t offset,
+                                const std::filesystem::path& filename) const;
 
   /**
    * Update status whether the piece has been written to disk or not.

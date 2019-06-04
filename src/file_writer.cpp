@@ -13,24 +13,37 @@ using namespace std;
 namespace fs = filesystem;
 
 void FileWriter::add(Torrent* torrent, const shared_ptr<Piece>& piece) {
-  lock_guard<mutex> lock(m_mutex);
-  m_logger->debug("Piece {} added to queue", piece->id());
+  lock_guard<mutex> lock(m_queue_mutex);
+  logger()->debug("Piece {} added to queue", piece->id());
   m_queue.push(make_tuple(torrent, piece));
   m_condition.notify_one();
 }
 
 void FileWriter::run() {
-  m_logger->info("FileWriter starting");
+  logger()->info("FileWriter starting");
   while (!m_stop) {
     write_next_piece();
   }
-  m_logger->info("FileWriter done");
+  logger()->info("FileWriter done");
+}
+
+bytes FileWriter::read_block(uint32_t offset,
+                             uint32_t length,
+                             const filesystem::path& filename) {
+  unique_lock<mutex> lock(m_file_mutex);
+  ifstream is(filename, ios::binary);
+  is.exceptions(fstream::failbit | fstream::badbit);
+  is.seekg(offset);
+  bytes data;
+  data.resize(length);
+  is.read(reinterpret_cast<char*>(data.data()), length);
+  return data;
 }
 
 void FileWriter::write_next_piece() {
   TorrentPiece t_piece;
   {
-    unique_lock<mutex> lock(m_mutex);
+    unique_lock<mutex> lock(m_queue_mutex);
     // This releasess the lock until we are notified
     m_condition.wait(lock, [this]() { return !m_queue.empty() || m_stop; });
     if (m_stop) {
@@ -40,6 +53,7 @@ void FileWriter::write_next_piece() {
     m_queue.pop();
   }
 
+  unique_lock<mutex> lock(m_file_mutex);
   auto [torrent, piece] = t_piece;
   try {
     auto sha = Sha1::calculateData(piece->data());
@@ -52,7 +66,7 @@ void FileWriter::write_next_piece() {
 
     // Create zeroed file if not existing
     if (!fs::exists(tmpfile_name)) {
-      m_logger->info("Creating tmpfile {} for '{}' with size {}", tmpfile_name,
+      logger()->info("Creating tmpfile {} for '{}' with size {}", tmpfile_name,
                      torrent->name(), length);
       {
         ofstream tmpfile(tmpfile_name, ios::binary | ios::out);
@@ -80,7 +94,7 @@ void FileWriter::write_next_piece() {
       }
       tmpfile.write(reinterpret_cast<char*>(data.data()),
                     numeric_cast<streamsize>(data.size()));
-      m_logger->debug("Writing: {} -> {} ({})", offset, offset + data.size(),
+      logger()->debug("Writing: {} -> {} ({})", offset, offset + data.size(),
                       data.size());
     }
 
@@ -89,10 +103,10 @@ void FileWriter::write_next_piece() {
       throw runtime_error("Unexpected (B) file size " + to_string(fsize));
     }
     piece->set_piece_written(true);
-    m_logger->info("Wrote piece {} for '{}'", piece->id(), torrent->name());
+    logger()->info("Wrote piece {} for '{}'", piece->id(), torrent->name());
 
     if (torrent->done()) {
-      m_logger->info("Final piece written");
+      logger()->info("Final piece written");
       filesystem::rename(tmpfile_name, torrent->name());
       if (m_torrent_written_callback) {
         m_torrent_written_callback(*torrent);
@@ -100,7 +114,7 @@ void FileWriter::write_next_piece() {
     }
   } catch (const exception& err) {
     // TODO: Retry later ? Mark torrent as errored ?
-    m_logger->error(
+    logger()->error(
         "write_next_piece failed for piece {} and torrent '{}' with error: {}",
         piece->id(), torrent->name(), err.what());
   }

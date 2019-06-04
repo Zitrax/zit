@@ -4,6 +4,7 @@
 #include "torrent.h"
 
 #include <condition_variable>
+#include <filesystem>
 #include <mutex>
 #include <queue>
 #include <tuple>
@@ -28,9 +29,25 @@ using TorrentWrittenCallback = std::function<void(Torrent&)>;
  * map to more than one file.
  */
 class FileWriter {
+ private:
+  FileWriter(TorrentWrittenCallback cb)
+      : m_torrent_written_callback(std::move(cb)) {}
+
+  auto logger() { return spdlog::get("file_writer"); }
+
  public:
-  explicit FileWriter(TorrentWrittenCallback cb)
-      : m_logger(spdlog::get("file_writer")), m_torrent_written_callback(std::move(cb)) {}
+  static FileWriter& getInstance(TorrentWrittenCallback cb = {}) {
+    static FileWriter instance(cb);
+    // FIXME: This not really good - an singleton that is reset for each
+    // time getInstance() called.
+    instance.m_torrent_written_callback = cb;
+    instance.m_stop = false;
+    return instance;
+  }
+
+  // Delete copy and assignment since this is a singleton
+  FileWriter(FileWriter const&) = delete;
+  void operator=(FileWriter const&) = delete;
 
   /**
    * Add a piece to the queue for writing by the writer thread.
@@ -52,19 +69,31 @@ class FileWriter {
     m_condition.notify_one();
   }
 
+  /**
+   * Will read some bytes from the file. Call can block until the
+   * the writer thread is done with current work.
+   *
+   * @param offset the offset into the file to read from
+   * @param length the number of bytes to read
+   * @param filename the path to the file to read from
+   */
+  bytes read_block(uint32_t offset,
+                   uint32_t length,
+                   const std::filesystem::path& filename);
+
  private:
   void write_next_piece();
 
   std::queue<TorrentPiece> m_queue{};
-  std::mutex m_mutex{};
+  std::mutex m_queue_mutex{};
+  std::mutex m_file_mutex{};
   std::condition_variable m_condition{};
-  std::shared_ptr<spdlog::logger> m_logger{};
   std::atomic_bool m_stop = false;
   TorrentWrittenCallback m_torrent_written_callback{};
 };
 
 /**
- * Managing the thread running  FileWriter
+ * Managing the thread running FileWriter
  */
 class FileWriterThread {
  private:
@@ -80,7 +109,7 @@ class FileWriterThread {
  public:
   explicit FileWriterThread(Torrent& torrent, TorrentWrittenCallback cb = {})
       : m_logger(init_logger()),
-        m_file_writer(std::move(cb)),
+        m_file_writer(FileWriter::getInstance(cb)),
         m_file_writer_thread([this]() { m_file_writer.run(); }) {
     torrent.set_piece_callback(bind(&FileWriter::add, &m_file_writer, _1, _2));
   }
@@ -93,7 +122,7 @@ class FileWriterThread {
 
  private:
   std::shared_ptr<spdlog::logger> m_logger{};
-  FileWriter m_file_writer;
+  FileWriter& m_file_writer;
   std::thread m_file_writer_thread;
 };
 

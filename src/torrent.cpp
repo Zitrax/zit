@@ -4,6 +4,7 @@
 #include "file_utils.h"
 #include "peer.h"
 #include "sha1.h"
+#include "string_utils.h"
 
 #include "spdlog/spdlog.h"
 
@@ -45,9 +46,10 @@ static auto beDictToFileInfo(const Element& element) {
       md5);
 }
 
-Torrent::Torrent(const filesystem::path& file) {
+Torrent::Torrent(const filesystem::path& file,
+                 const std::filesystem::path& data_dir)
+    : m_data_dir(data_dir) {
   m_logger = spdlog::get("console");
-  m_logger->debug("Using tmpfile {} for {}", m_tmpfile, file);
   auto root = bencode::decode(read_file(file));
 
   const auto& root_dict = root->to<TypedElement<BeDict>>()->val();
@@ -56,8 +58,9 @@ Torrent::Torrent(const filesystem::path& file) {
   m_announce = root_dict.at("announce")->to<TypedElement<string>>()->val();
   const auto& info = root_dict.at("info")->to<TypedElement<BeDict>>()->val();
 
-  m_name = info.at("name")->to<TypedElement<string>>()->val();
+  m_name = m_data_dir / info.at("name")->to<TypedElement<string>>()->val();
   m_tmpfile = m_name + ".zit_downloading";
+  m_logger->debug("Using tmpfile {} for {}", m_tmpfile, file);
   auto pieces = info.at("pieces")->to<TypedElement<string>>()->val();
   if (pieces.size() % 20) {
     throw runtime_error("Unexpected pieces length");
@@ -124,6 +127,48 @@ Torrent::Torrent(const filesystem::path& file) {
   }
 
   m_info_hash = Sha1::calculateData(encode(info));
+
+  // If we already have a file - scan it and mark what pieces we already have
+  verify_existing_file();
+}
+
+void Torrent::verify_existing_file() {
+  bool full_file = false;
+  if (filesystem::exists(m_name)) {
+    if (filesystem::exists(m_tmpfile)) {
+      throw runtime_error("Temporary and full filename exists");
+    }
+    // Assume that we have the whole file
+    m_tmpfile = m_name;
+    full_file = true;
+  }
+  if (filesystem::exists(m_tmpfile)) {
+    m_logger->info("Verifying existing file: {}", m_tmpfile);
+    ifstream is{m_tmpfile, ios::in | ios::binary};
+    is.exceptions(ifstream::failbit | ifstream::badbit);
+    bytes data(m_piece_length);
+    uint32_t id = 0;
+    uint32_t pieces = 0;
+    for (auto& sha1 : m_pieces) {
+      auto offset = id * m_piece_length;
+      is.seekg(offset);
+      is.read(reinterpret_cast<char*>(data.data()), m_piece_length);
+      auto fsha1 = Sha1::calculateData(data);
+      if (sha1 == fsha1) {
+        m_client_pieces[id] = true;
+        m_active_pieces.emplace(
+            make_pair(id, make_shared<Piece>(id, m_piece_length)));
+        m_active_pieces[id]->set_piece_written(true);
+        ++pieces;
+      }
+      ++id;
+    }
+    m_logger->info("Verification done. {}/{} pieces done.", pieces,
+                   m_pieces.size());
+    if (full_file && (pieces != m_pieces.size())) {
+      throw runtime_error("Filename exists but does not match all pieces");
+    }
+  }
 }
 
 int64_t Torrent::length() const {
@@ -138,7 +183,13 @@ auto Torrent::left() const {
   // FIXME: Should not include pieces that are done
 
   if (is_single_file()) {
-    return length();
+    return length() - accumulate(m_active_pieces.begin(), m_active_pieces.end(),
+                                 static_cast<int64_t>(0),
+                                 [](int64_t a, const auto& p) {
+                                   return a + (p.second->piece_written()
+                                                   ? p.second->piece_size()
+                                                   : 0);
+                                 });
   }
 
   return accumulate(
@@ -146,11 +197,18 @@ auto Torrent::left() const {
       [](int64_t a, const FileInfo& b) { return a + b.length(); });
 }
 
+void Torrent::disconnected(Peer* peer) {
+  if (m_disconnect_callback) {
+    m_disconnect_callback(peer);
+  }
+}
+
 void Torrent::start() {
   Url url(m_announce);
   url.add_param("info_hash=" + Net::urlEncode(m_info_hash));
-  url.add_param("peer_id=abcdefghijklmnopqrst");  // FIXME: Use proper id
-  url.add_param("port=" + to_string(m_port));
+  // FIXME: Use proper id - should be unique per peer thus not fixed
+  url.add_param("peer_id=abcdefghijklmnopqrst");
+  url.add_param("port=" + to_string(m_listening_port));
   url.add_param("uploaded=0");
   url.add_param("downloaded=0");
   url.add_param("left=" + to_string(left()));
@@ -192,24 +250,36 @@ void Torrent::start() {
   const int THREE_HEX_BYTES = 6;
   for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
     auto url = Url(binary_peers.substr(i, THREE_HEX_BYTES), true);
-    if (!(url.host() == "127.0.0.1" && url.port() == m_port)) {
-      m_peers.emplace_back(url, *this);
+    if (!(url.host() == "127.0.0.1" && url.port() == m_listening_port)) {
+      m_peers.emplace_back(make_shared<Peer>(url, *this));
     }
   }
+
+  // Handshake with all the remote peers
+  for (auto& p : m_peers) {
+    p->handshake();
+  }
+
+  // Add listening peer for incoming connections
+  m_logger->warn("Adding listening peer");
+  m_peers.emplace_back(make_shared<Peer>(*this))->listen();
 }
 
 void Torrent::run() {
+  m_logger->debug("Run loop start");
   while (!all_of(m_peers.begin(), m_peers.end(),
-                 [](auto& p) { return p.io_service().stopped(); })) {
+                 [](auto& p) { return p->io_service().stopped(); })) {
+    // m_logger->debug("Run loop");
     std::size_t ran = 0;
     for (auto& p : m_peers) {
-      ran += p.io_service().poll_one();
+      ran += p->io_service().poll_one();
     }
     // If no handlers ran, then sleep.
     if (!ran) {
-      this_thread::sleep_for(100ms);
+      this_thread::sleep_for(10ms);
     }
   }
+  m_logger->debug("Run loop done");
 }
 
 bool Torrent::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
@@ -227,10 +297,13 @@ bool Torrent::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
   return false;
 }
 
-std::shared_ptr<Piece> Torrent::active_piece(uint32_t id) {
+std::shared_ptr<Piece> Torrent::active_piece(uint32_t id, bool create) {
   std::lock_guard<std::mutex> lock(m_mutex);
   auto piece = m_active_pieces.find(id);
   if (piece == m_active_pieces.end()) {
+    if (!create) {
+      return nullptr;
+    }
     int64_t piece_length = m_piece_length;
     if (id == pieces().size() - 1) {
       // Last piece

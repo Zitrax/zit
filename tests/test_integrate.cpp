@@ -129,15 +129,21 @@ static auto start_tracker() {
 
 static auto start_seeder(const std::filesystem::path& data_dir,
                          const std::filesystem::path& torrent_file) {
-  return Process("seeder", {"ctorrent", torrent_file.c_str()},
+  return Process("seeder", {"ctorrent", "-v", torrent_file.c_str()},
                  data_dir.c_str());
+}
+
+static auto start_leecher(const std::filesystem::path& torrent_file) {
+  // TODO: Might want to use a temporary cwd for this
+  auto bf = torrent_file;
+  bf += ".bf";
+  filesystem::remove(bf);
+  filesystem::remove("zzz");
+  return Process("leecher", {"ctorrent", "-s", "zzz", torrent_file.c_str()});
 }
 
 static void start(zit::Torrent& torrent) {
   torrent.start();
-  for (auto& p : torrent.peers()) {
-    p.handshake(torrent.info_hash());
-  }
   torrent.run();
 }
 
@@ -149,6 +155,7 @@ TEST_P(IntegrateF, download) {
 #else
 TEST_P(IntegrateF, DISABLED_download) {
 #endif  // INTEGRATION_TESTS
+  spdlog::get("console")->set_level(spdlog::level::info);
   auto tracker = start_tracker();
 
   filesystem::path p(__FILE__);
@@ -167,16 +174,20 @@ TEST_P(IntegrateF, DISABLED_download) {
 
   // Download torrent with zit
   zit::Torrent torrent(torrent_file);
+  auto target = torrent.name();
+
+  // Ensure we do not already have it
+  filesystem::remove(target);
+
   zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
     spdlog::get("console")->info("Download completed");
     for_each(torrent.peers().begin(), torrent.peers().end(),
-             [](auto& peer) { peer.stop(); });
+             [](auto& peer) { peer->stop(); });
   });
   start(torrent);
 
   // Transfer done - Verify content
   auto source = data_dir / "1MiB.dat";
-  auto target = torrent.name();
   auto source_sha1 = zit::Sha1::calculateFile(source).hex();
   auto target_sha1 = zit::Sha1::calculateFile(target).hex();
   EXPECT_EQ(source_sha1, target_sha1);
@@ -188,5 +199,43 @@ TEST_P(IntegrateF, DISABLED_download) {
 INSTANTIATE_TEST_SUITE_P(SeedCount,
                          IntegrateF,
                          ::testing::Values<uint8_t>(1, 2, 5, 10));
+
+#ifdef INTEGRATION_TESTS
+TEST(Integrate, upload) {
+#else
+TEST(Integrate, DISABLED_upload) {
+#endif  // INTEGRATION_TESTS
+  spdlog::get("console")->set_level(spdlog::level::info);
+  auto tracker = start_tracker();
+
+  filesystem::path p(__FILE__);
+  auto data_dir = p.parent_path() / "data";
+  auto torrent_file = data_dir / "1MiB.torrent";
+
+  // Launch zit with existing file to seed it
+  zit::Torrent torrent(torrent_file, data_dir);
+  ASSERT_TRUE(torrent.done());
+
+  torrent.set_disconnect_callback([](zit::Peer* peer) {
+    spdlog::get("console")->info("Peer disconnect - stopping");
+    peer->stop();
+  });
+  // Connects to tracker and retrieves peers
+  torrent.start();
+  // Start a leecher that we will upload to
+  auto leecher = start_leecher(torrent_file);
+  // Run the peer connections
+  torrent.run();
+
+  // Transfer done - Verify content
+  auto source = data_dir / "1MiB.dat";
+  auto target = "zzz";  // FIXME: fix name and location of this
+  auto source_sha1 = zit::Sha1::calculateFile(source).hex();
+  auto target_sha1 = zit::Sha1::calculateFile(target).hex();
+  EXPECT_EQ(source_sha1, target_sha1);
+
+  // Delete downloaded file
+  filesystem::remove(target);
+}
 
 #endif  // __linux__
