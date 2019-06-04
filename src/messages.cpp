@@ -186,14 +186,24 @@ static string debugMsg(const bytes& msg, size_t len = 100) {
 
 size_t Message::parse(PeerConnection& connection) {
   auto handshake = HandshakeMsg::parse(m_msg);
+  auto& peer = connection.peer();
   if (handshake) {
     m_logger->info("Handshake of size {}", m_msg.size());
-    connection.peer().set_am_interested(true);
-    auto bf = handshake.value().getBitfield();
-    auto consumed = handshake.value().getConsumed();
-    if (bf.size() && consumed) {
-      connection.peer().set_remote_pieces(bf);
+    auto consumed = handshake->getConsumed();
+    if (!peer.verify_info_hash(handshake->getInfoHash())) {
+      // TODO: Spec say that we should drop the connection
+      m_logger->warn("Unexpected info_hash");
+      return consumed;
     }
+    auto bf = handshake->getBitfield();
+    if (bf.size() && consumed) {
+      peer.set_remote_pieces(bf);
+    }
+    if (peer.is_listening()) {
+      peer.handshake();
+    }
+    peer.report_bitfield();
+    peer.set_am_interested(true);
     return consumed;
   }
 
@@ -207,14 +217,16 @@ size_t Message::parse(PeerConnection& connection) {
     }
     if (len == 0 && m_msg.size() == 4) {
       m_logger->info("Keep Alive");
-    } else if (len > 0 && m_msg.size() >= 5) {
+      return m_msg.size();
+    }
+    if (len > 0 && m_msg.size() >= 5) {
       auto id = to_peer_wire_id(m_msg[4]);
       m_logger->info("Received: {}", id);
       switch (id) {
         case peer_wire_id::CHOKE:
           break;
         case peer_wire_id::UNCHOKE:
-          connection.peer().set_choking(false);
+          peer.set_choking(false);
           return m_msg.size();
         case peer_wire_id::PIECE: {
           auto index = big_endian(m_msg, 5);
@@ -224,25 +236,35 @@ size_t Message::parse(PeerConnection& connection) {
           auto start = m_msg.begin() + 13;
           auto end = start + (len - 9);
           auto data = bytes(start, end);
-          connection.peer().set_block(index, offset, data);
+          peer.set_block(index, offset, data);
         }
           return len + 4;
         case peer_wire_id::INTERESTED:
-          connection.peer().set_interested(true);
+          peer.set_interested(true);
           return m_msg.size();
         case peer_wire_id::NOT_INTERESTED:
-          break;
-        case peer_wire_id::HAVE:
-          break;
+          peer.set_interested(false);
+          return m_msg.size();
+        case peer_wire_id::HAVE: {
+          auto id = big_endian(m_msg, 5);
+          peer.have(id);
+          return 9;
+        }
         case peer_wire_id::BITFIELD: {
           auto start = m_msg.begin() + 5;
           auto end = start + len - 1;
           auto bf = Bitfield(bytes(start, end));
-          connection.peer().set_remote_pieces(bf);
+          peer.set_remote_pieces(bf);
           m_logger->info("{}", bf);
           return len + 4;
         }
-        case peer_wire_id::REQUEST:
+        case peer_wire_id::REQUEST: {
+          auto index = big_endian(m_msg, 5);
+          auto begin = big_endian(m_msg, 9);
+          auto length = big_endian(m_msg, 13);
+          peer.request(index, begin, length);
+          return len + 4;
+        }
         case peer_wire_id::CANCEL:
         case peer_wire_id::PORT:
         case peer_wire_id::UNKNOWN:

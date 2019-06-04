@@ -20,6 +20,8 @@ class Torrent;
 using PieceCallback =
     std::function<void(Torrent*, const std::shared_ptr<Piece>&)>;
 
+using DisconnectCallback = std::function<void(Peer*)>;
+
 /**
  * Represents one torrent. Bookeeps all pieces and block information.
  *
@@ -34,8 +36,10 @@ class Torrent {
  public:
   /**
    * @param file path to .torrent file to read
+   * @param data_dir path to the directory with the downloaded result
    */
-  explicit Torrent(const std::filesystem::path& file);
+  explicit Torrent(const std::filesystem::path& file,
+                   const std::filesystem::path& data_dir = "");
 
   /** The tracker URL */
   [[nodiscard]] auto announce() const { return m_announce; }
@@ -155,6 +159,15 @@ class Torrent {
   }
 
   /**
+   * Callback when a peer disconnects.
+   */
+  void set_disconnect_callback(DisconnectCallback disconnect_callback) {
+    m_disconnect_callback = disconnect_callback;
+  }
+
+  void disconnected(Peer* peer);
+
+  /**
    * The first request to the tracker. After calling this the peer list
    * has been populated.
    */
@@ -179,6 +192,14 @@ class Torrent {
   }
 
   /**
+   * The pieces that we have (on disk).
+   */
+  [[nodiscard]] Bitfield client_pieces() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_client_pieces;
+  }
+
+  /**
    * Information about what pieces we don't have that a remote has.
    */
   [[nodiscard]] Bitfield relevant_pieces(const Bitfield& remote_pieces) const {
@@ -195,8 +216,12 @@ class Torrent {
 
   /**
    * Create or return active piece for specific id.
+   *
+   * @param id The id of the piece to get
+   * @param create Creates the piece object if we do not already have it.
    */
-  [[nodiscard]] std::shared_ptr<Piece> active_piece(uint32_t id);
+  [[nodiscard]] std::shared_ptr<Piece> active_piece(uint32_t id,
+                                                    bool create = true);
 
   /**
    * Return true if all pieces have been written to disk.
@@ -206,13 +231,23 @@ class Torrent {
   /**
    * Port that we listen to.
    */
-  [[nodiscard]] auto port() const { return m_port; }
+  [[nodiscard]] auto listning_port() const { return m_listening_port; }
+
+  /**
+   * Port for outgoing connections.
+   */
+  [[nodiscard]] auto connection_port() const { return m_connection_port; }
 
  private:
   /**
    * Called when one piece has been downloaded.
    */
   void piece_done(std::shared_ptr<Piece>& piece);
+
+  /**
+   * Check an existing file for match with expected checksums.
+   */
+  void verify_existing_file();
 
   std::string m_announce{};
   std::vector<std::vector<std::string>> m_announce_list{};
@@ -230,9 +265,13 @@ class Torrent {
   Sha1 m_info_hash{};
   std::shared_ptr<spdlog::logger> m_logger{};
   std::filesystem::path m_tmpfile{};
+  std::filesystem::path m_data_dir{};
   PieceCallback m_piece_callback{};
-  unsigned short m_port = 20000;
-  std::vector<Peer> m_peers{};
+  DisconnectCallback m_disconnect_callback{};
+  // FIXME: Configurable ports
+  unsigned short m_listening_port = 20001;
+  unsigned short m_connection_port = 20000;
+  std::vector<std::shared_ptr<Peer>> m_peers{};
 
   // Piece housekeeping
   mutable std::mutex m_mutex{};

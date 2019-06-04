@@ -3,6 +3,8 @@
 
 #include "spdlog/spdlog.h"
 
+#include "file_writer.h"
+
 using namespace std;
 
 namespace zit {
@@ -60,9 +62,41 @@ bool Piece::set_block(uint32_t offset, const bytes& data) {
   return !next || *next >= block_count();
 }
 
+bytes Piece::get_block(uint32_t offset,
+                       const filesystem::path& filename) const {
+  if (offset % m_block_size != 0) {
+    throw runtime_error("Invalid block offset: " + to_string(offset));
+  }
+  if (offset >= m_piece_size) {
+    throw runtime_error("Too large block offset: " + to_string(offset));
+  }
+  auto block_id = offset / m_block_size;
+
+  lock_guard<mutex> lock(m_mutex);
+  if (!m_blocks_done[block_id]) {
+    m_logger->warn("Block {} in piece {} not done", block_id, m_id);
+    return {};
+  }
+  // Is it in memory?
+  if (!m_piece_written) {
+    m_logger->debug("Returning block {} in piece {} from memory", block_id,
+                    m_id);
+    auto start = m_data.begin() + offset;
+    return bytes(start, start + m_block_size);
+  }
+  // Is it on disk?
+  m_logger->debug("Returning block {} in piece {} from disk", block_id, m_id);
+  auto file_offset = m_piece_size * m_id + offset;
+  return FileWriter::getInstance().read_block(file_offset, m_block_size,
+                                              filename);
+}
+
 void Piece::set_piece_written(bool written) {
   m_piece_written = written;
   lock_guard<mutex> lock(m_mutex);
+  for (uint32_t i = 0; i < block_count(); ++i) {
+    m_blocks_done[i] = true;
+  }
   m_data.clear();
   m_data.shrink_to_fit();
 }

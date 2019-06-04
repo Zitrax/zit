@@ -44,16 +44,10 @@ int main() noexcept {
         torrent, [&console](zit::Torrent& torrent) {
           console->info("Download completed");
           for_each(torrent.peers().begin(), torrent.peers().end(),
-                   [](auto& peer) { peer.stop(); });
+                   [](auto& peer) { peer->stop(); });
         });
     console->info("\n{}", torrent);
     torrent.start();
-
-    for (auto& peer : torrent.peers()) {
-      console->info("\n{}", peer);
-      peer.handshake(torrent.info_hash());
-    }
-
     torrent.run();
   } catch (const exception& e) {
     print_exception(e);
