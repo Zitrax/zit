@@ -91,6 +91,11 @@ class Bitfield {
    */
   [[nodiscard]] std::optional<bytes::size_type> next(bool val) const;
 
+  /**
+   * The raw byte vector.
+   */
+  [[nodiscard]] bytes data() const { return m_bytes; }
+
  private:
   bytes m_bytes{};
 };

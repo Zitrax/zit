@@ -29,19 +29,47 @@ namespace zit {
 
 PeerConnection::PeerConnection(Peer& peer,
                                asio::io_service& io_service,
-                               unsigned short port_num)
+                               unsigned short listening_port,
+                               unsigned short connection_port)
     : peer_(peer),
       resolver_(io_service),
+      acceptor_(io_service, tcp::v4()),
       socket_(io_service, tcp::v4()),
+      m_listening_port(listening_port),
+      m_connection_port(connection_port),
       m_logger(spdlog::get("console")) {
-  // Note use of socket consturcot that does not bind such
+  // Note use of socket constructor that does not bind such
   // that we can set the options before that.
-  asio::socket_base::reuse_address option(true);
-  socket_.set_option(option);
-  socket_.bind(tcp::endpoint(tcp::v4(), port_num));
 }
 
-void PeerConnection::write(const Url& url, const bytes& msg) {
+void PeerConnection::listen() {
+  m_logger->info("{}", PRETTY_FUNCTION);
+  // if (!acceptor_.is_open()) {
+  asio::socket_base::reuse_address option(true);
+  acceptor_.set_option(option);
+  acceptor_.bind(tcp::endpoint(tcp::v4(), m_listening_port));
+  //}
+  acceptor_.listen();
+  acceptor_.async_accept(
+      [this](const asio::error_code& error, asio::ip::tcp::socket new_socket) {
+        if (!error) {
+          auto ip = new_socket.remote_endpoint().address().to_string();
+          auto port = new_socket.remote_endpoint().port();
+          m_logger->info("Accepted new connection from {}:{}", ip, port);
+          socket_ = move(new_socket);
+          m_connected = true;
+          asio::async_read(socket_, response_, asio::transfer_at_least(1),
+                           bind(&PeerConnection::handle_response, this, _1));
+        } else {
+          m_logger->error("Listen errored: {}", error.message());
+          listen();
+        }
+
+        // FIXME: Call listen again to accept further connections?
+      });
+}
+
+void PeerConnection::write(const optional<Url>& url, const bytes& msg) {
   write(url, from_bytes(msg));
 }
 
@@ -53,18 +81,19 @@ void PeerConnection::write(const std::string& msg) {
   write(peer_.url(), msg);
 }
 
-void PeerConnection::write(const Url& url, const std::string& msg) {
+void PeerConnection::write(const optional<Url>& url, const std::string& msg) {
   m_logger->debug(PRETTY_FUNCTION);
   ostream request_stream(&request_);
   request_stream << msg;
 
-  if (endpoint_ != tcp::resolver::iterator()) {
+  if (m_connected || endpoint_ != tcp::resolver::iterator()) {
     // We have already resolved and connected
     handle_connect(asio::error_code(), endpoint_);
   } else {
     // Start an asynchronous resolve to translate the server and service names
     // into a list of endpoints.
-    tcp::resolver::query query(url.host(), to_string(url.port()));
+    tcp::resolver::query query(url.value().host(),
+                               to_string(url.value().port()));
     resolver_.async_resolve(
         query, bind(&PeerConnection::handle_resolve, this, _1, _2));
   }
@@ -79,10 +108,13 @@ void PeerConnection::handle_resolve(const asio::error_code& err,
     tcp::endpoint endpoint = *endpoint_iterator;
     // FIXME: Should set this after connection ok instead
     endpoint_ = endpoint_iterator;
+    asio::socket_base::reuse_address option(true);
+    socket_.set_option(option);
+    socket_.bind(tcp::endpoint(tcp::v4(), m_connection_port));
     socket_.async_connect(endpoint, bind(&PeerConnection::handle_connect, this,
                                          _1, ++endpoint_iterator));
   } else {
-    m_logger->error(err.message());
+    m_logger->error("Resolve failed: {}", err.message());
   }
 }
 
@@ -98,12 +130,17 @@ void PeerConnection::handle_connect(const asio::error_code& err,
                         bind(&PeerConnection::handle_response, this, _1));
     } else {
       m_logger->debug("Already connected");
+      if (m_writing) {
+        throw runtime_error("Already writing");
+      }
+      m_writing = true;
       asio::async_write(socket_, request_, [this](auto err, auto len) {
         if (!err) {
           m_logger->debug("Data of len {} sent", len);
         } else {
-          m_logger->error(err.message());
+          m_logger->error("Write failed: {}", err.message());
         }
+        m_writing = false;
       });
     }
   } else if (endpoint_iterator != tcp::resolver::iterator()) {
@@ -117,7 +154,7 @@ void PeerConnection::handle_connect(const asio::error_code& err,
                                          _1, ++endpoint_iterator));
   } else {
     endpoint_ = {};
-    m_logger->error(err.message());
+    m_logger->error("Connect failed: {}", err.message());
   }
 }
 
@@ -145,7 +182,7 @@ void PeerConnection::handle_response(const asio::error_code& err) {
     asio::async_read(socket_, response_, asio::transfer_at_least(1),
                      bind(&PeerConnection::handle_response, this, _1));
   } else if (err != asio::error::eof) {
-    m_logger->error(err.message());
+    m_logger->error("Response failed: {}", err.message());
   } else {
     m_logger->info("handle_response EOF");
   }
@@ -159,6 +196,7 @@ void Peer::set_am_interested(bool am_interested) {
   // TODO: Extract message sending part
   if (!m_am_interested && am_interested) {
     // Send INTERESTED
+    m_logger->debug("Sending INTERESTED");
     string interested = {0, 0, 0, 1,
                          static_cast<pwid_t>(peer_wire_id::INTERESTED)};
     stringstream hs;
@@ -169,6 +207,7 @@ void Peer::set_am_interested(bool am_interested) {
 
   if (m_am_interested && !am_interested) {
     // Send NOT_INTERESTED
+    m_logger->debug("Sending NOT_INTERESTED");
     string interested = {0, 0, 0, 1,
                          static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED)};
     stringstream hs;
@@ -257,12 +296,34 @@ void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
 }
 
 void Peer::stop() {
-  m_logger->info("Stopping peer {}", m_url.authority());
+  m_logger->info("Stopping peer {}", str());
   m_io_service->stop();
 }
 
-void Peer::handshake(const Sha1& info_hash) {
-  m_logger->info("Starting handshake with: {}", m_url.authority());
+bool Peer::verify_info_hash(const Sha1& info_hash) const {
+  return m_torrent.info_hash() == info_hash;
+}
+
+void Peer::report_bitfield() const {
+  // Only send bitfield information if we have at least one piece
+  auto bf = m_torrent.client_pieces();
+  if (bf.next(true)) {
+    m_logger->debug("Sending bitfield");
+    // Send BITFIELD
+    bytes msg;
+    msg.insert(msg.cend(), 3, 0_b);
+    auto len = to_big_endian(numeric_cast<uint32_t>(1 + bf.size_bytes()));
+    msg.insert(msg.cend(), len.begin(), len.end());
+    msg.push_back(static_cast<byte>(peer_wire_id::BITFIELD));
+    msg.insert(msg.cend(), bf.data().begin(), bf.data().end());
+    m_connection->write(msg);
+  } else {
+    m_logger->debug("Not sending bitfield - no pieces");
+  }
+}
+
+void Peer::handshake() {
+  m_logger->info("Starting handshake with: {}", str());
 
   // The handshake should contain:
   // <pstrlen><pstr><reserved><info_hash><peer_id>
@@ -292,8 +353,23 @@ void Peer::handshake(const Sha1& info_hash) {
   stringstream hs;
   hs << static_cast<char>(19) << "BitTorrent protocol";
   hs.write(RESERVED.c_str(), numeric_cast<std::streamsize>(RESERVED.length()));
-  hs << info_hash.str() << "abcdefghijklmnopqrst";  // FIXME: Use proper peer-id
+  hs << m_torrent.info_hash().str()
+     << "abcdefghijklmnopqrst";  // FIXME: Use proper peer-id
 
+  init_io_service();
+  m_connection->write(m_url, hs.str());
+}
+
+void Peer::listen() {
+  m_listening = true;
+  init_io_service();
+  m_connection->listen();
+}
+
+void Peer::init_io_service() {
+  if (m_io_service) {
+    return;
+  }
   // Assume we need to start listening immediately, then send handshake
   m_io_service = make_unique<asio::io_service>();
   // The work object make sure that the service does not stop when running out
@@ -302,13 +378,13 @@ void Peer::handshake(const Sha1& info_hash) {
   // the remaining events.
   m_work = make_unique<asio::io_service::work>(*m_io_service);
   try {
-    m_connection = make_unique<PeerConnection>(*this, *m_io_service, m_port);
-  } catch (const asio::system_error&) {
-    throw_with_nested(runtime_error("Creating peer connection to " +
-                                    m_url.authority() + " from port " +
-                                    to_string(m_port)));
+    m_connection = make_unique<PeerConnection>(*this, *m_io_service,
+                                               m_torrent.listning_port(),
+                                               m_torrent.connection_port());
+  } catch (const asio::system_error& err) {
+    throw_with_nested(
+        runtime_error("Creating peer connection to " + str() + err.what()));
   }
-  m_connection->write(m_url, hs.str());
 }
 
 optional<shared_ptr<Piece>> Peer::next_piece() {

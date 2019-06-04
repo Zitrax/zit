@@ -179,6 +179,14 @@ class Torrent {
   }
 
   /**
+   * The pieces that we have (on disk).
+   */
+  [[nodiscard]] Bitfield client_pieces() const {
+    std::lock_guard<std::mutex> lock(m_mutex);
+    return m_client_pieces;
+  }
+
+  /**
    * Information about what pieces we don't have that a remote has.
    */
   [[nodiscard]] Bitfield relevant_pieces(const Bitfield& remote_pieces) const {
@@ -206,13 +214,23 @@ class Torrent {
   /**
    * Port that we listen to.
    */
-  [[nodiscard]] auto port() const { return m_port; }
+  [[nodiscard]] auto listning_port() const { return m_listening_port; }
+
+  /**
+   * Port for outgoing connections.
+   */
+  [[nodiscard]] auto connection_port() const { return m_connection_port; }
 
  private:
   /**
    * Called when one piece has been downloaded.
    */
   void piece_done(std::shared_ptr<Piece>& piece);
+
+  /**
+   * Check an existing file for match with expected checksums.
+   */
+  void verify_existing_file();
 
   std::string m_announce{};
   std::vector<std::vector<std::string>> m_announce_list{};
@@ -231,8 +249,10 @@ class Torrent {
   std::shared_ptr<spdlog::logger> m_logger{};
   std::filesystem::path m_tmpfile{};
   PieceCallback m_piece_callback{};
-  unsigned short m_port = 20000;
-  std::vector<Peer> m_peers{};
+  // FIXME: Configurable ports
+  unsigned short m_listening_port = 20001;
+  unsigned short m_connection_port = 20000;
+  std::vector<std::shared_ptr<Peer>> m_peers{};
 
   // Piece housekeeping
   mutable std::mutex m_mutex{};

@@ -133,11 +133,18 @@ static auto start_seeder(const std::filesystem::path& data_dir,
                  data_dir.c_str());
 }
 
+static auto start_leecher(const std::filesystem::path& torrent_file) {
+  // TODO: Might want to use a temporary cwd for this
+  auto bf = torrent_file;
+  bf += ".bf";
+  filesystem::remove(bf);
+  filesystem::remove("zzz");
+  return Process("leecher",
+                 {"ctorrent", /*"-v",*/ "-s", "zzz", torrent_file.c_str()});
+}
+
 static void start(zit::Torrent& torrent) {
   torrent.start();
-  for (auto& p : torrent.peers()) {
-    p.handshake(torrent.info_hash());
-  }
   torrent.run();
 }
 
@@ -149,6 +156,7 @@ TEST_P(IntegrateF, download) {
 #else
 TEST_P(IntegrateF, DISABLED_download) {
 #endif  // INTEGRATION_TESTS
+  spdlog::get("console")->set_level(spdlog::level::debug);
   auto tracker = start_tracker();
 
   filesystem::path p(__FILE__);
@@ -170,7 +178,7 @@ TEST_P(IntegrateF, DISABLED_download) {
   zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
     spdlog::get("console")->info("Download completed");
     for_each(torrent.peers().begin(), torrent.peers().end(),
-             [](auto& peer) { peer.stop(); });
+             [](auto& peer) { peer->stop(); });
   });
   start(torrent);
 
@@ -188,5 +196,26 @@ TEST_P(IntegrateF, DISABLED_download) {
 INSTANTIATE_TEST_SUITE_P(SeedCount,
                          IntegrateF,
                          ::testing::Values<uint8_t>(1, 2, 5, 10));
+
+TEST(Integrate, Upload) {
+  spdlog::get("console")->set_level(spdlog::level::debug);
+  auto tracker = start_tracker();
+
+  filesystem::path p(__FILE__);
+  auto data_dir = p.parent_path() / "data";
+  auto torrent_file = data_dir / "1MiB.torrent";
+
+  // Launch zit with existing file to seed it
+  zit::Torrent torrent(torrent_file);
+  EXPECT_TRUE(torrent.done());
+  torrent.start();
+
+  // TODO: Need to report to tracker what pieces we have
+  // TODO: Then need to accept connection from leecher to be able to send pieces
+
+  auto leecher = start_leecher(torrent_file);
+
+  torrent.run();
+}
 
 #endif  // __linux__

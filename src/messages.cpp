@@ -186,14 +186,24 @@ static string debugMsg(const bytes& msg, size_t len = 100) {
 
 size_t Message::parse(PeerConnection& connection) {
   auto handshake = HandshakeMsg::parse(m_msg);
+  auto& peer = connection.peer();
   if (handshake) {
     m_logger->info("Handshake of size {}", m_msg.size());
-    connection.peer().set_am_interested(true);
-    auto bf = handshake.value().getBitfield();
-    auto consumed = handshake.value().getConsumed();
-    if (bf.size() && consumed) {
-      connection.peer().set_remote_pieces(bf);
+    auto consumed = handshake->getConsumed();
+    if (!peer.verify_info_hash(handshake->getInfoHash())) {
+      // TODO: Spec say that we should drop the connection
+      m_logger->warn("Unexpected info_hash");
+      return consumed;
     }
+    auto bf = handshake->getBitfield();
+    if (bf.size() && consumed) {
+      peer.set_remote_pieces(bf);
+    }
+    if (peer.is_listening()) {
+      peer.handshake();
+    }
+    peer.report_bitfield();
+    peer.set_am_interested(true);
     return consumed;
   }
 
@@ -214,7 +224,7 @@ size_t Message::parse(PeerConnection& connection) {
         case peer_wire_id::CHOKE:
           break;
         case peer_wire_id::UNCHOKE:
-          connection.peer().set_choking(false);
+          peer.set_choking(false);
           return m_msg.size();
         case peer_wire_id::PIECE: {
           auto index = big_endian(m_msg, 5);
@@ -224,11 +234,11 @@ size_t Message::parse(PeerConnection& connection) {
           auto start = m_msg.begin() + 13;
           auto end = start + (len - 9);
           auto data = bytes(start, end);
-          connection.peer().set_block(index, offset, data);
+          peer.set_block(index, offset, data);
         }
           return len + 4;
         case peer_wire_id::INTERESTED:
-          connection.peer().set_interested(true);
+          peer.set_interested(true);
           return m_msg.size();
         case peer_wire_id::NOT_INTERESTED:
           break;
@@ -238,7 +248,7 @@ size_t Message::parse(PeerConnection& connection) {
           auto start = m_msg.begin() + 5;
           auto end = start + len - 1;
           auto bf = Bitfield(bytes(start, end));
-          connection.peer().set_remote_pieces(bf);
+          peer.set_remote_pieces(bf);
           m_logger->info("{}", bf);
           return len + 4;
         }
