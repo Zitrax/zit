@@ -140,7 +140,7 @@ static auto start_leecher(const std::filesystem::path& torrent_file) {
   filesystem::remove(bf);
   filesystem::remove("zzz");
   return Process("leecher",
-                 {"ctorrent", /*"-v",*/ "-s", "zzz", torrent_file.c_str()});
+                 {"ctorrent", "-v", "-s", "zzz", torrent_file.c_str()});
 }
 
 static void start(zit::Torrent& torrent) {

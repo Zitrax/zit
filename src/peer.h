@@ -11,6 +11,7 @@
 
 #include <asio.hpp>
 
+#include <deque>
 #include <map>
 #include <memory>
 #include <optional>
@@ -51,15 +52,18 @@ class PeerConnection {
 
   void handle_response(const asio::error_code& err);
 
-  asio::streambuf request_{};
+  void send(bool start_read = false);
+
+  std::string m_msg;
   Peer& peer_;
   asio::ip::tcp::resolver resolver_;
   asio::ip::tcp::acceptor acceptor_;
   asio::streambuf response_{};
   asio::ip::tcp::socket socket_;
   asio::ip::tcp::resolver::iterator endpoint_{};
+  std::deque<std::string> m_send_queue;
   bool m_connected = false;
-  bool m_writing = false;
+  bool m_sending = false;
   unsigned short m_listening_port;
   unsigned short m_connection_port;
   std::shared_ptr<spdlog::logger> m_logger;

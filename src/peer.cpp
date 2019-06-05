@@ -83,8 +83,11 @@ void PeerConnection::write(const std::string& msg) {
 
 void PeerConnection::write(const optional<Url>& url, const std::string& msg) {
   m_logger->debug(PRETTY_FUNCTION);
-  ostream request_stream(&request_);
-  request_stream << msg;
+
+  if (!m_msg.empty()) {
+    throw runtime_error("Message not empty");
+  }
+  m_msg = msg;
 
   if (m_connected || endpoint_ != tcp::resolver::iterator()) {
     // We have already resolved and connected
@@ -118,6 +121,38 @@ void PeerConnection::handle_resolve(const asio::error_code& err,
   }
 }
 
+void PeerConnection::send(bool start_read) {
+  if (m_msg.empty()) {
+    throw runtime_error("Send called with empty message");
+  }
+  if (!m_sending) {
+    m_sending = true;
+    string msg(m_msg);
+    m_msg.clear();
+    asio::async_write(socket_, asio::buffer(msg.c_str(), msg.size()),
+                      [this, start_read](auto err, auto len) {
+                        if (!err) {
+                          m_logger->debug("Data of len {} sent", len);
+                        } else {
+                          m_logger->error("Write failed: {}", err.message());
+                        }
+                        m_sending = false;
+                        if (start_read) {
+                          handle_response({});
+                        }
+                        if (!m_send_queue.empty()) {
+                          m_msg = m_send_queue.front();
+                          m_send_queue.pop_front();
+                          send();
+                        }
+                      });
+  } else {
+    m_logger->debug("Queued message of size {}", m_msg.size());
+    m_send_queue.push_back(m_msg);
+    m_msg.clear();
+  }
+}
+
 void PeerConnection::handle_connect(const asio::error_code& err,
                                     tcp::resolver::iterator endpoint_iterator) {
   m_logger->debug(PRETTY_FUNCTION);
@@ -126,22 +161,10 @@ void PeerConnection::handle_connect(const asio::error_code& err,
     if (!m_connected) {
       m_connected = true;
       m_logger->debug("Connected");
-      asio::async_write(socket_, request_,
-                        bind(&PeerConnection::handle_response, this, _1));
+      send(true);
     } else {
       m_logger->debug("Already connected");
-      if (m_writing) {
-        throw runtime_error("Already writing");
-      }
-      m_writing = true;
-      asio::async_write(socket_, request_, [this](auto err, auto len) {
-        if (!err) {
-          m_logger->debug("Data of len {} sent", len);
-        } else {
-          m_logger->error("Write failed: {}", err.message());
-        }
-        m_writing = false;
-      });
+      send();
     }
   } else if (endpoint_iterator != tcp::resolver::iterator()) {
     m_logger->debug("Trying next endpoint");
@@ -195,6 +218,9 @@ void Peer::set_am_choking(bool am_choking) {
 void Peer::set_am_interested(bool am_interested) {
   // TODO: Extract message sending part
   if (!m_am_interested && am_interested) {
+    if (m_torrent.done()) {
+      return;
+    }
     // Send INTERESTED
     m_logger->debug("Sending INTERESTED");
     string interested = {0, 0, 0, 1,

@@ -217,7 +217,9 @@ size_t Message::parse(PeerConnection& connection) {
     }
     if (len == 0 && m_msg.size() == 4) {
       m_logger->info("Keep Alive");
-    } else if (len > 0 && m_msg.size() >= 5) {
+      return m_msg.size();
+    }
+    if (len > 0 && m_msg.size() >= 5) {
       auto id = to_peer_wire_id(m_msg[4]);
       m_logger->info("Received: {}", id);
       switch (id) {
