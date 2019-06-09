@@ -54,14 +54,14 @@ class PeerConnection {
 
   void send(bool start_read = false);
 
-  std::string m_msg;
+  std::string m_msg{};
   Peer& peer_;
   asio::ip::tcp::resolver resolver_;
   asio::ip::tcp::acceptor acceptor_;
   asio::streambuf response_{};
   asio::ip::tcp::socket socket_;
   asio::ip::tcp::resolver::iterator endpoint_{};
-  std::deque<std::string> m_send_queue;
+  std::deque<std::string> m_send_queue{};
   bool m_connected = false;
   bool m_sending = false;
   unsigned short m_listening_port;
@@ -172,7 +172,7 @@ class Peer {
   }
 
  private:
-  std::optional<Url> m_url;
+  std::optional<Url> m_url{};
   bool m_am_choking = true;
   bool m_am_interested = false;
   bool m_choking = true;
