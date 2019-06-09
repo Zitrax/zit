@@ -197,7 +197,11 @@ INSTANTIATE_TEST_SUITE_P(SeedCount,
                          IntegrateF,
                          ::testing::Values<uint8_t>(1, 2, 5, 10));
 
-TEST(Integrate, Upload) {
+#ifdef INTEGRATION_TESTS
+TEST(Integrate, upload) {
+#else
+TEST(Integrate, DISABLED_upload) {
+#endif  // INTEGRATION_TESTS
   spdlog::get("console")->set_level(spdlog::level::debug);
   auto tracker = start_tracker();
 
