@@ -334,14 +334,13 @@ void Peer::report_bitfield() const {
   // Only send bitfield information if we have at least one piece
   auto bf = m_torrent.client_pieces();
   if (bf.next(true)) {
-    m_logger->debug("Sending bitfield");
     // Send BITFIELD
     bytes msg;
-    msg.insert(msg.cend(), 3, 0_b);
     auto len = to_big_endian(numeric_cast<uint32_t>(1 + bf.size_bytes()));
     msg.insert(msg.cend(), len.begin(), len.end());
     msg.push_back(static_cast<byte>(peer_wire_id::BITFIELD));
     msg.insert(msg.cend(), bf.data().begin(), bf.data().end());
+    m_logger->debug("Sending bitfield of size {}", msg.size());
     m_connection->write(msg);
   } else {
     m_logger->debug("Not sending bitfield - no pieces");

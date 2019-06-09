@@ -94,7 +94,7 @@ class Bitfield {
   /**
    * The raw byte vector.
    */
-  [[nodiscard]] bytes data() const { return m_bytes; }
+  [[nodiscard]] const bytes& data() const { return m_bytes; }
 
  private:
   bytes m_bytes{};
