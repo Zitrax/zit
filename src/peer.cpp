@@ -300,12 +300,15 @@ void Peer::set_choking(bool choking) {
 
 void Peer::set_interested(bool interested) {
   if (!m_interested && interested) {
-    m_logger->info("Peer is Interested");
-    // TODO: Unchoke the peer so it can request pieces from us
+    m_logger->info("Peer is Interested - sending unchoke");
+    string unchoke = {0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::UNCHOKE)};
+    stringstream hs;
+    hs.write(unchoke.c_str(), numeric_cast<std::streamsize>(unchoke.length()));
+    m_connection->write(hs.str());
   }
   if (m_interested && !interested) {
     m_logger->info("Peer is Not interested");
-    // TODO: Choke the peer to stop it requesting pieces from us
+    // TODO: I guess we don't need to choke it since the peer told us
   }
   m_interested = interested;
 }
