@@ -208,6 +208,7 @@ void PeerConnection::handle_response(const asio::error_code& err) {
     m_logger->error("Response failed: {}", err.message());
   } else {
     m_logger->info("handle_response EOF");
+    peer_.torrent().disconnected(&peer_);
   }
 }
 

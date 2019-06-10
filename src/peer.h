@@ -174,6 +174,11 @@ class Peer {
    */
   void stop();
 
+  /**
+   * The torrent associated with this peer.
+   */
+  [[nodiscard]] Torrent& torrent() { return m_torrent; }
+
   [[nodiscard]] asio::io_service& io_service() {
     if (!m_io_service) {
       throw std::invalid_argument("null io_service");

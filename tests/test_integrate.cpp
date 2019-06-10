@@ -139,8 +139,7 @@ static auto start_leecher(const std::filesystem::path& torrent_file) {
   bf += ".bf";
   filesystem::remove(bf);
   filesystem::remove("zzz");
-  return Process("leecher",
-                 {"ctorrent", "-v", "-s", "zzz", torrent_file.c_str()});
+  return Process("leecher", {"ctorrent", "-s", "zzz", torrent_file.c_str()});
 }
 
 static void start(zit::Torrent& torrent) {
@@ -156,7 +155,7 @@ TEST_P(IntegrateF, download) {
 #else
 TEST_P(IntegrateF, DISABLED_download) {
 #endif  // INTEGRATION_TESTS
-  spdlog::get("console")->set_level(spdlog::level::debug);
+  spdlog::get("console")->set_level(spdlog::level::info);
   auto tracker = start_tracker();
 
   filesystem::path p(__FILE__);
@@ -202,7 +201,7 @@ TEST(Integrate, upload) {
 #else
 TEST(Integrate, DISABLED_upload) {
 #endif  // INTEGRATION_TESTS
-  spdlog::get("console")->set_level(spdlog::level::debug);
+  spdlog::get("console")->set_level(spdlog::level::info);
   auto tracker = start_tracker();
 
   filesystem::path p(__FILE__);
@@ -212,14 +211,26 @@ TEST(Integrate, DISABLED_upload) {
   // Launch zit with existing file to seed it
   zit::Torrent torrent(torrent_file);
   EXPECT_TRUE(torrent.done());
+  torrent.set_disconnect_callback([](zit::Peer* peer) {
+    spdlog::get("console")->info("Peer disconnect - stopping");
+    peer->stop();
+  });
+  // Connects to tracker and retrieves peers
   torrent.start();
-
-  // TODO: Need to report to tracker what pieces we have
-  // TODO: Then need to accept connection from leecher to be able to send pieces
-
+  // Start a leecher that we will upload to
   auto leecher = start_leecher(torrent_file);
-
+  // Run the peer connections
   torrent.run();
+
+  // Transfer done - Verify content
+  auto source = data_dir / "1MiB.dat";
+  auto target = "zzz";  // FIXME: fix name and location of this
+  auto source_sha1 = zit::Sha1::calculateFile(source).hex();
+  auto target_sha1 = zit::Sha1::calculateFile(target).hex();
+  EXPECT_EQ(source_sha1, target_sha1);
+
+  // Delete downloaded file
+  filesystem::remove(target);
 }
 
 #endif  // __linux__

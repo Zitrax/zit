@@ -195,6 +195,12 @@ auto Torrent::left() const {
       [](int64_t a, const FileInfo& b) { return a + b.length(); });
 }
 
+void Torrent::disconnected(Peer* peer) {
+  if (m_disconnect_callback) {
+    m_disconnect_callback(peer);
+  }
+}
+
 void Torrent::start() {
   Url url(m_announce);
   url.add_param("info_hash=" + Net::urlEncode(m_info_hash));

@@ -20,6 +20,8 @@ class Torrent;
 using PieceCallback =
     std::function<void(Torrent*, const std::shared_ptr<Piece>&)>;
 
+using DisconnectCallback = std::function<void(Peer*)>;
+
 /**
  * Represents one torrent. Bookeeps all pieces and block information.
  *
@@ -155,6 +157,15 @@ class Torrent {
   }
 
   /**
+   * Callback when a peer disconnects.
+   */
+  void set_disconnect_callback(DisconnectCallback disconnect_callback) {
+    m_disconnect_callback = disconnect_callback;
+  }
+
+  void disconnected(Peer* peer);
+
+  /**
    * The first request to the tracker. After calling this the peer list
    * has been populated.
    */
@@ -253,6 +264,7 @@ class Torrent {
   std::shared_ptr<spdlog::logger> m_logger{};
   std::filesystem::path m_tmpfile{};
   PieceCallback m_piece_callback{};
+  DisconnectCallback m_disconnect_callback{};
   // FIXME: Configurable ports
   unsigned short m_listening_port = 20001;
   unsigned short m_connection_port = 20000;
