@@ -13,7 +13,7 @@ using namespace std;
 namespace fs = filesystem;
 
 void FileWriter::add(Torrent* torrent, const shared_ptr<Piece>& piece) {
-  lock_guard<mutex> lock(m_mutex);
+  lock_guard<mutex> lock(m_queue_mutex);
   m_logger->debug("Piece {} added to queue", piece->id());
   m_queue.push(make_tuple(torrent, piece));
   m_condition.notify_one();
@@ -27,10 +27,22 @@ void FileWriter::run() {
   m_logger->info("FileWriter done");
 }
 
+bytes FileWriter::read_block(uint32_t offset,
+                             uint32_t length,
+                             const filesystem::path& filename) {
+  unique_lock<mutex> lock(m_file_mutex);
+  ifstream is(filename, ios::binary);
+  is.exceptions(fstream::failbit | fstream::badbit);
+  is.seekg(offset);
+  byte data[length];
+  is.read(reinterpret_cast<char*>(data), length);
+  return bytes(data, data + length);
+}
+
 void FileWriter::write_next_piece() {
   TorrentPiece t_piece;
   {
-    unique_lock<mutex> lock(m_mutex);
+    unique_lock<mutex> lock(m_queue_mutex);
     // This releasess the lock until we are notified
     m_condition.wait(lock, [this]() { return !m_queue.empty() || m_stop; });
     if (m_stop) {
@@ -40,6 +52,7 @@ void FileWriter::write_next_piece() {
     m_queue.pop();
   }
 
+  unique_lock<mutex> lock(m_file_mutex);
   auto [torrent, piece] = t_piece;
   try {
     auto sha = Sha1::calculateData(piece->data());

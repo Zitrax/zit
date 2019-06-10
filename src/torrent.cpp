@@ -289,10 +289,13 @@ bool Torrent::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
   return false;
 }
 
-std::shared_ptr<Piece> Torrent::active_piece(uint32_t id) {
+std::shared_ptr<Piece> Torrent::active_piece(uint32_t id, bool create) {
   std::lock_guard<std::mutex> lock(m_mutex);
   auto piece = m_active_pieces.find(id);
   if (piece == m_active_pieces.end()) {
+    if (!create) {
+      return nullptr;
+    }
     int64_t piece_length = m_piece_length;
     if (id == pieces().size() - 1) {
       // Last piece

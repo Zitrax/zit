@@ -129,7 +129,7 @@ static auto start_tracker() {
 
 static auto start_seeder(const std::filesystem::path& data_dir,
                          const std::filesystem::path& torrent_file) {
-  return Process("seeder", {"ctorrent", torrent_file.c_str()},
+  return Process("seeder", {"ctorrent", "-v", torrent_file.c_str()},
                  data_dir.c_str());
 }
 

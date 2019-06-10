@@ -108,6 +108,11 @@ class Peer {
   [[nodiscard]] auto interested() const { return m_interested; }
 
   /**
+   * Peer request a block in a piece from us.
+   */
+  void request(uint32_t index, uint32_t begin, uint32_t length);
+
+  /**
    * String representation of the peer.
    */
   [[nodiscard]] auto str() const {

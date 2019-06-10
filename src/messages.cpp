@@ -243,7 +243,8 @@ size_t Message::parse(PeerConnection& connection) {
           peer.set_interested(true);
           return m_msg.size();
         case peer_wire_id::NOT_INTERESTED:
-          break;
+          peer.set_interested(false);
+          return m_msg.size();
         case peer_wire_id::HAVE:
           break;
         case peer_wire_id::BITFIELD: {
@@ -254,7 +255,13 @@ size_t Message::parse(PeerConnection& connection) {
           m_logger->info("{}", bf);
           return len + 4;
         }
-        case peer_wire_id::REQUEST:
+        case peer_wire_id::REQUEST: {
+          auto index = big_endian(m_msg, 5);
+          auto begin = big_endian(m_msg, 9);
+          auto length = big_endian(m_msg, 13);
+          peer.request(index, begin, length);
+          return len + 4;
+        }
         case peer_wire_id::CANCEL:
         case peer_wire_id::PORT:
         case peer_wire_id::UNKNOWN:

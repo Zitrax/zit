@@ -211,6 +211,34 @@ void PeerConnection::handle_response(const asio::error_code& err) {
   }
 }
 
+void Peer::request(uint32_t index, uint32_t begin, uint32_t length) {
+  auto piece = m_torrent.active_piece(index);
+  if (!piece) {
+    m_logger->warn("Requested non existing piece {}", index);
+    return;
+  }
+  if (piece->block_size() != length) {
+    m_logger->error("No support for block size {}", length);
+    return;
+  }
+  auto data = piece->get_block(begin, m_torrent.tmpfile());
+  if (data.empty()) {
+    m_logger->warn("Empty block data - request failed");
+    return;
+  }
+  m_logger->debug("Sending PIECE");
+  bytes msg;
+  auto len = to_big_endian(numeric_cast<uint32_t>(9 + data.size()));
+  auto offset = to_big_endian(begin);
+  auto idx = to_big_endian(index);
+  msg.insert(msg.cend(), len.begin(), len.end());
+  msg.push_back(static_cast<byte>(peer_wire_id::PIECE));
+  msg.insert(msg.cend(), idx.begin(), idx.end());
+  msg.insert(msg.cend(), offset.begin(), offset.end());
+  msg.insert(msg.cend(), data.begin(), data.end());
+  m_connection->write(msg);
+}
+
 void Peer::set_am_choking(bool am_choking) {
   m_am_choking = am_choking;
 }

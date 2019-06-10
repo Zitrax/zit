@@ -203,8 +203,12 @@ class Torrent {
 
   /**
    * Create or return active piece for specific id.
+   *
+   * @param id The id of the piece to get
+   * @param create Creates the piece object if we do not already have it.
    */
-  [[nodiscard]] std::shared_ptr<Piece> active_piece(uint32_t id);
+  [[nodiscard]] std::shared_ptr<Piece> active_piece(uint32_t id,
+                                                    bool create = true);
 
   /**
    * Return true if all pieces have been written to disk.
