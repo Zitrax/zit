@@ -88,7 +88,7 @@ class FileWriter {
 };
 
 /**
- * Managing the thread running  FileWriter
+ * Managing the thread running FileWriter
  */
 class FileWriterThread {
  private:
