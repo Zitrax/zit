@@ -245,8 +245,11 @@ size_t Message::parse(PeerConnection& connection) {
         case peer_wire_id::NOT_INTERESTED:
           peer.set_interested(false);
           return m_msg.size();
-        case peer_wire_id::HAVE:
-          break;
+        case peer_wire_id::HAVE: {
+          auto id = big_endian(m_msg, 5);
+          peer.have(id);
+          return 9;
+        }
         case peer_wire_id::BITFIELD: {
           auto start = m_msg.begin() + 5;
           auto end = start + len - 1;

@@ -34,6 +34,7 @@ bytes FileWriter::read_block(uint32_t offset,
   ifstream is(filename, ios::binary);
   is.exceptions(fstream::failbit | fstream::badbit);
   is.seekg(offset);
+  // FIXME: Can we read it directly into the bytes vector?
   byte data[length];
   is.read(reinterpret_cast<char*>(data), length);
   return bytes(data, data + length);

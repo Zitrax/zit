@@ -86,7 +86,9 @@ bytes Piece::get_block(uint32_t offset,
   }
   // Is it on disk?
   m_logger->debug("Returning block {} in piece {} from disk", block_id, m_id);
-  return FileWriter::getInstance().read_block(offset, m_block_size, filename);
+  auto file_offset = m_piece_size * m_id + offset;
+  return FileWriter::getInstance().read_block(file_offset, m_block_size,
+                                              filename);
 }
 
 void Piece::set_piece_written(bool written) {

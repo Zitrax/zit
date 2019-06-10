@@ -160,6 +160,11 @@ class Peer {
   void set_remote_pieces(Bitfield bf);
 
   /**
+   * Remote peer reporting having piece with specific id
+   */
+  void have(uint32_t id);
+
+  /**
    * Store a retrieved a block ( part of a piece )
    */
   void set_block(uint32_t piece_id, uint32_t offset, const bytes& data);
