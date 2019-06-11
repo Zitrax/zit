@@ -127,25 +127,53 @@ static auto start_tracker() {
   return tracker;
 }
 
-static auto start_seeder(const std::filesystem::path& data_dir,
-                         const std::filesystem::path& torrent_file) {
+static auto start_seeder(const filesystem::path& data_dir,
+                         const filesystem::path& torrent_file) {
   return Process("seeder", {"ctorrent", "-v", torrent_file.c_str()},
                  data_dir.c_str());
 }
 
-static auto start_leecher(const std::filesystem::path& torrent_file) {
-  // TODO: Might want to use a temporary cwd for this
+static auto start_leecher(const filesystem::path& target,
+                          const filesystem::path& torrent_file) {
   auto bf = torrent_file;
+  // ctorrent keep a bitfield file - remove it if existing such
+  // that we start from scratch.
   bf += ".bf";
   filesystem::remove(bf);
-  filesystem::remove("zzz");
-  return Process("leecher", {"ctorrent", "-s", "zzz", torrent_file.c_str()});
+  return Process("leecher",
+                 {"ctorrent", "-s", target.c_str(), torrent_file.c_str()});
 }
 
 static void start(zit::Torrent& torrent) {
   torrent.start();
   torrent.run();
 }
+
+class TemporaryDir : public ::testing::Test {
+ public:
+  TemporaryDir() {
+    if (!mkdtemp(m_dirname.data())) {
+      throw runtime_error("Could not create temporary directory");
+    }
+    m_created = true;
+  }
+
+  ~TemporaryDir() {
+    if (m_created) {
+      filesystem::remove_all(m_dirname.data());
+    }
+  }
+
+  /**
+   * The temporary directory when running the test.
+   */
+  [[nodiscard]] filesystem::path tmp_dir() const { return m_dirname.data(); }
+
+ private:
+  bool m_created = false;
+  array<char, 16> m_dirname{'/', 't', 'm', 'p', '/', 'z', 'i', 't',
+                            '_', 'X', 'X', 'X', 'X', 'X', 'X', '\0'};
+};
 
 class IntegrateF : public ::testing::Test,
                    public ::testing::WithParamInterface<uint8_t> {};
@@ -196,10 +224,12 @@ INSTANTIATE_TEST_SUITE_P(SeedCount,
                          IntegrateF,
                          ::testing::Values<uint8_t>(1, 2, 5, 10));
 
+using Integrate = TemporaryDir;
+
 #ifdef INTEGRATION_TESTS
-TEST(Integrate, upload) {
+TEST_F(Integrate, upload) {
 #else
-TEST(Integrate, DISABLED_upload) {
+TEST_F(Integrate, DISABLED_upload) {
 #endif  // INTEGRATION_TESTS
   spdlog::get("console")->set_level(spdlog::level::info);
   auto tracker = start_tracker();
@@ -215,22 +245,20 @@ TEST(Integrate, DISABLED_upload) {
     spdlog::get("console")->info("Peer disconnect - stopping");
     peer->stop();
   });
+
   // Connects to tracker and retrieves peers
   torrent.start();
   // Start a leecher that we will upload to
-  auto leecher = start_leecher(torrent_file);
+  auto target = tmp_dir() / "upload_test";
+  auto leecher = start_leecher(target, torrent_file);
   // Run the peer connections
   torrent.run();
 
   // Transfer done - Verify content
   auto source = data_dir / "1MiB.dat";
-  auto target = "zzz";  // FIXME: fix name and location of this
   auto source_sha1 = zit::Sha1::calculateFile(source).hex();
   auto target_sha1 = zit::Sha1::calculateFile(target).hex();
   EXPECT_EQ(source_sha1, target_sha1);
-
-  // Delete downloaded file
-  filesystem::remove(target);
 }
 
 #endif  // __linux__
