@@ -275,14 +275,15 @@ inline ElmPtr decodeString(std::istringstream& iss) {
   for (char c : iss.str().substr(0, MAX_INVALID_STRING_LENGTH)) {
     console_safe << (c > ASCII_LAST_CTRL_CHAR ? c : '?');
   }
-  auto pos = static_cast<size_t>(iss.tellg());
+  auto pos = iss.tellg();
   iss.seekg(0, std::ios::end);
   if (iss.tellg() > MAX_INVALID_STRING_LENGTH) {
     console_safe << "...";
   }
 
+  auto pos_str = pos == std::istringstream::pos_type(-1) ? "?" : std::to_string(pos);
   throw std::invalid_argument("Invalid bencode string: '" + console_safe.str() +
-                              "' at position " + std::to_string(pos) + "\n");
+                              "' at position " + pos_str + "\n");
 }
 
 ElmPtr decode_internal(std::istringstream& iss, unsigned int);
