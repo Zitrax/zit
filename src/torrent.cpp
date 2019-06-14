@@ -288,7 +288,7 @@ ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
       os << "  " << fi << "\n";
     }
   }
-  auto creation = torrent.creation_date();
+  auto creation = numeric_cast<time_t>(torrent.creation_date());
   os << "Creation date: " << creation << " ("
      << put_time(localtime(&creation), "%F %T %Z") << ")\n";
   os << "Comment:       " << torrent.comment() << "\n";
