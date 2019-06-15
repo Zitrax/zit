@@ -33,7 +33,7 @@ Checks:          '*,
                  -readability-magic-numbers,
                  -readability-misleading-indentation,
                  '
-WarningsAsErrors: ''
+WarningsAsErrors: '*'
 HeaderFilterRegex: '(src|tests)/*.h$'
 AnalyzeTemporaryDtors: false
 FormatStyle:     none
