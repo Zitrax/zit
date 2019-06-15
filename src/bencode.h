@@ -281,7 +281,8 @@ inline ElmPtr decodeString(std::istringstream& iss) {
     console_safe << "...";
   }
 
-  auto pos_str = pos == std::istringstream::pos_type(-1) ? "?" : std::to_string(pos);
+  auto pos_str =
+      pos == std::istringstream::pos_type(-1) ? "?" : std::to_string(pos);
   throw std::invalid_argument("Invalid bencode string: '" + console_safe.str() +
                               "' at position " + pos_str + "\n");
 }
