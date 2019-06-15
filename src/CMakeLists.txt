@@ -47,7 +47,7 @@ if(CMAKE_BUILD_TYPE MATCHES Release)
   # Strip binary in release mode
   add_custom_command(TARGET zit POST_BUILD
     COMMENT "Stripping zit"
-    COMMAND ${CMAKE_STRIP} zit
+    COMMAND ${CMAKE_STRIP} $<TARGET_FILE:zit>
   )
 endif()
 
