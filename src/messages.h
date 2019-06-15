@@ -40,8 +40,6 @@ class Message {
    */
   size_t parse(PeerConnection& connection);
 
-  bool is_keepalive(const bytes& msg);
-
  private:
   const bytes& m_msg;
   std::shared_ptr<spdlog::logger> m_logger;

@@ -258,8 +258,4 @@ size_t Message::parse(PeerConnection& connection) {
   return m_msg.size();
 }
 
-bool Message::is_keepalive(const bytes& msg) {
-  return msg.size() == 4 && all_of(msg, [](byte b) { return b == 0_b; });
-}
-
 }  // namespace zit

@@ -29,8 +29,8 @@ using TorrentWrittenCallback = std::function<void(Torrent&)>;
  */
 class FileWriter {
  public:
-  FileWriter(TorrentWrittenCallback cb)
-      : m_logger(spdlog::get("file_writer")), m_torrent_written_callback(cb) {}
+  explicit FileWriter(TorrentWrittenCallback cb)
+      : m_logger(spdlog::get("file_writer")), m_torrent_written_callback(std::move(cb)) {}
 
   /**
    * Add a piece to the queue for writing by the writer thread.
@@ -68,7 +68,7 @@ class FileWriter {
  */
 class FileWriterThread {
  private:
-  auto init_logger() {
+  static auto init_logger() {
     auto logger = spdlog::get("file_writer");
     if (!logger) {
       logger = spdlog::stdout_color_mt("file_writer");
@@ -78,9 +78,9 @@ class FileWriterThread {
   }
 
  public:
-  FileWriterThread(Torrent& torrent, TorrentWrittenCallback cb = {})
+  explicit FileWriterThread(Torrent& torrent, TorrentWrittenCallback cb = {})
       : m_logger(init_logger()),
-        m_file_writer(cb),
+        m_file_writer(std::move(cb)),
         m_file_writer_thread([this]() { m_file_writer.run(); }) {
     torrent.set_piece_callback(bind(&FileWriter::add, &m_file_writer, _1, _2));
   }
