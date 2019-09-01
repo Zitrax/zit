@@ -46,9 +46,8 @@ static auto beDictToFileInfo(const Element& element) {
       md5);
 }
 
-Torrent::Torrent(const filesystem::path& file,
-                 const std::filesystem::path& data_dir)
-    : m_data_dir(data_dir) {
+Torrent::Torrent(const filesystem::path& file, std::filesystem::path data_dir)
+    : m_data_dir(std::move(data_dir)) {
   m_logger = spdlog::get("console");
   auto root = bencode::decode(read_file(file));
 
