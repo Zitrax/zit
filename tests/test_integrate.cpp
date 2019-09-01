@@ -239,8 +239,9 @@ TEST_F(Integrate, DISABLED_upload) {
   auto torrent_file = data_dir / "1MiB.torrent";
 
   // Launch zit with existing file to seed it
-  zit::Torrent torrent(torrent_file);
-  EXPECT_TRUE(torrent.done());
+  zit::Torrent torrent(torrent_file, data_dir);
+  ASSERT_TRUE(torrent.done());
+
   torrent.set_disconnect_callback([](zit::Peer* peer) {
     spdlog::get("console")->info("Peer disconnect - stopping");
     peer->stop();

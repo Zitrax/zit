@@ -46,7 +46,9 @@ static auto beDictToFileInfo(const Element& element) {
       md5);
 }
 
-Torrent::Torrent(const filesystem::path& file) {
+Torrent::Torrent(const filesystem::path& file,
+                 const std::filesystem::path& data_dir)
+    : m_data_dir(data_dir) {
   m_logger = spdlog::get("console");
   auto root = bencode::decode(read_file(file));
 
@@ -56,7 +58,7 @@ Torrent::Torrent(const filesystem::path& file) {
   m_announce = root_dict.at("announce")->to<TypedElement<string>>()->val();
   const auto& info = root_dict.at("info")->to<TypedElement<BeDict>>()->val();
 
-  m_name = info.at("name")->to<TypedElement<string>>()->val();
+  m_name = m_data_dir / info.at("name")->to<TypedElement<string>>()->val();
   m_tmpfile = m_name + ".zit_downloading";
   m_logger->debug("Using tmpfile {} for {}", m_tmpfile, file);
   auto pieces = info.at("pieces")->to<TypedElement<string>>()->val();

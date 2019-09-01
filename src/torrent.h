@@ -36,8 +36,10 @@ class Torrent {
  public:
   /**
    * @param file path to .torrent file to read
+   * @param data_dir path to the directory with the downloaded result
    */
-  explicit Torrent(const std::filesystem::path& file);
+  explicit Torrent(const std::filesystem::path& file,
+                   const std::filesystem::path& data_dir = "");
 
   /** The tracker URL */
   [[nodiscard]] auto announce() const { return m_announce; }
@@ -263,6 +265,7 @@ class Torrent {
   Sha1 m_info_hash{};
   std::shared_ptr<spdlog::logger> m_logger{};
   std::filesystem::path m_tmpfile{};
+  std::filesystem::path m_data_dir{};
   PieceCallback m_piece_callback{};
   DisconnectCallback m_disconnect_callback{};
   // FIXME: Configurable ports

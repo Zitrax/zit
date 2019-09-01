@@ -32,6 +32,7 @@ Checks:          '*,
                  -readability-inconsistent-declaration-parameter-name,
                  -readability-magic-numbers,
                  -readability-misleading-indentation,
+                 -readability-named-parameter
                  '
 WarningsAsErrors: ''
 HeaderFilterRegex: '(src|tests)/*.h$'

@@ -30,11 +30,13 @@ using TorrentWrittenCallback = std::function<void(Torrent&)>;
  */
 class FileWriter {
  private:
-  FileWriter(TorrentWrittenCallback cb)
-      : m_logger(spdlog::get("file_writer")), m_torrent_written_callback(cb) {}
+  FileWriter(TorrentWrittenCallback cb) : m_torrent_written_callback(cb) {}
+
+  auto logger() { return spdlog::get("file_writer"); }
 
  public:
   static FileWriter& getInstance(TorrentWrittenCallback cb = {}) {
+    // FIXME: What if a new callback is set when we already have one?
     static FileWriter instance(cb);
     return instance;
   }
@@ -82,7 +84,6 @@ class FileWriter {
   std::mutex m_queue_mutex{};
   std::mutex m_file_mutex{};
   std::condition_variable m_condition{};
-  std::shared_ptr<spdlog::logger> m_logger{};
   std::atomic_bool m_stop = false;
   TorrentWrittenCallback m_torrent_written_callback{};
 };
