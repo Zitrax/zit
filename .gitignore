@@ -1,2 +1,6 @@
 build
 /.vs
+doc
+*.kdev4
+*.vscode
+
