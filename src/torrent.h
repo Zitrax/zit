@@ -39,7 +39,7 @@ class Torrent {
    * @param data_dir path to the directory with the downloaded result
    */
   explicit Torrent(const std::filesystem::path& file,
-                   const std::filesystem::path& data_dir = "");
+                   std::filesystem::path data_dir = "");
 
   /** The tracker URL */
   [[nodiscard]] auto announce() const { return m_announce; }
