@@ -202,6 +202,11 @@ TEST_P(IntegrateF, DISABLED_download) {
 
   // Download torrent with zit
   zit::Torrent torrent(torrent_file);
+  auto target = torrent.name();
+
+  // Ensure we do not already have it
+  filesystem::remove(target);
+
   zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
     spdlog::get("console")->info("Download completed");
     for_each(torrent.peers().begin(), torrent.peers().end(),
@@ -211,7 +216,6 @@ TEST_P(IntegrateF, DISABLED_download) {
 
   // Transfer done - Verify content
   auto source = data_dir / "1MiB.dat";
-  auto target = torrent.name();
   auto source_sha1 = zit::Sha1::calculateFile(source).hex();
   auto target_sha1 = zit::Sha1::calculateFile(target).hex();
   EXPECT_EQ(source_sha1, target_sha1);

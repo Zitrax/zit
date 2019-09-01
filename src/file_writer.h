@@ -36,8 +36,11 @@ class FileWriter {
 
  public:
   static FileWriter& getInstance(TorrentWrittenCallback cb = {}) {
-    // FIXME: What if a new callback is set when we already have one?
     static FileWriter instance(cb);
+    // FIXME: This not really good - an singleton that is reset for each
+    // time getInstance() called.
+    instance.m_torrent_written_callback = cb;
+    instance.m_stop = false;
     return instance;
   }
 
