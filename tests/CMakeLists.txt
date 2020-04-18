@@ -5,17 +5,19 @@ option(INTEGRATION_TESTS "Enable integration tests" OFF)
 configure_file(CMakeLists.txt.in googletest-download/CMakeLists.txt)
 execute_process(COMMAND ${CMAKE_COMMAND} -G "${CMAKE_GENERATOR}" .
   RESULT_VARIABLE result
-  OUTPUT_QUIET
+  ERROR_VARIABLE err
+  OUTPUT_VARIABLE err
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/googletest-download )
 if(result)
-  message(FATAL_ERROR "CMake step for googletest failed: ${result}")
+  message(FATAL_ERROR "CMake step for googletest failed: ${err}")
 endif()
 execute_process(COMMAND ${CMAKE_COMMAND} --build .
   RESULT_VARIABLE result
-  OUTPUT_QUIET
+  ERROR_VARIABLE err
+  OUTPUT_VARIABLE err
   WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/googletest-download )
 if(result)
-  message(FATAL_ERROR "Build step for googletest failed: ${result}")
+  message(FATAL_ERROR "Build step for googletest failed: ${err}")
 endif()
 
 # Prevent overriding the parent project's compiler/linker
