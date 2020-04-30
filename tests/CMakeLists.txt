@@ -46,7 +46,7 @@ add_executable(zitest
   ../src/sha1.cpp
   ../src/messages.cpp
   ../src/piece.cpp)
-target_link_libraries(zitest gtest ${OPENSSL_CRYPTO_LIBRARY})
+target_link_libraries(zitest gtest ${OPENSSL_CRYPTO_LIBRARY} Threads::Threads)
 if(NOT WIN32)
   if(SANITIZED_LIBCXX)
     target_link_libraries(zitest c++fs)
