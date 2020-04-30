@@ -31,6 +31,30 @@ TEST(torrent, construct_single) {
             "\xb6\xa4\xfb\x9b\x74\x96\x6c\x3a\xb6\x09");
 }
 
+TEST(torrent, construct_single_2) {
+  std::filesystem::path p(__FILE__);
+  zit::Torrent t(p.parent_path() / "data" / "test2.torrent");
+
+  EXPECT_EQ(t.announce(), "https://torrent.ubuntu.com/announce");
+  const auto announce_list = t.announce_list();
+  EXPECT_EQ(t.announce_list().size(), 0);
+  EXPECT_EQ(t.creation_date(), 1581513546);
+  EXPECT_EQ(t.comment(), "Kubuntu CD cdimage.ubuntu.com");
+  EXPECT_EQ(t.created_by(), "");
+  EXPECT_EQ(t.encoding(), "");
+  EXPECT_EQ(t.piece_length(), 524288);
+  EXPECT_FALSE(t.pieces().empty());
+  EXPECT_FALSE(t.is_private());
+  EXPECT_EQ(t.name(), "kubuntu-18.04.4-desktop-i386.iso");
+  EXPECT_EQ(t.length(), 1999503360);
+  EXPECT_EQ(t.md5sum(), "");
+  EXPECT_TRUE(t.files().empty());
+  EXPECT_TRUE(t.is_single_file());
+  EXPECT_EQ(t.info_hash().str(),
+            "\x49\xC6\x33\x2D\x5A\x3A\x26\x5C\xBD\xBB"
+            "\x8F\xC8\xB4\xC0\x97\xC7\xF3\x1A\x8B\x85");
+}
+
 TEST(torrent, construct_multi) {
   std::filesystem::path p(__FILE__);
   zit::Torrent t(p.parent_path() / "data" / "multi.torrent");

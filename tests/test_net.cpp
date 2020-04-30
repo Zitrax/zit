@@ -31,3 +31,17 @@ TEST(net, url_binary) {
   EXPECT_EQ(url.port(), 10000);
   EXPECT_EQ(url.path(), "");
 }
+
+TEST(net, url_string) {
+  Url url1("https://torrent.ubuntu.com/announce");
+  EXPECT_EQ(url1.scheme(), "https");
+  EXPECT_EQ(url1.host(), "torrent.ubuntu.com");
+  EXPECT_EQ(url1.port(), 80);
+  EXPECT_EQ(url1.path(), "/announce");
+
+  Url url2("http://torrent.ubuntu.com:6969/announce");
+  EXPECT_EQ(url2.scheme(), "http");
+  EXPECT_EQ(url2.host(), "torrent.ubuntu.com");
+  EXPECT_EQ(url2.port(), 6969);
+  EXPECT_EQ(url2.path(), "/announce");
+}

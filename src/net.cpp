@@ -144,15 +144,18 @@ string Net::urlEncode(const string& value) {
 Url::Url(const string& url, bool binary) {
   if (!binary) {
     regex ur("^(https?)://([^:/]*)(?::(\\d+))?(.*?)$");
-    cmatch match;
-    // FIXME: Why the need for .c_str()?
-    if (!regex_match(url.c_str(), match, ur) || match.size() != 5) {
+    smatch match;
+    if (!regex_match(url, match, ur) || match.size() != 5) {
       throw runtime_error("Invalid URL: " + url);
     }
-    m_scheme = match[1];
-    m_host = match[2];
-    m_port = numeric_cast<uint16_t>(stoi(match[3]));
-    m_path = match[4];
+    m_scheme = match.str(1);
+    m_host = match.str(2);
+    if (!match.str(3).empty()) {
+      m_port = numeric_cast<uint16_t>(stoi(match.str(3)));
+    } else {
+      m_port = 80;
+    }
+    m_path = match.str(4);
   } else {
     if (url.length() != 6) {
       throw runtime_error("Invalid binary URL length " +
