@@ -1,6 +1,8 @@
 option(COVERAGE "Enable coverage of unit tests" OFF)
 option(INTEGRATION_TESTS "Enable integration tests" OFF)
 
+find_package(Threads)
+
 if(COVERAGE)
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     set(CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
