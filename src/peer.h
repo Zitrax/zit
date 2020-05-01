@@ -50,7 +50,8 @@ class PeerConnection {
   void handle_connect(const asio::error_code& err,
                       asio::ip::tcp::resolver::iterator endpoint_iterator);
 
-  void handle_response(const asio::error_code& err);
+  void handle_response(const asio::error_code& err,
+                       std::size_t bytes_transferred);
 
   void send(bool start_read = false);
 

@@ -106,14 +106,14 @@ class Net {
 
   Net() = default;
 
-  std::tuple<std::string, std::string> http_get(
+  static std::tuple<std::string, std::string> httpGet(
       const std::string& server,
       const std::string& path = "/",
       uint16_t port = m_m_default_http_port,
       string_list params = {});
 
-  auto http_get(const Url& url) {
-    return http_get(url.host(), url.path(), url.port(), url.params());
+  static auto httpGet(const Url& url) {
+    return Net::httpGet(url.host(), url.path(), url.port(), url.params());
   }
 
   /**

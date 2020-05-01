@@ -9,6 +9,7 @@
 # -readability-braces-around-statements (can't handle constexpr if)
 # -hicpp-braces-around-statements (can't handle constexpr if)
 # -modernize-avoid-c-arrays (covered by cppcore)
+# -modernize-use-trailing-return-type (prefer old style for now)
 # -hicpp-avoid-c-arrays (covered by cppcore)
 
 
@@ -26,6 +27,7 @@ Checks:          '*,
                  -hicpp-signed-bitwise,
                  -llvm-*,
                  -modernize-avoid-c-arrays,
+                 -modernize-use-trailing-return-type,
                  -objc-*,
                  -readability-braces-around-statements,
                  -readability-implicit-bool-conversion,

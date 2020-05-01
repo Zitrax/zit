@@ -24,10 +24,10 @@ Url& Url::add_param(const std::string& param) {
 // Implementation based on the example at:
 // https://www.boost.org/doc/libs/1_36_0/doc/html/boost_asio/example/http/client/sync_client.cpp
 //
-std::tuple<std::string, std::string> Net::http_get(const string& server,
-                                                   const string& path,
-                                                   uint16_t port,
-                                                   string_list params) {
+std::tuple<std::string, std::string> Net::httpGet(const string& server,
+                                                  const string& path,
+                                                  uint16_t port,
+                                                  string_list params) {
   asio::io_service io_service;
   tcp::resolver resolver(io_service);
   tcp::resolver::query query(server, to_string(port));
@@ -77,7 +77,7 @@ std::tuple<std::string, std::string> Net::http_get(const string& server,
   std::istream response_stream(&response);
   std::string http_version;
   response_stream >> http_version;
-  unsigned int status_code;
+  unsigned int status_code = 0;
   response_stream >> status_code;
   std::string status_message;
   std::getline(response_stream, status_message);

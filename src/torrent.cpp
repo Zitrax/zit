@@ -215,8 +215,7 @@ void Torrent::start() {
   url.add_param("compact=1");  // TODO: Look up what this really means
   m_logger->info("\n{}", url);
 
-  Net net;
-  auto [headers, body] = net.http_get(url);
+  auto [headers, body] = Net::httpGet(url);
   auto reply = decode(body);
 
   m_logger->info("=====HEADER=====\n{}\n=====BODY=====\n{}", headers, reply);

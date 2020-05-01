@@ -12,8 +12,6 @@
 
 using asio::ip::tcp;
 using namespace std;
-using std::placeholders::_1;
-using std::placeholders::_2;
 
 #ifdef WIN32
 #define PRETTY_FUNCTION __FUNCSIG__
@@ -58,8 +56,9 @@ void PeerConnection::listen() {
           m_logger->info("Accepted new connection from {}:{}", ip, port);
           socket_ = move(new_socket);
           m_connected = true;
-          asio::async_read(socket_, response_, asio::transfer_at_least(1),
-                           bind(&PeerConnection::handle_response, this, _1));
+          asio::async_read(
+              socket_, response_, asio::transfer_at_least(1),
+              [this](const auto& ec, auto s) { handle_response(ec, s); });
         } else {
           m_logger->error("Listen errored: {}", error.message());
           listen();
@@ -98,7 +97,7 @@ void PeerConnection::write(const optional<Url>& url, const std::string& msg) {
     tcp::resolver::query query(url.value().host(),
                                to_string(url.value().port()));
     resolver_.async_resolve(
-        query, bind(&PeerConnection::handle_resolve, this, _1, _2));
+        query, [this](auto&& ec, auto&& it) { handle_resolve(ec, it); });
   }
 }
 
@@ -114,8 +113,8 @@ void PeerConnection::handle_resolve(const asio::error_code& err,
     asio::socket_base::reuse_address option(true);
     socket_.set_option(option);
     socket_.bind(tcp::endpoint(tcp::v4(), m_connection_port));
-    socket_.async_connect(endpoint, bind(&PeerConnection::handle_connect, this,
-                                         _1, ++endpoint_iterator));
+    socket_.async_connect(endpoint, [this, it = ++endpoint_iterator](
+                                        auto&& ec) { handle_connect(ec, it); });
   } else {
     m_logger->error("Resolve failed: {}", err.message());
   }
@@ -138,7 +137,7 @@ void PeerConnection::send(bool start_read) {
                         }
                         m_sending = false;
                         if (start_read) {
-                          handle_response({});
+                          handle_response({}, 0);
                         }
                         if (!m_send_queue.empty()) {
                           m_msg = m_send_queue.front();
@@ -173,15 +172,17 @@ void PeerConnection::handle_connect(const asio::error_code& err,
     tcp::endpoint endpoint = *endpoint_iterator;
     // FIXME: Should set this after connection ok instead
     endpoint_ = endpoint_iterator;
-    socket_.async_connect(endpoint, bind(&PeerConnection::handle_connect, this,
-                                         _1, ++endpoint_iterator));
+    socket_.async_connect(endpoint,
+                          [this, it = ++endpoint_iterator](const auto& ec) {
+                            handle_connect(ec, it);
+                          });
   } else {
     endpoint_ = {};
     m_logger->error("Connect failed: {}", err.message());
   }
 }
 
-void PeerConnection::handle_response(const asio::error_code& err) {
+void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
   m_logger->debug(PRETTY_FUNCTION);
   if (!err) {
     // Loop over buffer since we might have zero, one or more
@@ -202,8 +203,9 @@ void PeerConnection::handle_response(const asio::error_code& err) {
     // TODO: https://sourceforge.net/p/asio/mailman/message/23968189/
     //       mentions that maybe socket.async_read_some is better to read > 512
     //       bytes at a time
-    asio::async_read(socket_, response_, asio::transfer_at_least(1),
-                     bind(&PeerConnection::handle_response, this, _1));
+    asio::async_read(
+        socket_, response_, asio::transfer_at_least(1),
+        [this](const auto& ec, auto s) { handle_response(ec, s); });
   } else if (err != asio::error::eof) {
     m_logger->error("Response failed: {}", err.message());
   } else {
@@ -294,18 +296,18 @@ void Peer::request_next_block(unsigned short count) {
     auto len = to_big_endian(13);
     auto index = to_big_endian(piece->id());
     auto begin = to_big_endian(*block_offset);
-    uint32_t length;
-    if (*block_offset + piece->block_size() > piece->piece_size()) {
-      // Last block - so reduce request size
-      length = piece->piece_size() % piece->block_size();
-    } else {
+    const auto LENGTH = [&] {
+      if (*block_offset + piece->block_size() > piece->piece_size()) {
+        // Last block - so reduce request size
+        return piece->piece_size() % piece->block_size();
+      }
       // 16 KiB (as recommended)
-      length = piece->block_size();
-    }
+      return piece->block_size();
+    }();
     m_logger->debug(
         "Sending block request for piece {} with size {} and offset {}",
-        piece->id(), length, *block_offset);
-    auto blength = to_big_endian(length);
+        piece->id(), LENGTH, *block_offset);
+    auto blength = to_big_endian(LENGTH);
     request.insert(request.end(), len.begin(), len.end());
     request.push_back(static_cast<byte>(peer_wire_id::REQUEST));
     request.insert(request.end(), index.begin(), index.end());

@@ -44,7 +44,7 @@ std::string Sha1::hex() const {
 
 Sha1 Sha1::calculate(const unsigned char* src, size_t count) {
   Sha1 ret;
-  auto dst = reinterpret_cast<unsigned char*>(ret.data());
+  auto* dst = reinterpret_cast<unsigned char*>(ret.data());
 
   if (SHA1(src, count, dst) == nullptr) {
     throw runtime_error("SHA1 calculation failed");
