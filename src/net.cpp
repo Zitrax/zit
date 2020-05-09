@@ -3,15 +3,19 @@
 
 #include <asio.hpp>
 
+#include <spdlog/spdlog.h>
+#include <experimental/array>
 #include <iomanip>
 #include <iostream>
 #include <regex>
 
+#include "string_utils.h"
 #include "types.h"
 
 using asio::detail::socket_ops::host_to_network_short;
 using asio::ip::tcp;
 using namespace std;
+using std::experimental::make_array;
 
 namespace zit {
 
@@ -26,23 +30,17 @@ Url& Url::add_param(const std::string& param) {
 //
 std::tuple<std::string, std::string> Net::httpGet(const string& server,
                                                   const string& path,
-                                                  uint16_t port,
+                                                  const string& service,
                                                   string_list params) {
   asio::io_service io_service;
   tcp::resolver resolver(io_service);
-  tcp::resolver::query query(server, to_string(port));
-  tcp::resolver::iterator endpoint_iterator = resolver.resolve(query);
-  tcp::resolver::iterator end;
+  auto endpoints = resolver.resolve(server, service);
 
   // Try each endpoint until we successfully establish a connection.
   // An endpoint might be IPv4 or IPv6
   tcp::socket socket(io_service);
   asio::error_code error = asio::error::host_not_found;
-  while (error && endpoint_iterator != end) {
-    tcp::endpoint endpoint = *endpoint_iterator++;
-    socket.close();
-    socket.connect(endpoint, error);
-  }
+  asio::connect(socket, endpoints, error);
   if (error) {
     throw asio::system_error(error);
   }
@@ -61,7 +59,7 @@ std::tuple<std::string, std::string> Net::httpGet(const string& server,
   while (it != params.end()) {
     rpath << "&" << *it++;
   }
-  request_stream << "GET " << rpath.str() << " HTTP/1.0\r\n";
+  request_stream << "GET " << rpath.str() << " HTTP/1.1\r\n";
   request_stream << "Host: " << server << "\r\n";
   request_stream << "Accept: */*\r\n";
   request_stream << "Connection: close\r\n\r\n";
@@ -84,7 +82,11 @@ std::tuple<std::string, std::string> Net::httpGet(const string& server,
   if (!response_stream || http_version.substr(0, 5) != "HTTP/") {
     throw runtime_error("invalid response");
   }
-  if (status_code != m_m_http_status_ok) {
+
+  constexpr auto VALID_STATUSES =
+      make_array(m_http_status_ok, m_http_status_found);
+  if (find(VALID_STATUSES.begin(), VALID_STATUSES.end(), status_code) ==
+      VALID_STATUSES.end()) {
     throw runtime_error("response returned with status code " +
                         to_string(status_code));
   }
@@ -96,8 +98,15 @@ std::tuple<std::string, std::string> Net::httpGet(const string& server,
   string header;
   stringstream headers;
   while (getline(response_stream, header) && header != "\r") {
+    if (header.starts_with("Location: ")) {
+      Url loc(rtrim_copy(header.substr(10, string::npos)));
+      spdlog::get("console")->debug("Redirecting to {}", loc.str());
+      return httpGet(loc);
+    }
     headers << header << "\n";
   }
+
+  spdlog::get("console")->trace("Response: {}", headers.str());
 
   stringstream resp;
   // Write whatever content we already have to output.
@@ -146,16 +155,19 @@ Url::Url(const string& url, bool binary) {
     regex ur("^(https?)://([^:/]*)(?::(\\d+))?(.*?)$");
     smatch match;
     if (!regex_match(url, match, ur) || match.size() != 5) {
-      throw runtime_error("Invalid URL: " + url);
+      throw runtime_error("Invalid URL: '" + url + "'");
     }
     m_scheme = match.str(1);
     m_host = match.str(2);
     if (!match.str(3).empty()) {
       m_port = numeric_cast<uint16_t>(stoi(match.str(3)));
     } else {
-      m_port = 80;
+      m_port = std::nullopt;
     }
     m_path = match.str(4);
+    if (m_path.empty()) {
+      m_path = "/";
+    }
   } else {
     if (url.length() != 6) {
       throw runtime_error("Invalid binary URL length " +
@@ -169,6 +181,6 @@ Url::Url(const string& url, bool binary) {
         static_cast<uint8_t>(url[4]) << 0 | static_cast<uint8_t>(url[5]) << 8));
     m_scheme = "http";
   }
-}
+}  // namespace zit
 
 }  // namespace zit

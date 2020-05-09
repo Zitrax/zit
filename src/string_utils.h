@@ -58,4 +58,39 @@ inline std::string to_hex(const std::string& str) {
   return ss.str();
 }
 
+// trim functions below from https://stackoverflow.com/a/217605/11722
+
+/** trim from start (in place) */
+inline void ltrim(std::string& s) {
+  s.erase(s.begin(),
+          std::find_if(s.begin(), s.end(),
+                       std::not1(std::ptr_fun<int, int>(std::isspace))));
+}
+
+/** trim from end (in place) */
+inline void rtrim(std::string& s) {
+  s.erase(std::find_if(s.rbegin(), s.rend(),
+                       std::not1(std::ptr_fun<int, int>(std::isspace)))
+              .base(),
+          s.end());
+}
+
+/** trim from both ends (in place) */
+inline void trim(std::string& s) {
+  ltrim(s);
+  rtrim(s);
+}
+
+/** trim from start (copying) */
+inline std::string ltrim_copy(std::string s) {
+  ltrim(s);
+  return s;
+}
+
+/** trim from end (copying) */
+inline std::string rtrim_copy(std::string s) {
+  rtrim(s);
+  return s;
+}
+
 }  // namespace zit

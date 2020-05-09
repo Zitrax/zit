@@ -36,12 +36,41 @@ TEST(net, url_string) {
   Url url1("https://torrent.ubuntu.com/announce");
   EXPECT_EQ(url1.scheme(), "https");
   EXPECT_EQ(url1.host(), "torrent.ubuntu.com");
-  EXPECT_EQ(url1.port(), 80);
+  EXPECT_EQ(url1.port(), std::nullopt);
+  EXPECT_EQ(url1.service(), "https");
   EXPECT_EQ(url1.path(), "/announce");
 
   Url url2("http://torrent.ubuntu.com:6969/announce");
   EXPECT_EQ(url2.scheme(), "http");
   EXPECT_EQ(url2.host(), "torrent.ubuntu.com");
   EXPECT_EQ(url2.port(), 6969);
+  EXPECT_EQ(url2.service(), "6969");
   EXPECT_EQ(url2.path(), "/announce");
+
+  Url url3(
+      "https://torrent.ubuntu.com/"
+      "announce?info_hash=I%C63-Z%3A%26%5C%BD%BB%8F%C8%B4%C0%97%C7%F3%1A%8B%85&"
+      "peer_id=abcdefghijklmnopqrst&port=20001&uploaded=0&downloaded=0&left="
+      "1999503360&event=started&compact=1");
+  EXPECT_EQ(url3.scheme(), "https");
+  EXPECT_EQ(url3.host(), "torrent.ubuntu.com");
+  EXPECT_EQ(url3.port(), std::nullopt);
+  EXPECT_EQ(url3.service(), "https");
+  EXPECT_EQ(
+      url3.path(),
+      "/announce?info_hash=I%C63-Z%3A%26%5C%BD%BB%8F%C8%B4%C0%97%C7%F3%1A%8B%"
+      "85&"
+      "peer_id=abcdefghijklmnopqrst&port=20001&uploaded=0&downloaded=0&left="
+      "1999503360&event=started&compact=1");
+}
+
+TEST(net, httpGetHTTP) {
+  Url url("http://www.google.com");
+  const auto reply = Net::httpGet(url);
+}
+
+// TODO: Disabled until https support is added
+TEST(net, DISABLED_httpGetHTTPS) {
+  Url url("https://httpstat.us");
+  const auto reply = Net::httpGet(url);
 }

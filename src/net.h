@@ -1,7 +1,9 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
+#include <optional>
 #include <ostream>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <vector>
@@ -54,6 +56,9 @@ class Url {
   [[nodiscard]] auto path() const { return m_path; }
   [[nodiscard]] auto port() const { return m_port; }
   [[nodiscard]] auto params() const { return m_params; }
+  [[nodiscard]] auto service() const {
+    return m_port ? std::to_string(*m_port) : m_scheme;
+  }
 
   /**
    * In an URL the authority is the "[userinfo@]host[:port]" part.
@@ -61,7 +66,21 @@ class Url {
    * At the moment the URL class does not include the userinfo.
    */
   [[nodiscard]] auto authority() const {
-    return m_host + ":" + std::to_string(m_port);
+    return m_host + (m_port ? (":" + std::to_string(*m_port)) : "");
+  }
+
+  /** Url represented as a full string */
+  [[nodiscard]] auto str() const {
+    std::stringstream ss;
+    ss << scheme() << "://" << authority() << path();
+    if (!params().empty()) {
+      bool first = true;
+      for (const auto& param : params()) {
+        ss << (first ? "?"s : "&"s) << param;
+        first = false;
+      }
+    }
+    return ss.str();
   }
 
  private:
@@ -69,13 +88,14 @@ class Url {
   std::string m_host = "";
   std::string m_path = "";
   string_list m_params{};
-  uint16_t m_port = 0;
+  std::optional<uint16_t> m_port{};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
+  const auto port = url.port() ? std::to_string(*url.port()) : "<not set>";
   os << "Scheme:        " << url.scheme() << "\n";
   os << "Host:          " << url.host() << "\n";
-  os << "Port:          " << url.port() << "\n";
+  os << "Port:          " << port << "\n";
   os << "Path:          " << url.path() << "\n";
   if (!url.params().empty()) {
     os << "Params:\n";
@@ -83,16 +103,7 @@ inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
       os << "  " << param << "\n";
     }
   }
-  os << "Full URL:      " << url.scheme() << "://" << url.host() << ":"
-     << url.port() << url.path();
-  if (!url.params().empty()) {
-    bool first = true;
-    for (const auto& param : url.params()) {
-      os << (first ? "?"s : "&"s) << param;
-      first = false;
-    }
-  }
-  os << "\n";
+  os << "Full URL:      " << url.str() << "\n";
   return os;
 }
 
@@ -101,19 +112,19 @@ inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
  */
 class Net {
  public:
-  constexpr static auto m_m_default_http_port = 80;
-  constexpr static auto m_m_http_status_ok = 200;
+  constexpr static auto m_http_status_ok = 200;
+  constexpr static auto m_http_status_found = 302;
 
   Net() = default;
 
   static std::tuple<std::string, std::string> httpGet(
       const std::string& server,
       const std::string& path = "/",
-      uint16_t port = m_m_default_http_port,
+      const std::string& service = "http",
       string_list params = {});
 
   static auto httpGet(const Url& url) {
-    return Net::httpGet(url.host(), url.path(), url.port(), url.params());
+    return Net::httpGet(url.host(), url.path(), url.service(), url.params());
   }
 
   /**

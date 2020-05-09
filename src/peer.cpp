@@ -94,10 +94,12 @@ void PeerConnection::write(const optional<Url>& url, const std::string& msg) {
   } else {
     // Start an asynchronous resolve to translate the server and service names
     // into a list of endpoints.
-    tcp::resolver::query query(url.value().host(),
-                               to_string(url.value().port()));
+    if (!url) {
+      throw runtime_error("write called with empty url");
+    }
     resolver_.async_resolve(
-        query, [this](auto&& ec, auto&& it) { handle_resolve(ec, it); });
+        url->host(), url->service(),
+        [this](auto&& ec, auto&& it) { handle_resolve(ec, it); });
   }
 }
 
