@@ -5,6 +5,7 @@
 using namespace bencode;
 using namespace std;
 using namespace zit;
+namespace fs = std::filesystem;
 
 TEST(bencode, string) {
   EXPECT_EQ(encode(std::string("spam")), "4:spam");
@@ -172,14 +173,14 @@ TEST(bencode, decode_dict) {
 }
 
 TEST(bencode, decode_recursion) {
-  std::filesystem::path p(__FILE__);
-  auto s = read_file(p.parent_path() / "data" / "bencode_recursion.txt");
+  const auto data_dir = fs::path(DATA_DIR);
+  auto s = read_file(data_dir / "bencode_recursion.txt");
   EXPECT_THROW(decode(s), std::invalid_argument);
 }
 
 TEST(bencode, decode_real) {
-  std::filesystem::path p(__FILE__);
-  auto s = read_file(p.parent_path() / "data" / "test.torrent");
+  const auto data_dir = fs::path(DATA_DIR);
+  auto s = read_file(data_dir / "test.torrent");
   auto root = decode(s);
 
   // Torrent file specification expects a dict containing

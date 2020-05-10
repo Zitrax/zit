@@ -106,7 +106,7 @@ std::tuple<std::string, std::string> Net::httpGet(const string& server,
     headers << header << "\n";
   }
 
-  spdlog::get("console")->trace("Response: {}", headers.str());
+  spdlog::get("console")->trace("=====RESPONSE=====\n{}\n", headers.str());
 
   stringstream resp;
   // Write whatever content we already have to output.

@@ -27,6 +27,7 @@
 using namespace std;
 using namespace std::chrono_literals;
 using namespace std::string_literals;
+namespace fs = std::filesystem;
 
 /**
  * Launch background process which is stopped/killed by the destructor.
@@ -127,19 +128,19 @@ static auto start_tracker() {
   return tracker;
 }
 
-static auto start_seeder(const filesystem::path& data_dir,
-                         const filesystem::path& torrent_file) {
+static auto start_seeder(const fs::path& data_dir,
+                         const fs::path& torrent_file) {
   return Process("seeder", {"ctorrent", "-v", torrent_file.c_str()},
                  data_dir.c_str());
 }
 
-static auto start_leecher(const filesystem::path& target,
-                          const filesystem::path& torrent_file) {
+static auto start_leecher(const fs::path& target,
+                          const fs::path& torrent_file) {
   auto bf = torrent_file;
   // ctorrent keep a bitfield file - remove it if existing such
   // that we start from scratch.
   bf += ".bf";
-  filesystem::remove(bf);
+  fs::remove(bf);
   return Process("leecher",
                  {"ctorrent", "-s", target.c_str(), torrent_file.c_str()});
 }
@@ -160,14 +161,14 @@ class TemporaryDir : public ::testing::Test {
 
   ~TemporaryDir() {
     if (m_created) {
-      filesystem::remove_all(m_dirname.data());
+      fs::remove_all(m_dirname.data());
     }
   }
 
   /**
    * The temporary directory when running the test.
    */
-  [[nodiscard]] filesystem::path tmp_dir() const { return m_dirname.data(); }
+  [[nodiscard]] fs::path tmp_dir() const { return m_dirname.data(); }
 
  private:
   bool m_created = false;
@@ -186,9 +187,8 @@ TEST_P(IntegrateF, DISABLED_download) {
   spdlog::get("console")->set_level(spdlog::level::info);
   auto tracker = start_tracker();
 
-  filesystem::path p(__FILE__);
-  auto data_dir = p.parent_path() / "data";
-  auto torrent_file = data_dir / "1MiB.torrent";
+  const auto data_dir = fs::path(DATA_DIR);
+  const auto torrent_file = data_dir / "1MiB.torrent";
 
   const uint8_t max = GetParam();
   spdlog::get("console")->info("Starting {} seeders...", max);
@@ -205,7 +205,7 @@ TEST_P(IntegrateF, DISABLED_download) {
   auto target = torrent.name();
 
   // Ensure we do not already have it
-  filesystem::remove(target);
+  fs::remove(target);
 
   zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
     spdlog::get("console")->info("Download completed");
@@ -221,7 +221,7 @@ TEST_P(IntegrateF, DISABLED_download) {
   EXPECT_EQ(source_sha1, target_sha1);
 
   // Delete downloaded file
-  filesystem::remove(target);
+  fs::remove(target);
 }
 
 INSTANTIATE_TEST_SUITE_P(SeedCount,
@@ -238,9 +238,8 @@ TEST_F(Integrate, DISABLED_upload) {
   spdlog::get("console")->set_level(spdlog::level::info);
   auto tracker = start_tracker();
 
-  filesystem::path p(__FILE__);
-  auto data_dir = p.parent_path() / "data";
-  auto torrent_file = data_dir / "1MiB.torrent";
+  const auto data_dir = fs::path(DATA_DIR);
+  const auto torrent_file = data_dir / "1MiB.torrent";
 
   // Launch zit with existing file to seed it
   zit::Torrent torrent(torrent_file, data_dir);

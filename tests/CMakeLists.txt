@@ -62,6 +62,8 @@ if(INTEGRATION_TESTS)
   target_compile_definitions(zitest PUBLIC INTEGRATION_TESTS)
 endif()
 
+target_compile_definitions(zitest PUBLIC DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
+
 # For getting backtraces use:
 # sudo ln -s /usr/bin/llvm-symbolizer-3.8 /usr/bin/llvm-symbolizer
 # export ASAN_SYMBOLIZER_PATH=/usr/bin/llvm-symbolizer

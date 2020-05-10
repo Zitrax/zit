@@ -2,9 +2,11 @@
 #include "gtest/gtest.h"
 #include "torrent.h"
 
+namespace fs = std::filesystem;
+
 TEST(torrent, construct_single) {
-  std::filesystem::path p(__FILE__);
-  zit::Torrent t(p.parent_path() / "data" / "test.torrent");
+  const auto data_dir = fs::path(DATA_DIR);
+  zit::Torrent t(data_dir / "test.torrent");
 
   EXPECT_EQ(t.announce(), "http://torrent.ubuntu.com:6969/announce");
   const auto announce_list = t.announce_list();
@@ -32,8 +34,8 @@ TEST(torrent, construct_single) {
 }
 
 TEST(torrent, construct_single_2) {
-  std::filesystem::path p(__FILE__);
-  zit::Torrent t(p.parent_path() / "data" / "test2.torrent");
+  const auto data_dir = fs::path(DATA_DIR);
+  zit::Torrent t(data_dir / "test2.torrent");
 
   EXPECT_EQ(t.announce(), "https://torrent.ubuntu.com/announce");
   const auto announce_list = t.announce_list();
@@ -56,8 +58,8 @@ TEST(torrent, construct_single_2) {
 }
 
 TEST(torrent, construct_multi) {
-  std::filesystem::path p(__FILE__);
-  zit::Torrent t(p.parent_path() / "data" / "multi.torrent");
+  const auto data_dir = fs::path(DATA_DIR);
+  zit::Torrent t(data_dir / "multi.torrent");
 
   EXPECT_EQ(t.announce(), "http://tracker.kali.org:6969/announce");
   const auto& announce_list = t.announce_list();
@@ -94,9 +96,8 @@ TEST(torrent, construct_multi) {
 TEST(torrent, construct_fail) {
   EXPECT_THROW(zit::Torrent t("FOO"), std::runtime_error);
 
-  std::filesystem::path p(__FILE__);
-  EXPECT_THROW(zit::Torrent t(p.parent_path() / "data" / "empty.torrent"),
-               std::runtime_error);
-  EXPECT_THROW(zit::Torrent t(p.parent_path() / "data" / "invalid.torrent"),
+  const auto data_dir = fs::path(DATA_DIR);
+  EXPECT_THROW(zit::Torrent t(data_dir / "empty.torrent"), std::runtime_error);
+  EXPECT_THROW(zit::Torrent t(data_dir / "invalid.torrent"),
                std::invalid_argument);
 }
