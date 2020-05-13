@@ -8,7 +8,7 @@ option(USE_CLANG_TIDY "Use clang-tidy if available" ON)
 # the compile time went from 16s to 48s.
 #
 if(USE_CLANG_TIDY)
-  find_program(CLANG_TIDY NAMES clang-tidy clang-tidy-10)
+  find_program(CLANG_TIDY NAMES clang-tidy-10)
 
   if(CLANG_TIDY)
     message(STATUS "Enabling clang-tidy: ${CLANG_TIDY}")
