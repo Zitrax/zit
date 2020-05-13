@@ -76,7 +76,7 @@ list(FILTER ALL_HEADER_FILES EXCLUDE REGEX "#")
 set(ALL_INPUT_FILES ${ALL_SOURCE_FILES} ${ALL_HEADER_FILES})
 
 find_program(CLANG_FORMAT
-  NAMES clang-format clang-format-7)
+  NAMES clang-format clang-format-10)
 
 if(CLANG_FORMAT)
   add_custom_target(format

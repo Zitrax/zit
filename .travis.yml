@@ -1,40 +1,40 @@
 language: cpp
-dist: xenial
+dist: bionic
 sudo: false
 
 matrix:
   include:
-    - name: g++-8
+    - name: g++-9
       os: linux
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test
           packages:
-            - g++-8
+            - g++-9
       install:
         - pip install --user conan
       script:
-        - CXX=g++-8 CC=gcc-8 conan install . -pr conan_profiles/linux_gcc --build
-        - CXX=g++-8 cmake .
+        - CXX=g++-9 CC=gcc-9 conan install . -pr conan_profiles/linux_gcc --build
+        - CXX=g++-9 cmake .
         - cmake --build . -- -j$(nproc)
         - ctest --output-on-failure
 
-    - name: clang-8
+    - name: clang-10
       os: linux
       addons:
         apt:
           sources:
             - ubuntu-toolchain-r-test  # for libstdc++
-            - llvm-toolchain-xenial-8
+            - llvm-toolchain-bionic-10
           packages:
-            - clang-8
-            - clang-tidy-8
-            - libstdc++-8-dev  # for <filesystem>
+            - clang-10
+            - clang-tidy-10
+            - libstdc++-10-dev  # for <filesystem>
       install:
         - pip install --user conan
       script:
-        - CXX=clang++-8 CC=clang-8 conan install .  -pr conan_profiles/linux_clang --build
-        - CXX=clang++-8 cmake .
+        - CXX=clang++-10 CC=clang-10 conan install .  -pr conan_profiles/linux_clang --build
+        - CXX=clang++-10 cmake .
         - cmake --build . -- -j$(nproc)
         - ctest --output-on-failure
