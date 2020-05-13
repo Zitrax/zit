@@ -8,7 +8,7 @@ option(USE_CLANG_TIDY "Use clang-tidy if available" ON)
 # the compile time went from 16s to 48s.
 #
 if(USE_CLANG_TIDY)
-  find_program(CLANG_TIDY clang-tidy)
+  find_program(CLANG_TIDY NAMES clang-tidy-10)
 
   if(CLANG_TIDY)
     message(STATUS "Enabling clang-tidy: ${CLANG_TIDY}")
@@ -55,7 +55,7 @@ add_custom_target(doc COMMAND doxygen WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 # Note this needs to be compiled with afl-g++ or afl-clang++
 add_executable(zit_afl EXCLUDE_FROM_ALL main_afl.cpp)
-target_link_libraries(zit ${OPENSSL_CRYPTO_LIBRARY})
+target_link_libraries(zit ${OPENSSL_SSL_LIBRARIES} ${OPENSSL_CRYPTO_LIBRARIES})
 if(NOT WIN32)
   target_link_libraries(zit pthread)
   if(SANITIZED_LIBCXX)
