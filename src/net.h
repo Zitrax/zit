@@ -121,7 +121,7 @@ class Net {
       const std::string& server,
       const std::string& path = "/",
       const std::string& service = "http",
-      string_list params = {});
+      const string_list& params = {});
 
   static auto httpGet(const Url& url) {
     return Net::httpGet(url.host(), url.path(), url.service(), url.params());

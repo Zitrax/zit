@@ -69,8 +69,7 @@ TEST(net, httpGetHTTP) {
   const auto reply = Net::httpGet(url);
 }
 
-// TODO: Disabled until https support is added
-TEST(net, DISABLED_httpGetHTTPS) {
-  Url url("https://httpstat.us");
+TEST(net, httpGetHTTPS) {
+  Url url("https://www.google.com");
   const auto reply = Net::httpGet(url);
 }
