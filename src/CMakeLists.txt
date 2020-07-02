@@ -55,7 +55,11 @@ add_custom_target(doc COMMAND doxygen WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 
 # Note this needs to be compiled with afl-g++ or afl-clang++
 add_executable(zit_afl EXCLUDE_FROM_ALL main_afl.cpp)
-target_link_libraries(zit ${OPENSSL_SSL_LIBRARIES} ${OPENSSL_CRYPTO_LIBRARIES})
+target_link_libraries(zit
+  ${OPENSSL_SSL_LIBRARIES}
+  ${OPENSSL_CRYPTO_LIBRARIES}
+  ${CMAKE_DL_LIBS}
+)
 if(NOT WIN32)
   target_link_libraries(zit pthread)
   if(SANITIZED_LIBCXX)
