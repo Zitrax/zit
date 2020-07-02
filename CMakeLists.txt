@@ -17,6 +17,15 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   # Support for clang seemed to go far back, so not bothering to check that atm.
 endif()
 
+option(FORCE_COLORED_OUTPUT "Always produce ANSI-colored output (GNU/Clang only)." TRUE)
+if (${FORCE_COLORED_OUTPUT})
+    if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
+       add_compile_options (-fdiagnostics-color=always)
+    elseif ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "Clang")
+       add_compile_options (-fcolor-diagnostics)
+    endif ()
+endif ()
+
 set_property(CACHE CMAKE_BUILD_TYPE PROPERTY STRINGS Debug Release)
 
 if(SANITIZED_LIBCXX)
