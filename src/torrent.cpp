@@ -145,13 +145,16 @@ void Torrent::verify_existing_file() {
     m_logger->info("Verifying existing file: {}", m_tmpfile);
     ifstream is{m_tmpfile, ios::in | ios::binary};
     is.exceptions(ifstream::failbit | ifstream::badbit);
+    const auto LENGTH = filesystem::file_size(m_tmpfile);
     bytes data(m_piece_length);
     uint32_t id = 0;
     uint32_t pieces = 0;
     for (auto& sha1 : m_pieces) {
       auto offset = id * m_piece_length;
       is.seekg(offset);
-      is.read(reinterpret_cast<char*>(data.data()), m_piece_length);
+      const auto TAIL = zit::numeric_cast<uint32_t>(LENGTH - offset);
+      const auto LEN = std::min(m_piece_length, TAIL);
+      is.read(reinterpret_cast<char*>(data.data()), LEN);
       auto fsha1 = Sha1::calculateData(data);
       if (sha1 == fsha1) {
         m_client_pieces[id] = true;
