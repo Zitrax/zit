@@ -4,14 +4,11 @@ Build instructions
 
 * mkdir build
 * cd build
-* conan install ..
+* conan install .. --build
 * cmake -GNinja ..
 * cmake --build .
 
-
 Notes:
 
-The conan install step might fail if the package configuration is not in the
-central repository. Then pass --build to build it locally. When doing this
-and when running cmake it's important to set CXX/CC to the expected compiler
-versions that matches the conan profile.
+When doing the conan install and running cmake it's important to set CXX/CC to
+the expected compiler versions that matches the conan profile.
