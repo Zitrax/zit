@@ -9,6 +9,8 @@
 
 #include <asio.hpp>
 
+#include "spdlog/fmt/fmt.h"
+
 using asio::detail::socket_ops::host_to_network_long;
 
 namespace zit {
@@ -98,9 +100,8 @@ static inline uint32_t big_endian(const bytes& buf,
                                   bytes::size_type offset = 0) {
   if (offset + 4 > buf.size() ||
       offset > std::numeric_limits<bytes::size_type>::max() - 4) {
-    throw std::out_of_range(
-        "Target range outside of buffer: " + std::to_string(offset) + "," +
-        std::to_string(buf.size()));
+    throw std::out_of_range(fmt::format(
+        "Target range outside of buffer: ({},{})", offset, buf.size()));
   }
   return static_cast<uint32_t>(static_cast<uint8_t>(buf[offset + 3]) << 0 |
                                static_cast<uint8_t>(buf[offset + 2]) << 8 |

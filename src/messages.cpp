@@ -246,8 +246,16 @@ size_t Message::parse(PeerConnection& connection) {
           peer.set_interested(false);
           return m_msg.size();
         case peer_wire_id::HAVE: {
-          auto id = big_endian(m_msg, 5);
-          peer.have(id);
+          try {
+            auto id = big_endian(m_msg, 5);
+            peer.have(id);
+          } catch (const std::out_of_range& ex) {
+            // Seen cases of too short messages here, for when it happen again
+            // print the full message.
+            m_logger->error("Message: {}", debugMsg(m_msg));
+            throw;
+          }
+
           return 9;
         }
         case peer_wire_id::BITFIELD: {
