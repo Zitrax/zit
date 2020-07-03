@@ -11,6 +11,7 @@
 # -modernize-avoid-c-arrays (covered by cppcore)
 # -modernize-use-trailing-return-type (prefer old style for now)
 # -hicpp-avoid-c-arrays (covered by cppcore)
+# -cplusplus.NewDelete (temporary due to https://github.com/boostorg/asio/issues/341)
 
 
 Checks:          '*,
@@ -34,7 +35,8 @@ Checks:          '*,
                  -readability-inconsistent-declaration-parameter-name,
                  -readability-magic-numbers,
                  -readability-misleading-indentation,
-                 -readability-named-parameter
+                 -readability-named-parameter,
+                 -cplusplus.NewDelete
                  '
 WarningsAsErrors: '*'
 HeaderFilterRegex: '(src|tests)/*.h$'
