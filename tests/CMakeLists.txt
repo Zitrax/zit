@@ -54,6 +54,7 @@ target_link_libraries(zitest
   ${OPENSSL_CRYPTO_LIBRARIES}
   Threads::Threads
   ${CMAKE_DL_LIBS}
+  tbb
 )
 if(NOT WIN32)
   if(SANITIZED_LIBCXX)

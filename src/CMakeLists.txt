@@ -59,6 +59,7 @@ target_link_libraries(zit
   ${OPENSSL_SSL_LIBRARIES}
   ${OPENSSL_CRYPTO_LIBRARIES}
   ${CMAKE_DL_LIBS}
+  tbb
 )
 if(NOT WIN32)
   target_link_libraries(zit pthread)

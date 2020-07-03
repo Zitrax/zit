@@ -4,7 +4,7 @@ Build instructions
 
 * mkdir build
 * cd build
-* conan install .. --build
+* conan install .. --build --profile <profile>
 * cmake -GNinja ..
 * cmake --build .
 

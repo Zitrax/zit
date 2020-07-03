@@ -5,10 +5,12 @@
 #include "peer.h"
 #include "sha1.h"
 #include "string_utils.h"
+#include "timer.h"
 
 #include "spdlog/spdlog.h"
 
 #include <algorithm>
+#include <execution>
 #include <iomanip>
 #include <iostream>
 #include <numeric>
@@ -143,28 +145,36 @@ void Torrent::verify_existing_file() {
   }
   if (filesystem::exists(m_tmpfile)) {
     m_logger->info("Verifying existing file: {}", m_tmpfile);
-    ifstream is{m_tmpfile, ios::in | ios::binary};
-    is.exceptions(ifstream::failbit | ifstream::badbit);
-    const auto LENGTH = filesystem::file_size(m_tmpfile);
-    bytes data(m_piece_length);
-    uint32_t id = 0;
-    uint32_t pieces = 0;
-    for (auto& sha1 : m_pieces) {
-      auto offset = id * m_piece_length;
-      is.seekg(offset);
-      const auto TAIL = zit::numeric_cast<uint32_t>(LENGTH - offset);
-      const auto LEN = std::min(m_piece_length, TAIL);
-      is.read(reinterpret_cast<char*>(data.data()), LEN);
-      auto fsha1 = Sha1::calculateData(data);
-      if (sha1 == fsha1) {
-        m_client_pieces[id] = true;
-        m_active_pieces.emplace(
-            make_pair(id, make_shared<Piece>(id, m_piece_length)));
-        m_active_pieces[id]->set_piece_written(true);
-        ++pieces;
-      }
-      ++id;
-    }
+    Timer timer("verifying existing file");
+    const auto length = filesystem::file_size(m_tmpfile);
+    std::atomic_uint32_t pieces = 0;
+    std::mutex mutex;
+    // Verify each piece in parallel to speed it up
+    std::for_each(
+        std::execution::par_unseq, m_pieces.begin(), m_pieces.end(),
+        [&length, &pieces, &mutex,
+         this  // Be careful what is used from this. It needs to be thread safe.
+    ](const Sha1& sha1) {
+          const auto id = zit::numeric_cast<uint32_t>(&sha1 - &m_pieces[0]);
+          const auto offset = id * m_piece_length;
+          ifstream is{m_tmpfile, ios::in | ios::binary};
+          is.exceptions(ifstream::failbit | ifstream::badbit);
+          is.seekg(offset);
+          const auto tail = zit::numeric_cast<uint32_t>(length - offset);
+          const auto len = std::min(m_piece_length, tail);
+          bytes data(m_piece_length);
+          is.read(reinterpret_cast<char*>(data.data()), len);
+          const auto fsha1 = Sha1::calculateData(data);
+          if (sha1 == fsha1) {
+            // Lock when updating pieces, inserting into std::map is likely not
+            // thread safe.
+            std::lock_guard<std::mutex> lock(mutex);
+            m_client_pieces[id] = true;
+            m_active_pieces.emplace(id, make_shared<Piece>(id, m_piece_length));
+            m_active_pieces[id]->set_piece_written(true);
+            ++pieces;
+          }
+        });
     m_logger->info("Verification done. {}/{} pieces done.", pieces,
                    m_pieces.size());
     if (full_file && (pieces != m_pieces.size())) {
