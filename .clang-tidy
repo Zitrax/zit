@@ -70,8 +70,8 @@ CheckOptions:
     value:           lower_case
   - key:             readability-identifier-naming.ClassConstantPrefix
     value:           m_
-  - key:             readability-identifier-naming.ConstantCase
-    value:           UPPER_CASE
+  #- key:             readability-identifier-naming.ConstantCase
+  #  value:           UPPER_CASE
   - key:             readability-identifier-naming.ConstantMemberCase
     value:           lower_case
   - key:             readability-identifier-naming.ConstantMemberPrefix
