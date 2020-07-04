@@ -89,7 +89,9 @@ class Bitfield {
   /**
    * Return next index with value = val
    */
-  [[nodiscard]] std::optional<bytes::size_type> next(bool val) const;
+  [[nodiscard]] std::optional<bytes::size_type> next(
+      bool val,
+      bytes::size_type start = 0) const;
 
   /**
    * The raw byte vector.

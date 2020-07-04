@@ -72,20 +72,44 @@ Bitfield Bitfield::operator-(const Bitfield& other) const {
   return ret;
 }
 
-std::optional<bytes::size_type> Bitfield::next(bool val) const {
-  // First find relevant byte
-  auto it = std::find_if(m_bytes.begin(), m_bytes.end(), [&val](const auto B) {
-    return val ? static_cast<uint8_t>(B) > 0 : static_cast<uint8_t>(B) < 255;
-  });
+std::optional<bytes::size_type> Bitfield::next(bool val,
+                                               bytes::size_type start) const {
+  if (start > size()) {
+    return {};
+  }
+
+  auto byte_offset = numeric_cast<long>(start / 8);
+  const auto bit_offset = numeric_cast<unsigned short>(start % 8);
+
+  // Check first partial byte if we have a bit offset
+  if (bit_offset) {
+    for (unsigned short i = bit_offset; i < 8; ++i) {
+      const auto pos = numeric_cast<bytes::size_type>(byte_offset * 8 + i);
+      if (operator[](pos) == val) {
+        return pos;
+      }
+    }
+    byte_offset++;
+  }
+
+  // Find relevant byte
+  auto it = std::find_if(m_bytes.begin() + byte_offset, m_bytes.end(),
+                         [&val](const auto B) {
+                           return val ? static_cast<uint8_t>(B) > 0
+                                      : static_cast<uint8_t>(B) < 255;
+                         });
+
+  // Find matching bit in byte
   if (it != m_bytes.end()) {
     auto offset =
         numeric_cast<bytes::size_type>(std::distance(m_bytes.begin(), it) * 8);
     for (unsigned short i = 0; i < 8; ++i) {
       if (operator[](offset + i) == val) {
-        return std::make_optional<bytes::size_type>(offset + i);
+        return offset + i;
       }
     }
   }
+
   return {};
 }
 

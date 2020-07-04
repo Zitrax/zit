@@ -219,6 +219,56 @@ TEST(Bitfield, next) {
   bf[33] = false;
   EXPECT_EQ(*bf.next(false), 33);
   EXPECT_EQ(*bf.next(true), 0);
+
+  bf = Bitfield();
+  bf[2] = true;
+  bf[4] = true;
+  bf[44] = true;
+  bf[80] = true;
+  EXPECT_EQ(bf.next(true), 2);
+  EXPECT_EQ(bf.next(true, 3), 4);
+  EXPECT_EQ(bf.next(true, 5), 44);
+  EXPECT_EQ(bf.next(true, 44), 44);
+  EXPECT_EQ(bf.next(true, 45), 80);
+  EXPECT_FALSE(bf.next(true, 81));
+
+  bf = Bitfield();
+  bf[14] = true;
+  bf[16] = true;
+  bf[18] = true;
+  bf[20] = true;
+  bf[22] = true;
+  bf[24] = true;
+  bf[25] = true;
+  EXPECT_EQ(bf.next(true), 14);
+  EXPECT_EQ(bf.next(true, 14), 14);
+  EXPECT_EQ(bf.next(false, 14), 15);
+  EXPECT_EQ(bf.next(true, 15), 16);
+  EXPECT_EQ(bf.next(false, 15), 15);
+  EXPECT_EQ(bf.next(true, 16), 16);
+  EXPECT_EQ(bf.next(false, 16), 17);
+  EXPECT_EQ(bf.next(true, 17), 18);
+  EXPECT_EQ(bf.next(false, 17), 17);
+  EXPECT_EQ(bf.next(true, 18), 18);
+  EXPECT_EQ(bf.next(false, 18), 19);
+  EXPECT_EQ(bf.next(true, 19), 20);
+  EXPECT_EQ(bf.next(false, 19), 19);
+  EXPECT_EQ(bf.next(true, 20), 20);
+  EXPECT_EQ(bf.next(false, 20), 21);
+  EXPECT_EQ(bf.next(true, 21), 22);
+  EXPECT_EQ(bf.next(false, 21), 21);
+  EXPECT_EQ(bf.next(true, 22), 22);
+  EXPECT_EQ(bf.next(false, 22), 23);
+  EXPECT_EQ(bf.next(true, 23), 24);
+  EXPECT_EQ(bf.next(false, 23), 23);
+  EXPECT_EQ(bf.next(true, 24), 24);
+  EXPECT_EQ(bf.next(false, 24), 26);
+  EXPECT_EQ(bf.next(true, 25), 25);
+  EXPECT_EQ(bf.next(false, 25), 26);
+  EXPECT_FALSE(bf.next(true, 26));
+  EXPECT_EQ(bf.next(false, 26), 26);
+  EXPECT_FALSE(bf.next(false, 26000));
+  EXPECT_FALSE(bf.next(false, 26001));
 }
 
 TEST(Bitfield, subtraction) {
