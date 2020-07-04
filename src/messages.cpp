@@ -155,7 +155,7 @@ class HandshakeMsg {
         return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, 0);
       }
       Bitfield bf(bytes(&msg[73], &msg[73 + len - 1]));
-      console->info("{}", bf);
+      console->debug("Handshake: {}", bf);
       // Consume the parsed part, the caller have to deal with the rest
       return make_optional<HandshakeMsg>(reserved, info_hash, peer_id,
                                          73 + len - 1, bf);
@@ -263,7 +263,7 @@ size_t Message::parse(PeerConnection& connection) {
           auto end = start + len - 1;
           auto bf = Bitfield(bytes(start, end));
           peer.set_remote_pieces(bf);
-          m_logger->info("{}", bf);
+          m_logger->debug("{}", bf);
           return len + 4;
         }
         case peer_wire_id::REQUEST: {

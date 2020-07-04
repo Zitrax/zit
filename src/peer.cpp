@@ -53,7 +53,7 @@ void PeerConnection::listen() {
         if (!error) {
           auto ip = new_socket.remote_endpoint().address().to_string();
           auto port = new_socket.remote_endpoint().port();
-          m_logger->info("Accepted new connection from {}:{}", ip, port);
+          m_logger->warn("Accepted new connection from {}:{}", ip, port);
           socket_ = move(new_socket);
           m_connected = true;
           asio::async_read(
@@ -185,7 +185,7 @@ void PeerConnection::handle_connect(const asio::error_code& err,
 }
 
 void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
-  m_logger->debug(PRETTY_FUNCTION);
+  m_logger->trace(PRETTY_FUNCTION);
   if (!err) {
     // Loop over buffer since we might have zero, one or more
     // messages waiting.
