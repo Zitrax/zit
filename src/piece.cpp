@@ -9,7 +9,7 @@ using namespace std;
 
 namespace zit {
 
-optional<uint32_t> Piece::next_offset() {
+optional<uint32_t> Piece::next_offset(bool mark) {
   lock_guard<mutex> lock(m_mutex);
   auto next = m_blocks_requested.next(false);
   if (!next) {
@@ -22,7 +22,9 @@ optional<uint32_t> Piece::next_offset() {
     return {};
   }
   // Mark block as requested
-  m_blocks_requested[*next] = true;
+  if (mark) {
+    m_blocks_requested[*next] = true;
+  }
   return *next * m_block_size;
 }
 

@@ -149,9 +149,13 @@ class Peer {
   bool is_listening() const { return m_listening; }
 
   /**
-   * Return next piece index and offset.
+   * Return next piece.
+   *
+   * @param non_requested if true the piece returned must have at least 1 non
+   * requested block.
    */
-  [[nodiscard]] std::optional<std::shared_ptr<Piece>> next_piece();
+  [[nodiscard]] std::optional<std::shared_ptr<Piece>> next_piece(
+      bool non_requested = false);
 
   void set_am_choking(bool am_choking);
   void set_am_interested(bool am_interested);

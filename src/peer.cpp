@@ -282,7 +282,7 @@ void Peer::request_next_block(unsigned short count) {
   bytes request;
   for (int i = 0; i < count; i++) {
     // We can now start requesting pieces
-    auto has_piece = next_piece();
+    auto has_piece = next_piece(true);
     if (!has_piece) {
       m_logger->info("No pieces left, nothing to do!");
       // exit(0);
@@ -290,7 +290,7 @@ void Peer::request_next_block(unsigned short count) {
     }
     auto piece = *has_piece;
 
-    auto block_offset = piece->next_offset();
+    auto block_offset = piece->next_offset(true);
     if (!block_offset) {
       m_logger->debug("No block requests left to do!");
       break;
@@ -357,7 +357,7 @@ void Peer::have(uint32_t id) {
 
 void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
   if (m_torrent.set_block(piece_id, offset, data)) {
-    request_next_block();
+    request_next_block(1);
   }
 }
 
@@ -452,19 +452,25 @@ void Peer::init_io_service() {
   }
 }
 
-optional<shared_ptr<Piece>> Peer::next_piece() {
+optional<shared_ptr<Piece>> Peer::next_piece(bool non_requested) {
   // Pieces the remote has minus the pieces we already got
   Bitfield relevant_pieces = m_torrent.relevant_pieces(m_remote_pieces);
 
   // Is there a piece to get
-  auto next_id = relevant_pieces.next(true);
-  if (!next_id) {
-    return {};
-  }
+  std::optional<std::size_t> next_id{0};
+  while (true) {
+    next_id = relevant_pieces.next(true, *next_id);
+    if (!next_id) {
+      return {};
+    }
 
-  // Is the piece active or not
-  auto id = numeric_cast<uint32_t>(*next_id);
-  return make_optional(m_torrent.active_piece(id));
+    const auto id = numeric_cast<uint32_t>(*next_id);
+    const auto piece = m_torrent.active_piece(id);
+    if (!non_requested || (piece && piece->next_offset(false))) {
+      return piece;
+    }
+    (*next_id)++;
+  }
 }
 
 }  // namespace zit

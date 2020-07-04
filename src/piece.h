@@ -26,8 +26,10 @@ class Piece {
 
   /** Piece id */
   [[nodiscard]] auto id() const { return m_id; }
-  /** Next offset to request */
-  [[nodiscard]] std::optional<uint32_t> next_offset();
+  /** Next offset to request
+   * @param mark if true marks the block as requested
+   */
+  [[nodiscard]] std::optional<uint32_t> next_offset(bool mark);
   /** Total block size in bytes */
   [[nodiscard]] auto block_size() const { return m_block_size; }
   /** Total number of blocks in this piece */
