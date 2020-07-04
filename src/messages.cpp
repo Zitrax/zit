@@ -211,13 +211,13 @@ size_t Message::parse(PeerConnection& connection) {
     auto len = big_endian(m_msg);
     m_logger->debug("Incoming length = {}, message/buffer size = {}", len,
                     m_msg.size());
-    if (len > m_msg.size() + 4) {
+    if (len + 4 > m_msg.size()) {
       // Not a full message - return and await more data
       return 0;
     }
-    if (len == 0 && m_msg.size() == 4) {
-      m_logger->info("Keep Alive");
-      return m_msg.size();
+    if (len == 0 && m_msg.size() >= 4) {
+      m_logger->debug("Keep Alive");
+      return 4;
     }
     if (len > 0 && m_msg.size() >= 5) {
       auto id = to_peer_wire_id(m_msg[4]);
