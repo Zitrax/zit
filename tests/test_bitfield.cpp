@@ -337,3 +337,12 @@ TEST(Bitfield, subtraction) {
   EXPECT_FALSE(ret[6]);
   EXPECT_TRUE(ret[7]);
 }
+
+TEST(Bitfield, count) {
+  Bitfield bf;
+  EXPECT_EQ(bf.count(), 0);
+  bf = Bitfield(bytes{240_b, 10_b});  // 11110000 00001010
+  EXPECT_EQ(bf.count(), 6);
+  bf[7] = true;
+  EXPECT_EQ(bf.count(), 7);
+}
