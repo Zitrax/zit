@@ -77,6 +77,11 @@ class Bitfield {
   Bitfield operator-(const Bitfield& other) const;
 
   /**
+   * Add/or another bitfield.
+   */
+  Bitfield operator+(const Bitfield& other) const;
+
+  /**
    * Return the number of true bits in the set.
    */
   [[nodiscard]] std::size_t count() const;

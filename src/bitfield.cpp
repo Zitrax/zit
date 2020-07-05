@@ -74,6 +74,18 @@ Bitfield Bitfield::operator-(const Bitfield& other) const {
   return ret;
 }
 
+Bitfield Bitfield::operator+(const Bitfield& other) const {
+  auto len = std::min(size_bytes(), other.size_bytes());
+  Bitfield ret;
+  ret.m_bytes.reserve(len);
+
+  for (decltype(len) i = 0; i < len; ++i) {
+    ret.m_bytes.emplace_back(m_bytes[i] | other.m_bytes[i]);
+  }
+
+  return ret;
+}
+
 static constexpr auto bitsPerByteTable = [] {
   std::array<uint8_t, 256> table{};
   for (decltype(table)::size_type i = 0; i < table.size(); i++) {
