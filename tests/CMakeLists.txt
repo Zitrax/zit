@@ -30,6 +30,7 @@ endif()
 # The test code
 include_directories("../src")
 add_executable(zitest
+  test_arg_parser.cpp
   test_bencode.cpp
   test_bitfield.cpp
   test_integrate.cpp
@@ -40,6 +41,7 @@ add_executable(zitest
   test_sha1.cpp
   test_string_utils.cpp
   test_types.cpp
+  ../src/arg_parser.cpp
   ../src/bitfield.cpp
   ../src/file_writer.cpp
   ../src/torrent.cpp

@@ -1,6 +1,7 @@
 #include <filesystem>
 #include <iostream>
 #include <vector>
+#include "arg_parser.h"
 #include "bencode.h"
 #include "file_writer.h"
 #include "net.h"
@@ -28,18 +29,17 @@ void print_exception(const exception& e, string::size_type level = 0) noexcept {
   }
 }
 
-int main() noexcept {
+int main(int argc, const char* argv[]) noexcept {
   try {
     auto console = spdlog::stdout_color_mt("console");
     console->set_level(spdlog::level::info);
 
-    // Read .torrent file
-    std::filesystem::path p(__FILE__);
-    p.remove_filename();
+    zit::ArgParser parser("Zit");
+    std::string torrent_file;
+    parser.add_option("--torrent", {}, "Torrent file to download", torrent_file, true);
+    parser.parse(argc, argv);
 
-    zit::Torrent torrent(p / ".." / "tests" / "data" / "test.torrent");
-    // zit::Torrent torrent(p / ".." / "random.torrent");
-    // zit::Torrent torrent(p / ".." / "test2.torrent");
+    zit::Torrent torrent(torrent_file);
     zit::FileWriterThread file_writer(
         torrent, [&console](zit::Torrent& torrent) {
           console->info("Download completed");

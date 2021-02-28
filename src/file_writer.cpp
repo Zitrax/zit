@@ -82,7 +82,7 @@ void FileWriter::write_next_piece() {
     }
 
     {
-      // Open and write piece at corrext offset
+      // Open and write piece at correct offset
       auto tmpfile = fstream(tmpfile_name, ios::in | ios::out | ios::binary);
       tmpfile.exceptions(fstream::failbit | fstream::badbit);
       auto offset = piece->id() * torrent->piece_length();

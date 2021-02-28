@@ -41,6 +41,9 @@ TEST(types, numeric_cast) {
   EXPECT_THROW(numeric_cast<uint8_t>(-1), std::out_of_range);
   // unsigned <- unsigned
   EXPECT_THROW(numeric_cast<uint8_t>(256), std::out_of_range);
+
+  // float
+  EXPECT_THROW(numeric_cast<float>(1E39), std::out_of_range);
 }
 
 TEST(types, to_big_endian) {
