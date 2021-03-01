@@ -32,12 +32,30 @@ void print_exception(const exception& e, string::size_type level = 0) noexcept {
 int main(int argc, const char* argv[]) noexcept {
   try {
     auto console = spdlog::stdout_color_mt("console");
-    console->set_level(spdlog::level::info);
 
-    zit::ArgParser parser("Zit");
+    zit::ArgParser parser("Zit - torrent client");
     std::string torrent_file;
-    parser.add_option("--torrent", {}, "Torrent file to download", torrent_file, true);
+    std::string log_level;
+    bool help = false;
+    parser.add_option<bool>("--help", false, "Print help", help);
+    parser.add_option("--torrent", {}, "Torrent file to download", torrent_file,
+                      true);
+    parser.add_option<std::string>(
+        "--log-level", "info"s,
+        "Log level (trace, debug, info, warning, error, critical, off)",
+        log_level);
     parser.parse(argc, argv);
+
+    if (help) {
+      std::cout << parser.usage();
+      return 0;
+    }
+
+    const auto lvl = spdlog::level::from_str(log_level);
+    if (lvl == spdlog::level::off && log_level != "off") {
+      throw runtime_error("Unknown log level: " + log_level);
+    }
+    console->set_level(lvl);
 
     zit::Torrent torrent(torrent_file);
     zit::FileWriterThread file_writer(

@@ -13,20 +13,36 @@ namespace zit {
  * Simple argument parser
  */
 class ArgParser {
-public:
+ public:
   explicit ArgParser(std::string desc) : m_desc(desc) {}
 
+  /**
+   * Add an option to be parsed by parse().
+   */
   template <typename T>
-  void add_option(const std::string &option, const std::optional<T> &def,
-                  const std::string &help, T &dst, bool required = false);
+  void add_option(const std::string& option,
+                  const std::optional<T>& def,
+                  const std::string& help,
+                  T& dst,
+                  bool required = false);
 
-  void parse(int argc, const char *argv[]);
+  /**
+   * Parse arguments for options provided by add_option.
+   */
+  void parse(int argc, const char* argv[]);
 
-private:
+  /**
+   * Get help info string for all available options.
+   */
+  std::string usage();
+
+ private:
   enum class Type { INT, UINT, FLOAT, STRING, BOOL };
 
   struct BaseArg {
-    BaseArg(const std::string &option, const std::string &help, Type type,
+    BaseArg(const std::string& option,
+            const std::string& help,
+            Type type,
             bool required)
         : option(option), help(help), type(type), required(required) {}
     virtual ~BaseArg() = default;
@@ -37,19 +53,24 @@ private:
     bool required = false;
   };
 
-  template <typename T> struct Arg : public BaseArg {
-  public:
-    Arg(const std::string &option, const std::string &help, Type type, T &dst,
+  template <typename T>
+  struct Arg : public BaseArg {
+   public:
+    Arg(const std::string& option,
+        const std::string& help,
+        Type type,
+        T& dst,
         bool required)
         : BaseArg(option, help, type, required), dst(dst) {}
-    T &dst{};
+    T& dst{};
   };
 
-  template <typename T> auto &as(std::unique_ptr<ArgParser::BaseArg> &arg) {
-    return dynamic_cast<Arg<T> &>(*arg);
+  template <typename T>
+  auto& as(std::unique_ptr<ArgParser::BaseArg>& arg) {
+    return dynamic_cast<Arg<T>&>(*arg);
   }
 
   std::string m_desc;
   std::vector<std::unique_ptr<BaseArg>> m_options;
 };
-} // namespace zit
+}  // namespace zit
