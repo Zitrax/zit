@@ -71,6 +71,6 @@ class ArgParser {
   }
 
   std::string m_desc;
-  std::vector<std::unique_ptr<BaseArg>> m_options;
+  std::vector<std::unique_ptr<BaseArg>> m_options{};
 };
 }  // namespace zit

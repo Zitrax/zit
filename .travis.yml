@@ -37,6 +37,6 @@ matrix:
         - pip install --user conan
       script:
         - CXX=clang++-10 CC=clang-10 conan install .  -pr conan_profiles/linux_clang --build
-        - CXX=clang++-10 cmake .
+        - CXX=clang++-10 cmake . -DUSE_CLANG_TIDY=OFF # For some reason clang-tidy segfaults on travis
         - cmake --build . -- -j$(nproc)
         - ctest --output-on-failure
