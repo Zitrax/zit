@@ -85,13 +85,16 @@ list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "#")
 list(FILTER ALL_HEADER_FILES EXCLUDE REGEX "#")
 set(ALL_INPUT_FILES ${ALL_SOURCE_FILES} ${ALL_HEADER_FILES})
 
-find_program(CLANG_FORMAT NAMES clang-format-10)
+option(USE_CLANG_TIDY "Use clang-tidy when building" ON)
+if(USE_CLANG_TIDY)
+  find_program(CLANG_FORMAT NAMES clang-format-10)
 
-if(CLANG_FORMAT)
-  add_custom_target(format
-    COMMENT "Formatting ${ALL_INPUT_FILES}"
-    COMMAND ${CLANG_FORMAT} -style=Chromium -i ${ALL_INPUT_FILES}
-    )
-else()
-  message(WARNING "Could not find clang-format, formatting not available")
+  if(CLANG_FORMAT)
+    add_custom_target(format
+      COMMENT "Formatting ${ALL_INPUT_FILES}"
+      COMMAND ${CLANG_FORMAT} -style=Chromium -i ${ALL_INPUT_FILES}
+      )
+  else()
+    message(WARNING "Could not find clang-format, formatting not available")
+  endif()
 endif()
