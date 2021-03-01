@@ -51,11 +51,11 @@ class Url {
    */
   Url& add_param(const std::string& param);
 
-  [[nodiscard]] auto scheme() const { return m_scheme; }
-  [[nodiscard]] auto host() const { return m_host; }
-  [[nodiscard]] auto path() const { return m_path; }
-  [[nodiscard]] auto port() const { return m_port; }
-  [[nodiscard]] auto params() const { return m_params; }
+  [[nodiscard]] const auto& scheme() const { return m_scheme; }
+  [[nodiscard]] const auto& host() const { return m_host; }
+  [[nodiscard]] const auto& path() const { return m_path; }
+  [[nodiscard]] const auto& port() const { return m_port; }
+  [[nodiscard]] const auto& params() const { return m_params; }
   [[nodiscard]] auto service() const {
     return m_port ? std::to_string(*m_port) : m_scheme;
   }
@@ -117,15 +117,7 @@ class Net {
 
   Net() = default;
 
-  static std::tuple<std::string, std::string> httpGet(
-      const std::string& server,
-      const std::string& path = "/",
-      const std::string& service = "http",
-      const string_list& params = {});
-
-  static auto httpGet(const Url& url) {
-    return Net::httpGet(url.host(), url.path(), url.service(), url.params());
-  }
+  static std::tuple<std::string, std::string> httpGet(const Url& url);
 
   /**
    * URL encode string.

@@ -28,26 +28,23 @@ Url& Url::add_param(const std::string& param) {
 
 template <typename Sock>
 static std::tuple<std::string, std::string> request(Sock& sock,
-                                                    const string& server,
-                                                    const string& path,
-                                                    const string& service,
-                                                    const string_list& params) {
+                                                    const Url& url) {
   // Form the request. We specify the "Connection: close" header so that the
   // server will close the socket after transmitting the response. This will
   // allow us to treat all data up until the EOF as the content.
   asio::streambuf request;
   ostream request_stream(&request);
   std::stringstream rpath;
-  rpath << path;
-  auto it = params.begin();
-  if (it != params.end()) {
+  rpath << url.path();
+  auto it = url.params().begin();
+  if (it != url.params().end()) {
     rpath << "?" << *it++;
   }
-  while (it != params.end()) {
+  while (it != url.params().end()) {
     rpath << "&" << *it++;
   }
   request_stream << "GET " << rpath.str() << " HTTP/1.1\r\n";
-  request_stream << "Host: " << server << "\r\n";
+  request_stream << "Host: " << url.host() << "\r\n";
   request_stream << "Accept: */*\r\n";
   request_stream << "Connection: close\r\n\r\n";
 
@@ -74,8 +71,8 @@ static std::tuple<std::string, std::string> request(Sock& sock,
       make_array(Net::m_http_status_ok, Net::m_http_status_found);
   if (find(VALID_STATUSES.begin(), VALID_STATUSES.end(), status_code) ==
       VALID_STATUSES.end()) {
-    throw runtime_error("response returned with status code " +
-                        to_string(status_code));
+    throw runtime_error(fmt::format("{}: response returned with status code {}",
+                                    url.str(), status_code));
   }
 
   // Read the response headers, which are terminated by a blank line.
@@ -111,9 +108,9 @@ static std::tuple<std::string, std::string> request(Sock& sock,
   // to "SSL short read" discussed here:
   // https://github.com/boostorg/beast/issues/38. So far I am not sure what the
   // "proper" fix for this is.
-  if (service != "https") {
+  if (url.scheme() != "https") {
     if (error != asio::error::eof) {
-      throw asio::system_error(error);
+      throw asio::system_error(error, url.str());
     }
   }
 
@@ -122,11 +119,7 @@ static std::tuple<std::string, std::string> request(Sock& sock,
 
 // Based on example at
 // https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/overview/ssl.html
-static std::tuple<std::string, std::string> httpsGet(
-    const std::string& server,
-    const std::string& path,
-    const string& service,
-    const string_list& params) {
+static std::tuple<std::string, std::string> httpsGet(const Url& url) {
   using ssl_socket = ssl::stream<tcp::socket>;
   // Create a context that uses the default paths for
   // finding CA certificates.
@@ -142,7 +135,7 @@ static std::tuple<std::string, std::string> httpsGet(
   asio::io_context io_context;
   ssl_socket sock(io_context, ctx);
   tcp::resolver resolver(io_context);
-  tcp::resolver::query query(server, service);
+  tcp::resolver::query query(url.host(), url.scheme());
   asio::connect(sock.lowest_layer(), resolver.resolve(query));
   sock.lowest_layer().set_option(tcp::no_delay(true));
 
@@ -150,7 +143,7 @@ static std::tuple<std::string, std::string> httpsGet(
   // certificate.
   sock.set_verify_mode(ssl::verify_peer);
   sock.set_verify_callback(
-      [&server](bool preverified, asio::ssl::verify_context& ctx_) {
+      [&url](bool preverified, asio::ssl::verify_context& ctx_) {
         if (!preverified) {
           spdlog::get("console")->warn(
               "SSL: {}", X509_verify_cert_error_string(
@@ -166,29 +159,26 @@ static std::tuple<std::string, std::string> httpsGet(
               dir);
         }
 
-        ssl::rfc2818_verification rfc2818(server);
+        ssl::rfc2818_verification rfc2818(url.host());
         return rfc2818(preverified, ctx_);
       });
   sock.handshake(ssl_socket::client);
 
-  return request(sock, server, path, service, params);
+  return request(sock, url);
 }  // namespace zit
 
 //
 // Implementation based on the example at:
 // https://www.boost.org/doc/libs/1_36_0/doc/html/boost_asio/example/http/client/sync_client.cpp
 //
-std::tuple<std::string, std::string> Net::httpGet(const string& server,
-                                                  const string& path,
-                                                  const string& service,
-                                                  const string_list& params) {
-  if (service == "https") {
-    return httpsGet(server, path, service, params);
+std::tuple<std::string, std::string> Net::httpGet(const Url& url) {
+  if (url.scheme() == "https") {
+    return httpsGet(url);
   }
 
   asio::io_service io_service;
   tcp::resolver resolver(io_service);
-  auto endpoints = resolver.resolve(server, service);
+  auto endpoints = resolver.resolve(url.host(), url.scheme());
 
   // Try each endpoint until we successfully establish a connection.
   // An endpoint might be IPv4 or IPv6
@@ -196,10 +186,10 @@ std::tuple<std::string, std::string> Net::httpGet(const string& server,
   asio::error_code error = asio::error::host_not_found;
   asio::connect(socket, endpoints, error);
   if (error) {
-    throw asio::system_error(error);
+    throw asio::system_error(error, url.str());
   }
 
-  return request(socket, server, path, service, params);
+  return request(socket, url);
 }
 
 // Based on https://stackoverflow.com/a/17708801/11722
