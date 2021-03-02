@@ -11,7 +11,8 @@ namespace zit {
 
 optional<uint32_t> Piece::next_offset(bool mark) {
   lock_guard<mutex> lock(m_mutex);
-  auto next = m_blocks_requested.next(false);
+  const auto req_or_done = m_blocks_requested + m_blocks_done;
+  auto next = req_or_done.next(false);
   if (!next) {
     return {};
   }
@@ -24,6 +25,7 @@ optional<uint32_t> Piece::next_offset(bool mark) {
   // Mark block as requested
   if (mark) {
     m_blocks_requested[*next] = true;
+    m_last_request = std::chrono::system_clock::now();
   }
   return *next * m_block_size;
 }
@@ -60,6 +62,7 @@ bool Piece::set_block(uint32_t offset, const bytes& data) {
     m_logger->info("Block {}/{} of size {} stored for piece {}", block_id + 1,
                    block_count(), data.size(), m_id);
   }
+  m_last_block = std::chrono::system_clock::now();
   auto next = m_blocks_done.next(false);
   return !next || *next >= block_count();
 }
@@ -101,6 +104,31 @@ void Piece::set_piece_written(bool written) {
   }
   m_data.clear();
   m_data.shrink_to_fit();
+}
+
+std::size_t Piece::retry_blocks() {
+  if(m_piece_written) {
+    return 0;
+  }
+  const auto last_activity = std::max(m_last_block, m_last_request);
+  if (last_activity == std::chrono::system_clock::time_point::min()) {
+    // Nothing happened yet
+    return 0;
+  }
+  const auto now = std::chrono::system_clock::now();
+  const auto inactive = now - last_activity;
+  if (inactive > 30s && m_blocks_requested.next(true).has_value()) {
+    m_logger->warn(
+        "Piece {} inactive for {} seconds. Marking for retry.", m_id,
+        std::chrono::duration_cast<std::chrono::seconds>(inactive).count());
+    lock_guard<mutex> lock(m_mutex);
+    const auto retry = (m_blocks_requested - m_blocks_done).count();
+
+    // TODO: Should we really request the whole piece again?
+    m_blocks_requested = Bitfield(block_count());
+    return retry;
+  }
+  return 0;
 }
 
 }  // namespace zit

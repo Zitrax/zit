@@ -278,7 +278,12 @@ void Peer::set_am_interested(bool am_interested) {
   m_am_interested = am_interested;
 }
 
-void Peer::request_next_block(unsigned short count) {
+std::size_t Peer::request_next_block(unsigned short count) {
+  size_t requests = 0;
+  if (m_choking) {
+    m_logger->info("Peer choked, not requesting blocks");
+    return requests;
+  }
   bytes request;
   for (int i = 0; i < count; i++) {
     // We can now start requesting pieces
@@ -315,20 +320,26 @@ void Peer::request_next_block(unsigned short count) {
     request.insert(request.end(), index.begin(), index.end());
     request.insert(request.end(), begin.begin(), begin.end());
     request.insert(request.end(), blength.begin(), blength.end());
+    requests++;
   }
   // Important to write only once (to match write/read calls)
   if (!request.empty()) {
     m_connection->write(request);
   }
+  return requests;
 }
 
 void Peer::set_choking(bool choking) {
-  if (m_choking && !choking) {  // Unchoked
+  if (m_choking && !choking) {
+    m_choking = choking;
     m_logger->info("Unchoked");
     request_next_block();
   }
 
-  m_choking = choking;
+  if (!m_choking && choking) {
+    m_choking = choking;
+    m_logger->info("Choked");
+  }
 }
 
 void Peer::set_interested(bool interested) {

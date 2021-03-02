@@ -191,6 +191,8 @@ class Peer {
     return *m_io_service;
   }
 
+  std::size_t request_next_block(unsigned short count = 5);
+
  private:
   std::optional<Url> m_url{};
   bool m_am_choking = true;
@@ -199,7 +201,6 @@ class Peer {
   bool m_interested = false;
   bool m_listening = false;
 
-  void request_next_block(unsigned short count = 5);
   void init_io_service();
 
   Bitfield m_remote_pieces{};

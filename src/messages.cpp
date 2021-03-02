@@ -188,7 +188,8 @@ size_t Message::parse(PeerConnection& connection) {
   auto handshake = HandshakeMsg::parse(m_msg);
   auto& peer = connection.peer();
   if (handshake) {
-    m_logger->info("Handshake of size {}", m_msg.size());
+    m_logger->info("{}: Handshake of size {}", connection.peer().str(),
+                   m_msg.size());
     auto consumed = handshake->getConsumed();
     if (!peer.verify_info_hash(handshake->getInfoHash())) {
       // TODO: Spec say that we should drop the connection
@@ -209,25 +210,26 @@ size_t Message::parse(PeerConnection& connection) {
 
   if (m_msg.size() >= 4) {
     auto len = big_endian(m_msg);
-    m_logger->debug("Incoming length = {}, message/buffer size = {}", len,
-                    m_msg.size());
+    m_logger->debug("{}: Incoming length = {}, message/buffer size = {}",
+                    connection.peer().str(), len, m_msg.size());
     if (len + 4 > m_msg.size()) {
       // Not a full message - return and await more data
       return 0;
     }
     if (len == 0 && m_msg.size() >= 4) {
-      m_logger->debug("Keep Alive");
+      m_logger->debug("{}: Keep Alive", connection.peer().str());
       return 4;
     }
     if (len > 0 && m_msg.size() >= 5) {
       auto id = to_peer_wire_id(m_msg[4]);
-      m_logger->info("Received: {}", id);
+      m_logger->info("{}: Received: {}", connection.peer().str(), id);
       switch (id) {
         case peer_wire_id::CHOKE:
-          break;
+          peer.set_choking(true);
+          return len + 4;
         case peer_wire_id::UNCHOKE:
           peer.set_choking(false);
-          return m_msg.size();
+          return len + 4;
         case peer_wire_id::PIECE: {
           auto index = big_endian(m_msg, 5);
           auto offset = big_endian(m_msg, 9);
@@ -241,10 +243,10 @@ size_t Message::parse(PeerConnection& connection) {
           return len + 4;
         case peer_wire_id::INTERESTED:
           peer.set_interested(true);
-          return m_msg.size();
+          return len + 4;
         case peer_wire_id::NOT_INTERESTED:
           peer.set_interested(false);
-          return m_msg.size();
+          return len + 4;
         case peer_wire_id::HAVE: {
           try {
             auto id = big_endian(m_msg, 5);
@@ -252,7 +254,8 @@ size_t Message::parse(PeerConnection& connection) {
           } catch (const std::out_of_range& ex) {
             // Seen cases of too short messages here, for when it happen again
             // print the full message.
-            m_logger->error("Message: {}", debugMsg(m_msg));
+            m_logger->error("{}: Message: {}", connection.peer().str(),
+                            debugMsg(m_msg));
             throw;
           }
 
@@ -263,7 +266,7 @@ size_t Message::parse(PeerConnection& connection) {
           auto end = start + len - 1;
           auto bf = Bitfield(bytes(start, end));
           peer.set_remote_pieces(bf);
-          m_logger->debug("{}", bf);
+          m_logger->debug("{}: {}", connection.peer().str(), bf);
           return len + 4;
         }
         case peer_wire_id::REQUEST: {
@@ -278,13 +281,13 @@ size_t Message::parse(PeerConnection& connection) {
         case peer_wire_id::UNKNOWN:
           break;
       }
-      m_logger->warn("{} is unhandled", id);
+      m_logger->warn("{}: {} is unhandled", connection.peer().str(), id);
       return m_msg.size();
     }
   }
 
-  m_logger->warn("Unknown message of length {} ({})", m_msg.size(),
-                 debugMsg(m_msg));
+  m_logger->warn("{}: Unknown message of length {} ({})",
+                 connection.peer().str(), m_msg.size(), debugMsg(m_msg));
   return m_msg.size();
 }
 

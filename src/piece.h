@@ -70,6 +70,14 @@ class Piece {
    */
   [[nodiscard]] bool piece_written() const { return m_piece_written; }
 
+  /**
+   * If this piece has been inactive for a while, mark all requested blocks as
+   * non requested such that we can try them again.
+   *
+   * Return the number of blocks cleared that were requested but not done.
+   */
+  [[nodiscard]] std::size_t retry_blocks();
+
  private:
   const uint32_t m_block_size = 1 << 14;
   uint32_t m_piece_size;
@@ -80,6 +88,8 @@ class Piece {
   bytes m_data{};
   std::atomic_bool m_piece_written = false;
   std::shared_ptr<spdlog::logger> m_logger;
+  std::chrono::system_clock::time_point m_last_request;
+  std::chrono::system_clock::time_point m_last_block;
 };
 
 }  // namespace zit

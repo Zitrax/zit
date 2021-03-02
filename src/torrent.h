@@ -240,6 +240,12 @@ class Torrent {
 
  private:
   /**
+   * If a piece have requests but have not received data in a while we mark the
+   * blocks as non requested to be tried again.
+   */
+  void retry_pieces();
+
+  /**
    * Called when one piece has been downloaded.
    */
   void piece_done(std::shared_ptr<Piece>& piece);

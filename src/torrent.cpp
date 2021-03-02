@@ -10,6 +10,7 @@
 #include "spdlog/spdlog.h"
 
 #include <algorithm>
+#include <chrono>
 #include <execution>
 #include <iomanip>
 #include <iostream>
@@ -285,12 +286,49 @@ void Torrent::run() {
     for (auto& p : m_peers) {
       ran += p->io_service().poll_one();
     }
+    retry_pieces();
     // If no handlers ran, then sleep.
     if (!ran) {
       this_thread::sleep_for(10ms);
     }
   }
   m_logger->debug("Run loop done");
+}
+
+void Torrent::retry_pieces() {
+  // Do not need to call this too frequently so rate limit it
+  static std::chrono::system_clock::time_point last_call;
+  if (std::chrono::system_clock::now() - last_call > 30s) {
+    last_call = std::chrono::system_clock::now();
+    m_logger->info("Checking pieces for retry");
+    std::size_t retry = 0;
+    for (auto& [id, piece] : m_active_pieces) {
+      retry += piece->retry_blocks();
+    }
+    m_logger->trace("retry count = {}", retry);
+    if (!retry) {
+      return;
+    }
+    m_logger->debug("Marked {} blocks for retry", retry);
+    auto it = m_peers.begin();
+    if(it == m_peers.end()){
+      m_logger->warn("No peers available for retrying");
+      return;
+    }
+    auto start_count = retry;
+    while (retry > 0) {
+      retry -= (*it)->request_next_block(1);
+      it++;
+      if (it == m_peers.end()) {
+        if (retry == start_count) {
+          m_logger->warn("Could not retry all blocks.");
+          break;
+        }
+        start_count = retry;
+        it = m_peers.begin();
+      }
+    }
+  }
 }
 
 bool Torrent::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {

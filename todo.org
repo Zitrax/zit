@@ -24,3 +24,8 @@
 ** replace stdc++fs in CMakeList.txt files with c++fs
 ** create default conan profile with clang8
 ** then same procedure as on linux
+
+* Retry or timeout pieces/blocks we never got
+* Disconnect peers that have not sent KeepAlive in a while.
+* Handle http 301 (permanently moved) for torrents. Like here: http://www.publicdomaintorrents.info/nshowmovie.html?movieid=1066
+
