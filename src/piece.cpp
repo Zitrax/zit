@@ -107,7 +107,7 @@ void Piece::set_piece_written(bool written) {
 }
 
 std::size_t Piece::retry_blocks() {
-  if(m_piece_written) {
+  if (m_piece_written) {
     return 0;
   }
   const auto last_activity = std::max(m_last_block, m_last_request);

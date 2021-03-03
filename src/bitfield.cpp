@@ -1,5 +1,6 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "bitfield.h"
+#include "types.h"
 
 #include <array>
 #include <iostream>
@@ -89,7 +90,7 @@ Bitfield Bitfield::operator+(const Bitfield& other) const {
 static constexpr auto bitsPerByteTable = [] {
   std::array<uint8_t, 256> table{};
   for (decltype(table)::size_type i = 0; i < table.size(); i++) {
-    table.at(i) = table.at(i / 2) + (i & 1);
+    table.at(i) = zit::numeric_cast<uint8_t>(table.at(i / 2) + (i & 1));
   }
   return table;
 }();

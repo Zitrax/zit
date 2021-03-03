@@ -88,8 +88,8 @@ class Piece {
   bytes m_data{};
   std::atomic_bool m_piece_written = false;
   std::shared_ptr<spdlog::logger> m_logger;
-  std::chrono::system_clock::time_point m_last_request;
-  std::chrono::system_clock::time_point m_last_block;
+  std::chrono::system_clock::time_point m_last_request{};
+  std::chrono::system_clock::time_point m_last_block{};
 };
 
 }  // namespace zit

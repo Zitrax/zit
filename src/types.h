@@ -22,7 +22,7 @@ using bytes = std::vector<std::byte>;
 // ) by user Matt Whitlock - functions renamed.
 
 template <typename I, typename J>
-static typename std::
+static constexpr typename std::
     enable_if<std::is_signed<I>::value && std::is_signed<J>::value, I>::type
     numeric_cast(J value) {
   if (value < std::numeric_limits<I>::min() ||
@@ -33,7 +33,7 @@ static typename std::
 }
 
 template <typename I, typename J>
-static typename std::
+static constexpr typename std::
     enable_if<std::is_signed<I>::value && std::is_unsigned<J>::value, I>::type
     numeric_cast(J value) {
   if (value > static_cast<typename std::make_unsigned<I>::type>(
@@ -44,7 +44,7 @@ static typename std::
 }
 
 template <typename I, typename J>
-static typename std::
+static constexpr typename std::
     enable_if<std::is_unsigned<I>::value && std::is_signed<J>::value, I>::type
     numeric_cast(J value) {
   if (value < 0 || static_cast<typename std::make_unsigned<J>::type>(value) >
@@ -55,7 +55,7 @@ static typename std::
 }
 
 template <typename I, typename J>
-static typename std::
+static constexpr typename std::
     enable_if<std::is_unsigned<I>::value && std::is_unsigned<J>::value, I>::type
     numeric_cast(J value) {
   if (value > std::numeric_limits<I>::max()) {
@@ -66,7 +66,7 @@ static typename std::
 
 // For bytes we just cast it directly - there are no smaller types anyway
 template <typename I>
-static I numeric_cast(const std::byte& value) {
+static constexpr I numeric_cast(const std::byte& value) {
   return static_cast<I>(value);
 }
 

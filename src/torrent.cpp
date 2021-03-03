@@ -311,7 +311,7 @@ void Torrent::retry_pieces() {
     }
     m_logger->debug("Marked {} blocks for retry", retry);
     auto it = m_peers.begin();
-    if(it == m_peers.end()){
+    if (it == m_peers.end()) {
       m_logger->warn("No peers available for retrying");
       return;
     }
