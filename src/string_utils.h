@@ -8,8 +8,6 @@
 
 #include "types.h"
 
-using namespace std::string_literals;
-
 namespace zit {
 
 /**
@@ -20,6 +18,7 @@ namespace zit {
 inline std::string from_bytes(const bytes& buffer,
                               std::string::size_type start = 0,
                               std::string::size_type end = 0) {
+  using std::string_literals::operator""s;
   if (end > 0 && end < start) {
     throw std::invalid_argument(__FUNCTION__ + ": end < start"s);
   }

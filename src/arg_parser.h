@@ -44,13 +44,13 @@ class ArgParser {
             const std::string& help,
             Type type,
             bool required)
-        : option(option), help(help), type(type), required(required) {}
+        : m_option(option), m_help(help), m_type(type), m_required(required) {}
     virtual ~BaseArg() = default;
-    std::string option;
-    std::string help;
-    Type type;
-    bool provided = false;
-    bool required = false;
+    std::string m_option;
+    std::string m_help;
+    Type m_type;
+    bool m_provided = false;
+    bool m_required = false;
   };
 
   template <typename T>
@@ -61,8 +61,8 @@ class ArgParser {
         Type type,
         T& dst,
         bool required)
-        : BaseArg(option, help, type, required), dst(dst) {}
-    T& dst{};
+        : BaseArg(option, help, type, required), m_dst(dst) {}
+    T& m_dst{};
   };
 
   template <typename T>

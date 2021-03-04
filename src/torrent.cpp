@@ -261,9 +261,9 @@ void Torrent::start() {
 
   const int THREE_HEX_BYTES = 6;
   for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
-    auto url = Url(binary_peers.substr(i, THREE_HEX_BYTES), true);
-    if (!(url.host() == "127.0.0.1" && url.port() == m_listening_port)) {
-      m_peers.emplace_back(make_shared<Peer>(url, *this));
+    auto purl = Url(binary_peers.substr(i, THREE_HEX_BYTES), true);
+    if (!(purl.host() == "127.0.0.1" && purl.port() == m_listening_port)) {
+      m_peers.emplace_back(make_shared<Peer>(purl, *this));
     }
   }
 

@@ -5,13 +5,12 @@
 
 #include <condition_variable>
 #include <filesystem>
+#include <functional>
 #include <mutex>
 #include <queue>
 #include <tuple>
 
 #include "spdlog/sinks/stdout_color_sinks.h"
-
-using namespace std::placeholders;
 
 namespace zit {
 
@@ -111,6 +110,8 @@ class FileWriterThread {
       : m_logger(init_logger()),
         m_file_writer(FileWriter::getInstance(cb)),
         m_file_writer_thread([this]() { m_file_writer.run(); }) {
+    using std::placeholders::_1;
+    using std::placeholders::_2;
     torrent.set_piece_callback(bind(&FileWriter::add, &m_file_writer, _1, _2));
   }
 

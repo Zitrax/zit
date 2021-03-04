@@ -14,16 +14,6 @@ using namespace std;
 
 namespace zit {
 
-/**
- * Convenience wrapper for std::all_of.
- *
- * (To be replaced with ranges in C++20)
- */
-template <class Container, class UnaryPredicate>
-static bool all_of(Container c, UnaryPredicate p) {
-  return std::all_of(c.begin(), c.end(), p);
-}
-
 template <typename T>
 static peer_wire_id to_peer_wire_id(const T& t) {
   auto val = numeric_cast<pwid_t>(t);
@@ -54,7 +44,7 @@ static peer_wire_id to_peer_wire_id(const T& t) {
   }
 }
 
-std::ostream& operator<<(std::ostream& os, const peer_wire_id& id) {
+static std::ostream& operator<<(std::ostream& os, const peer_wire_id& id) {
   switch (id) {
     case peer_wire_id::CHOKE:
       os << "CHOKE";
@@ -88,9 +78,6 @@ std::ostream& operator<<(std::ostream& os, const peer_wire_id& id) {
       break;
     case peer_wire_id::UNKNOWN:
       os << "UNKNOWN";
-      break;
-    default:
-      os << "<peer_wire_id:" << id << ">";
       break;
   }
   return os;
@@ -249,9 +236,9 @@ size_t Message::parse(PeerConnection& connection) {
           return len + 4;
         case peer_wire_id::HAVE: {
           try {
-            auto id = big_endian(m_msg, 5);
-            peer.have(id);
-          } catch (const std::out_of_range& ex) {
+            auto have_id = big_endian(m_msg, 5);
+            peer.have(have_id);
+          } catch (const std::out_of_range&) {
             // Seen cases of too short messages here, for when it happen again
             // print the full message.
             m_logger->error("{}: Message: {}", connection.peer().str(),

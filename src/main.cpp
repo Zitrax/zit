@@ -15,7 +15,8 @@ using namespace bencode;
 
 // prints the explanatory string of an exception. If the exception is nested,
 // recurses to print the explanatory of the exception it holds
-void print_exception(const exception& e, string::size_type level = 0) noexcept {
+static void print_exception(const exception& e,
+                            string::size_type level = 0) noexcept {
   try {
     spdlog::get("console")->error("{}exception: {}", string(level, ' '),
                                   e.what());
@@ -58,12 +59,11 @@ int main(int argc, const char* argv[]) noexcept {
     console->set_level(lvl);
 
     zit::Torrent torrent(torrent_file);
-    zit::FileWriterThread file_writer(
-        torrent, [&console](zit::Torrent& torrent) {
-          console->info("Download completed");
-          for_each(torrent.peers().begin(), torrent.peers().end(),
-                   [](auto& peer) { peer->stop(); });
-        });
+    zit::FileWriterThread file_writer(torrent, [&console](zit::Torrent& tor) {
+      console->info("Download completed");
+      for_each(tor.peers().begin(), tor.peers().end(),
+               [](auto& peer) { peer->stop(); });
+    });
     console->info("\n{}", torrent);
     torrent.start();
     torrent.run();
