@@ -44,7 +44,18 @@ endif()
 # Debug asio handlers to stderr
 # add_compile_options(-DASIO_ENABLE_HANDLER_TRACKING)
 
-add_executable(zit main.cpp torrent.cpp net.cpp sha1.cpp peer.cpp bitfield.cpp messages.cpp piece.cpp file_writer.cpp arg_parser.cpp)
+add_library(zitlib OBJECT
+  torrent.cpp
+  net.cpp
+  sha1.cpp
+  peer.cpp
+  bitfield.cpp
+  messages.cpp
+  piece.cpp
+  file_writer.cpp
+  arg_parser.cpp
+)
+add_executable(zit main.cpp $<TARGET_OBJECTS:zitlib>)
 
 install(TARGETS zit RUNTIME DESTINATION bin)
 

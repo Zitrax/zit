@@ -41,15 +41,7 @@ add_executable(zitest
   test_sha1.cpp
   test_string_utils.cpp
   test_types.cpp
-  ../src/arg_parser.cpp
-  ../src/bitfield.cpp
-  ../src/file_writer.cpp
-  ../src/torrent.cpp
-  ../src/net.cpp
-  ../src/peer.cpp
-  ../src/sha1.cpp
-  ../src/messages.cpp
-  ../src/piece.cpp)
+  $<TARGET_OBJECTS:zitlib>)
 target_link_libraries(zitest
   gtest
   ${OPENSSL_SSL_LIBRARIES}
