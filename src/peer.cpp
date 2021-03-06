@@ -130,25 +130,26 @@ void PeerConnection::send(bool start_read) {
     m_sending = true;
     string msg(m_msg);
     m_msg.clear();
-    asio::async_write(socket_, asio::buffer(msg.c_str(), msg.size()),
-                      [this, start_read](auto err, auto len) {
-                        if (!err) {
-                          m_logger->debug("Data of len {} sent", len);
-                        } else {
-                          m_logger->error("Write failed: {}", err.message());
-                        }
-                        m_sending = false;
-                        if (start_read) {
-                          handle_response({}, 0);
-                        }
-                        if (!m_send_queue.empty()) {
-                          m_msg = m_send_queue.front();
-                          m_send_queue.pop_front();
-                          send();
-                        }
-                      });
+    asio::async_write(
+        socket_, asio::buffer(msg.c_str(), msg.size()),
+        [this, start_read](auto err, auto len) {
+          if (!err) {
+            m_logger->debug("{}: Data of len {} sent", peer_.str(), len);
+          } else {
+            m_logger->error("{}: Write failed: {}", peer_.str(), err.message());
+          }
+          m_sending = false;
+          if (start_read) {
+            handle_response({}, 0);
+          }
+          if (!m_send_queue.empty()) {
+            m_msg = m_send_queue.front();
+            m_send_queue.pop_front();
+            send();
+          }
+        });
   } else {
-    m_logger->debug("Queued message of size {}", m_msg.size());
+    m_logger->debug("{}: Queued message of size {}", peer_.str(), m_msg.size());
     m_send_queue.push_back(m_msg);
     m_msg.clear();
   }
@@ -282,11 +283,11 @@ std::size_t Peer::request_next_block(unsigned short count) {
   size_t requests = 0;
   if (!m_am_interested) {
     m_logger->trace(
-        "Peer not interested (no handshake), not requesting blocks");
+        "{}: Peer not interested (no handshake), not requesting blocks", str());
     return requests;
   }
   if (m_choking) {
-    m_logger->debug("Peer choked, not requesting blocks");
+    m_logger->debug("{}: Peer choked, not requesting blocks", str());
     return requests;
   }
   bytes request;
@@ -294,14 +295,14 @@ std::size_t Peer::request_next_block(unsigned short count) {
     // We can now start requesting pieces
     auto has_piece = next_piece(true);
     if (!has_piece) {
-      m_logger->info("No pieces left, nothing to do!");
+      m_logger->debug("{}: No pieces left, nothing to do!", str());
       break;
     }
     auto piece = *has_piece;
 
     auto block_offset = piece->next_offset(true);
     if (!block_offset) {
-      m_logger->debug("No block requests left to do!");
+      m_logger->debug("{}: No block requests left to do!", str());
       break;
     }
     auto len = to_big_endian(13);
@@ -316,8 +317,8 @@ std::size_t Peer::request_next_block(unsigned short count) {
       return piece->block_size();
     }();
     m_logger->debug(
-        "Sending block request for piece {} with size {} and offset {}",
-        piece->id(), LENGTH, *block_offset);
+        "{}: Sending block request for piece {} with size {} and offset {}",
+        str(), piece->id(), LENGTH, *block_offset);
     auto blength = to_big_endian(LENGTH);
     request.insert(request.end(), len.begin(), len.end());
     request.push_back(static_cast<byte>(peer_wire_id::REQUEST));
@@ -336,13 +337,13 @@ std::size_t Peer::request_next_block(unsigned short count) {
 void Peer::set_choking(bool choking) {
   if (m_choking && !choking) {
     m_choking = choking;
-    m_logger->info("Unchoked");
+    m_logger->info("{}: Unchoked", str());
     request_next_block();
   }
 
   if (!m_choking && choking) {
     m_choking = choking;
-    m_logger->info("Choked");
+    m_logger->info("{}: Choked", str());
   }
 }
 

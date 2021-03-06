@@ -15,6 +15,7 @@
 #include <iomanip>
 #include <iostream>
 #include <numeric>
+#include <random>
 
 using namespace bencode;
 using namespace std;
@@ -315,6 +316,12 @@ void Torrent::retry_pieces() {
       return;
     }
     m_logger->debug("Marked {} blocks for retry", retry);
+
+    // To hit different peers for each invocation - shuffle the list
+    std::random_device rd;
+    std::mt19937 g(rd());
+    shuffle(m_peers.begin(), m_peers.end(), g);
+
     auto it = m_peers.begin();
     if (it == m_peers.end()) {
       m_logger->warn("No peers available for retrying");
@@ -342,7 +349,7 @@ bool Torrent::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
   if (m_active_pieces.find(piece_id) != m_active_pieces.end()) {
     auto piece = m_active_pieces[piece_id];
     if (piece->set_block(offset, data)) {
-      m_logger->info("Piece {} done!", piece_id);
+      m_logger->debug("Piece {} done!", piece_id);
       piece_done(piece);
     }
     return true;
