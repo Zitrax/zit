@@ -33,3 +33,9 @@
 * "Connect failed: Connection refused" should prefix with ip
 
 * http://tracker.etree.org:6969/announce?info_hash=%7Bs%AD%1C%F1%D4%2B%00%F2%D7QW%87%F5%DD%22r%15%BDC&peer_id=abcdefghijklmnopqrst&port=20001&uploaded=0&downloaded=0&left=470589861&event=started&compact=1 works in browser but return 404 by client. See files here: https://bt.etree.org/index.php?sort=seeders
+
+* "Filename exists but does not match all pieces", instead of having to restart from 0, nuke bad pieces?
+
+* Should connect to tracker again with the specified interval, and cleanup list of 
+  peers, killing of the ones that never connected and eventually connect to new
+  that we are not already connected to.

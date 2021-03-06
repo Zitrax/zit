@@ -72,4 +72,6 @@ TEST(net, httpGetHTTP) {
 TEST(net, httpGetHTTPS) {
   Url url("https://www.google.com");
   const auto reply = Net::httpGet(url);
+  Url url2("https://www.google.com:443");
+  const auto reply2 = Net::httpGet(url2);
 }

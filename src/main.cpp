@@ -64,6 +64,7 @@ int main(int argc, const char* argv[]) noexcept {
       for_each(tor.peers().begin(), tor.peers().end(),
                [](auto& peer) { peer->stop(); });
     });
+    spdlog::get("file_writer")->set_level(lvl);
     console->info("\n{}", torrent);
     torrent.start();
     torrent.run();

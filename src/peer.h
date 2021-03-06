@@ -37,6 +37,7 @@ class PeerConnection {
   void write(const std::string& msg);
   void write(const bytes& msg);
   [[nodiscard]] Peer& peer() { return peer_; }
+  [[nodiscard]] bool connected() const { return m_connected; }
 
   /**
    * Put the connection in listen mode to accept incoming connections.

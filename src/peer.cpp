@@ -280,8 +280,13 @@ void Peer::set_am_interested(bool am_interested) {
 
 std::size_t Peer::request_next_block(unsigned short count) {
   size_t requests = 0;
+  if (!m_am_interested) {
+    m_logger->trace(
+        "Peer not interested (no handshake), not requesting blocks");
+    return requests;
+  }
   if (m_choking) {
-    m_logger->info("Peer choked, not requesting blocks");
+    m_logger->debug("Peer choked, not requesting blocks");
     return requests;
   }
   bytes request;
@@ -290,7 +295,6 @@ std::size_t Peer::request_next_block(unsigned short count) {
     auto has_piece = next_piece(true);
     if (!has_piece) {
       m_logger->info("No pieces left, nothing to do!");
-      // exit(0);
       break;
     }
     auto piece = *has_piece;

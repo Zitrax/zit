@@ -113,6 +113,7 @@ inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
 class Net {
  public:
   constexpr static auto m_http_status_ok = 200;
+  constexpr static auto m_http_status_moved = 301;
   constexpr static auto m_http_status_found = 302;
 
   Net() = default;

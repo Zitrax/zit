@@ -295,11 +295,16 @@ void Torrent::run() {
   m_logger->debug("Run loop done");
 }
 
+static auto now() {
+  return std::chrono::system_clock::now();
+}
+
 void Torrent::retry_pieces() {
   // Do not need to call this too frequently so rate limit it
-  static std::chrono::system_clock::time_point last_call;
-  if (std::chrono::system_clock::now() - last_call > 30s) {
-    last_call = std::chrono::system_clock::now();
+  static std::chrono::system_clock::time_point last_call{now() + 1min};
+
+  if (now() - last_call > 30s) {
+    last_call = now();
     m_logger->info("Checking pieces for retry");
     std::size_t retry = 0;
     for (auto& [id, piece] : m_active_pieces) {

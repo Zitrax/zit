@@ -21,6 +21,41 @@ namespace ssl = asio::ssl;
 
 namespace zit {
 
+/**
+ * When using asio::read_until we need to match multiple markers to handle non
+ * standard responses.
+ */
+class MatchMarkers {
+ public:
+  explicit MatchMarkers(vector<string> markers)
+      : m_markers(std::move(markers)) {}
+
+  using iterator = asio::buffers_iterator<asio::streambuf::const_buffers_type>;
+
+  template <typename Iterator>
+  std::pair<Iterator, bool> operator()(Iterator begin, Iterator end) const {
+    int i = 0;
+    for (const auto& marker : m_markers) {
+      i++;
+      auto m = std::search(begin, end, std::begin(marker), std::end(marker));
+      if (m != end) {
+        return std::make_pair(next(m, numeric_cast<long>(marker.size())), true);
+      }
+    }
+    return std::make_pair(end, false);
+  }
+
+ private:
+  vector<string> m_markers;
+};
+}  // namespace zit
+
+// Need to explicitly mark this as a MatchCondition
+template <>
+struct asio::is_match_condition<zit::MatchMarkers> : public std::true_type {};
+
+namespace zit {
+
 Url& Url::add_param(const std::string& param) {
   m_params.push_back(param);
   return *this;
@@ -53,7 +88,7 @@ static std::tuple<std::string, std::string> request(Sock& sock,
 
   // Read the response status line.
   asio::streambuf response;
-  asio::read_until(sock, response, "\r\n");
+  asio::read_until(sock, response, MatchMarkers({"\r\n", "\n"}));
 
   // Check that response is OK.
   std::istream response_stream(&response);
@@ -68,7 +103,8 @@ static std::tuple<std::string, std::string> request(Sock& sock,
   }
 
   constexpr auto VALID_STATUSES =
-      make_array(Net::m_http_status_ok, Net::m_http_status_found);
+      make_array(Net::m_http_status_ok, Net::m_http_status_found,
+                 Net::m_http_status_moved);
   if (find(VALID_STATUSES.begin(), VALID_STATUSES.end(), status_code) ==
       VALID_STATUSES.end()) {
     throw runtime_error(fmt::format("{}: response returned with status code {}",
@@ -76,12 +112,13 @@ static std::tuple<std::string, std::string> request(Sock& sock,
   }
 
   // Read the response headers, which are terminated by a blank line.
-  asio::read_until(sock, response, "\r\n\r\n");
+  asio::read_until(sock, response, MatchMarkers({"\r\n\r\n", "\n\n"}));
 
   // Process the response headers.
   string header;
   stringstream headers;
-  while (getline(response_stream, header) && header != "\r") {
+  while (getline(response_stream, header) && header != "\r" &&
+         !header.empty()) {
     if (header.starts_with("Location: ")) {
       Url loc(rtrim_copy(header.substr(10, string::npos)));
       spdlog::get("console")->debug("Redirecting to {}", loc.str());
@@ -90,7 +127,7 @@ static std::tuple<std::string, std::string> request(Sock& sock,
     headers << header << "\n";
   }
 
-  spdlog::get("console")->trace("=====RESPONSE=====\n{}\n", headers.str());
+  spdlog::get("console")->trace("=====RESPONSE=====\n'{}'\n", headers.str());
 
   stringstream resp;
   // Write whatever content we already have to output.
@@ -104,10 +141,10 @@ static std::tuple<std::string, std::string> request(Sock& sock,
     resp << &response;
   }
 
-  // FIXME: For some reason https get "stream truncated" here. Might be related
-  // to "SSL short read" discussed here:
-  // https://github.com/boostorg/beast/issues/38. So far I am not sure what the
-  // "proper" fix for this is.
+  // FIXME: For some reason https get "stream truncated" here. Might be
+  // related to "SSL short read" discussed here:
+  // https://github.com/boostorg/beast/issues/38. So far I am not sure what
+  // the "proper" fix for this is.
   if (url.scheme() != "https") {
     if (error != asio::error::eof) {
       throw asio::system_error(error, url.str());
@@ -135,7 +172,7 @@ static std::tuple<std::string, std::string> httpsGet(const Url& url) {
   asio::io_context io_context;
   ssl_socket sock(io_context, ctx);
   tcp::resolver resolver(io_context);
-  tcp::resolver::query query(url.host(), url.scheme());
+  tcp::resolver::query query(url.host(), url.service());
   asio::connect(sock.lowest_layer(), resolver.resolve(query));
   sock.lowest_layer().set_option(tcp::no_delay(true));
 
@@ -172,13 +209,13 @@ static std::tuple<std::string, std::string> httpsGet(const Url& url) {
 // https://www.boost.org/doc/libs/1_36_0/doc/html/boost_asio/example/http/client/sync_client.cpp
 //
 std::tuple<std::string, std::string> Net::httpGet(const Url& url) {
-  if (url.scheme() == "https") {
+  if (url.scheme() == "https" || url.port().value_or(1) == 443) {
     return httpsGet(url);
   }
 
   asio::io_service io_service;
   tcp::resolver resolver(io_service);
-  auto endpoints = resolver.resolve(url.host(), url.scheme());
+  auto endpoints = resolver.resolve(url.host(), url.service());
 
   // Try each endpoint until we successfully establish a connection.
   // An endpoint might be IPv4 or IPv6
@@ -248,6 +285,6 @@ Url::Url(const string& url, bool binary) {
         static_cast<uint8_t>(url[4]) << 0 | static_cast<uint8_t>(url[5]) << 8));
     m_scheme = "http";
   }
-}  // namespace zit
+}
 
 }  // namespace zit

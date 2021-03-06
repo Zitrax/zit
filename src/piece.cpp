@@ -59,8 +59,8 @@ bool Piece::set_block(uint32_t offset, const bytes& data) {
     }
     copy(data.cbegin(), data.cend(), m_data.begin() + offset);
     m_blocks_done[block_id] = true;
-    m_logger->info("Block {}/{} of size {} stored for piece {}", block_id + 1,
-                   block_count(), data.size(), m_id);
+    m_logger->debug("Block {}/{} of size {} stored for piece {}", block_id + 1,
+                    block_count(), data.size(), m_id);
   }
   m_last_block = std::chrono::system_clock::now();
   auto next = m_blocks_done.next(false);
