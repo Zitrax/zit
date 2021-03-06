@@ -61,7 +61,7 @@ class Process {
         exit(1);
       }
       argv.push_back(nullptr);
-      int status = execvp(argv[0], const_cast<char* const*>(argv.data()));
+      execvp(argv[0], const_cast<char* const*>(argv.data()));
       cerr << "Failed launching " << argv[0] << ": " << strerror(errno) << endl;
       exit(1);
     } else {
@@ -159,7 +159,7 @@ class TemporaryDir : public ::testing::Test {
     m_created = true;
   }
 
-  ~TemporaryDir() {
+  ~TemporaryDir() override {
     if (m_created) {
       fs::remove_all(m_dirname.data());
     }

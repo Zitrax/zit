@@ -2,6 +2,8 @@ cmake_minimum_required (VERSION 3.10)
 set(CMAKE_CXX_STANDARD 20)
 project(zit CXX)
 
+option(USE_CLANG_TIDY "Use clang-tidy when building" ON)
+
 if(EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
   include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
   set(CONAN_SYSTEM_INCLUDES ON)
@@ -66,6 +68,25 @@ include_directories(${OPENSSL_INCLUDE_DIR})
 
 include_directories(SYSTEM "external")
 
+if(UNIX)
+  add_compile_options(-Wall -Wextra -Werror -Weffc++ -Wconversion -Wsign-conversion)
+  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+    # Be strict and just disable unwanted or noisy warnings
+    add_compile_options(
+      -Weverything
+      -Wno-c++98-compat                   # Don't care about c++98
+      -Wno-c++98-compat-pedantic          # Don't care about c++98
+      -Wno-padded                         #
+      -Wno-weak-vtables                   #
+      -Wno-global-constructors            # performance startup-time
+      -Wno-exit-time-destructors          # similar as ^ for destructors
+      -Wno-undefined-func-template        # does not seem very important
+      -Wno-return-std-move-in-c++11       # not relevant on new compilers
+      -Wno-zero-as-null-pointer-constant  # fails clang-10 on travis but not locally?
+    )
+  endif()
+endif()
+
 add_subdirectory(src)
 enable_testing()
 add_subdirectory(tests)
@@ -85,16 +106,12 @@ list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "#")
 list(FILTER ALL_HEADER_FILES EXCLUDE REGEX "#")
 set(ALL_INPUT_FILES ${ALL_SOURCE_FILES} ${ALL_HEADER_FILES})
 
-option(USE_CLANG_TIDY "Use clang-tidy when building" ON)
-if(USE_CLANG_TIDY)
-  find_program(CLANG_FORMAT NAMES clang-format-10)
-
-  if(CLANG_FORMAT)
-    add_custom_target(format
-      COMMENT "Formatting ${ALL_INPUT_FILES}"
-      COMMAND ${CLANG_FORMAT} -style=Chromium -i ${ALL_INPUT_FILES}
-      )
-  else()
-    message(WARNING "Could not find clang-format, formatting not available")
-  endif()
+find_program(CLANG_FORMAT NAMES clang-format-10)
+if(CLANG_FORMAT)
+  add_custom_target(format
+    COMMENT "Formatting ${ALL_INPUT_FILES}"
+    COMMAND ${CLANG_FORMAT} -style=Chromium -i ${ALL_INPUT_FILES}
+    )
+else()
+  message(WARNING "Could not find clang-format, formatting not available")
 endif()

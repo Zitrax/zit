@@ -25,8 +25,8 @@ template <typename I, typename J>
 static constexpr typename std::
     enable_if<std::is_signed<I>::value && std::is_signed<J>::value, I>::type
     numeric_cast(J value) {
-  if (value < std::numeric_limits<I>::min() ||
-      value > std::numeric_limits<I>::max()) {
+  if (value < static_cast<J>(std::numeric_limits<I>::min()) ||
+      value > static_cast<J>(std::numeric_limits<I>::max())) {
     throw std::out_of_range("out of range");
   }
   return static_cast<I>(value);

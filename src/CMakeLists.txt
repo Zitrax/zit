@@ -18,25 +18,6 @@ if(USE_CLANG_TIDY)
   endif()
 endif()
 
-if(UNIX)
-  add_compile_options(-Wall -Wextra -Werror -Weffc++ -Wconversion -Wsign-conversion)
-  if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
-    # Be strict and just disable unwanted or noisy warnings
-    add_compile_options(
-      -Weverything
-      -Wno-c++98-compat                   # Don't care about c++98
-      -Wno-c++98-compat-pedantic          # Don't care about c++98
-      -Wno-padded                         #
-      -Wno-weak-vtables                   #
-      -Wno-global-constructors            # performance startup-time
-      -Wno-exit-time-destructors          # similar as ^ for destructors
-      -Wno-undefined-func-template        # does not seem very important
-      -Wno-return-std-move-in-c++11       # not relevant on new compilers
-      -Wno-zero-as-null-pointer-constant  # fails clang-10 on travis but not locally?
-    )
-  endif()
-endif()
-
 if ("${CMAKE_CXX_COMPILER_ID}" STREQUAL "GNU")
   add_compile_options(-Wno-non-virtual-dtor)
 endif()

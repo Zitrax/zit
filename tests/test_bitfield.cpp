@@ -51,7 +51,7 @@ TEST(Bitfield, single_byte_read_1) {
   EXPECT_TRUE(bf[7]);
   // Need to assign to trigger exception since
   // the use of proxy makes the throw lazy
-  EXPECT_THROW(bool c = bf[8], std::out_of_range);
+  EXPECT_THROW([[maybe_unused]] bool c = bf[8], std::out_of_range);
 }
 
 TEST(Bitfield, single_byte_read_2) {
@@ -68,7 +68,7 @@ TEST(Bitfield, single_byte_read_2) {
   EXPECT_TRUE(bf[7]);
   // Need to assign to trigger exception since
   // the use of proxy makes the throw lazy
-  EXPECT_THROW(bool c = bf[8], std::out_of_range);
+  EXPECT_THROW([[maybe_unused]] bool c = bf[8], std::out_of_range);
 }
 
 TEST(Bitfield, multi_byte_read) {
@@ -94,7 +94,7 @@ TEST(Bitfield, multi_byte_read) {
   EXPECT_TRUE(bf[15]);
   // Need to assign to trigger exception since
   // the use of proxy makes the throw lazy
-  EXPECT_THROW(bool c = bf[16], std::out_of_range);
+  EXPECT_THROW([[maybe_unused]] bool c = bf[16], std::out_of_range);
 }
 
 TEST(Bitfield, single_byte_write) {
