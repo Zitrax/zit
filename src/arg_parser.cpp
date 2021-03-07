@@ -24,21 +24,28 @@ void ArgParser::add_option(const string& option,
     dst = def.value();
   }
   auto argType = []() {
-    if constexpr (std::is_same<T, bool>::value) {
+    if constexpr (std::is_same_v<T, bool>) {
       return Type::BOOL;
-    } else if (std::is_same<T, float>::value) {
+    } else if (std::is_same_v<T, float>) {
       return Type::FLOAT;
-    } else if (std::is_same<T, int>::value) {
+    } else if (std::is_same_v<T, int>) {
       return Type::INT;
-    } else if (std::is_same<T, unsigned>::value) {
+    } else if (std::is_same_v<T, unsigned>) {
       return Type::UINT;
-    } else if (std::is_same<T, string>::value) {
+    } else if (std::is_same_v<T, string>) {
       return Type::STRING;
     }
   };
 
   m_options.emplace_back(
       std::make_unique<Arg<T>>(option, help, argType(), dst, required));
+}
+
+void ArgParser::add_help_option(const std::string& option,
+                                const std::string& help,
+                                bool& dst) {
+  add_option(option, {false}, help, dst, false);
+  m_options.back()->m_help_arg = true;
 }
 
 template void ArgParser::add_option<bool>(const string&,
@@ -69,6 +76,10 @@ template void ArgParser::add_option<string>(const string&,
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
 void ArgParser::parse(int argc, const char* argv[]) {
+  if (m_parsed) {
+    throw runtime_error("Options already parsed");
+  }
+  m_parsed = true;
   for (int i = 1; i < argc; i++) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     std::string_view name = argv[i];
@@ -122,9 +133,8 @@ void ArgParser::parse(int argc, const char* argv[]) {
         case Type::BOOL:
           throw runtime_error("Invalid option type");
       }
-
-      arg->m_provided = true;
     }
+    arg->m_provided = true;
   }
 
   // Check if all options got values
@@ -132,8 +142,12 @@ void ArgParser::parse(int argc, const char* argv[]) {
       m_options.begin(), m_options.end(),
       [](const auto& o) { return !o->m_provided && o->m_required; });
   if (nop != m_options.end()) {
-    throw runtime_error(
-        fmt::format("Required option '{}' not provided", (*nop)->m_option));
+    if (!std::any_of(m_options.begin(), m_options.end(), [](const auto& o) {
+          return o->m_help_arg && o->m_provided;
+        })) {
+      throw runtime_error(
+          fmt::format("Required option '{}' not provided", (*nop)->m_option));
+    }
   }
 }
 

@@ -27,6 +27,13 @@ class ArgParser {
                   bool required = false);
 
   /**
+   * Add specific help option. This can be passed alone without required flags.
+   */
+  void add_help_option(const std::string& option,
+                       const std::string& help,
+                       bool& dst);
+
+  /**
    * Parse arguments for options provided by add_option.
    */
   void parse(int argc, const char* argv[]);
@@ -51,6 +58,7 @@ class ArgParser {
     Type m_type;
     bool m_provided = false;
     bool m_required = false;
+    bool m_help_arg = false;
   };
 
   template <typename T>
@@ -72,5 +80,6 @@ class ArgParser {
 
   std::string m_desc;
   std::vector<std::unique_ptr<BaseArg>> m_options{};
+  bool m_parsed = false;
 };
 }  // namespace zit
