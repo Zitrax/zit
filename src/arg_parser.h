@@ -53,6 +53,7 @@ class ArgParser {
             bool required)
         : m_option(option), m_help(help), m_type(type), m_required(required) {}
     virtual ~BaseArg() = default;
+    virtual void* dst() = 0;
     std::string m_option;
     std::string m_help;
     Type m_type;
@@ -70,6 +71,7 @@ class ArgParser {
         T& dst,
         bool required)
         : BaseArg(option, help, type, required), m_dst(dst) {}
+    virtual void* dst() override { return &m_dst; }
     T& m_dst{};
   };
 

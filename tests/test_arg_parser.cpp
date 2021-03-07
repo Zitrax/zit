@@ -2,6 +2,7 @@
 #include "gtest/gtest.h"
 
 #include <limits.h>
+#include <stdexcept>
 
 using namespace zit;
 
@@ -204,7 +205,7 @@ TEST(arg_parser, required) {
 TEST(arg_parser, help) {
   ArgParser parser("desc");
   EXPECT_EQ(parser.usage(), "Usage:\n\ndesc\n\n");
-  int val;
+  int val, val2;
   parser.add_option("--test", {}, "test help", val);
   EXPECT_EQ(parser.usage(), R"(Usage:
 
@@ -212,7 +213,7 @@ desc
 
   --test    test help 
 )");
-  parser.add_option("--req", {}, "test req", val, true);
+  parser.add_option("--req", {}, "test req", val2, true);
   EXPECT_EQ(parser.usage(), R"(Usage:
 
 desc
@@ -250,4 +251,11 @@ TEST(arg_parser, help_option) {
   }
 }
 
-TEST(arg_parser, duplicate_dst) {}
+TEST(arg_parser, duplicate_dst) {
+  ArgParser parser("desc");
+  int val;
+  parser.add_option("--test", {}, "test help", val);
+  // Same dst should throw
+  EXPECT_THROW(parser.add_option("--test2", {}, "test help", val),
+               std::runtime_error);
+}

@@ -20,6 +20,13 @@ void ArgParser::add_option(const string& option,
     throw runtime_error(fmt::format("Duplicate option '{}' added", option));
   }
 
+  if (std::find_if(m_options.begin(), m_options.end(), [&](const auto& a) {
+        return a->dst() == &dst;
+      }) != m_options.end()) {
+    throw runtime_error(
+        fmt::format("Duplicate value reference for '{}' added", option));
+  }
+
   if (def) {
     dst = def.value();
   }
