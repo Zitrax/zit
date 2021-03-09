@@ -38,6 +38,7 @@ int main(int argc, const char* argv[]) noexcept {
     std::string torrent_file;
     std::string log_level;
     bool help = false;
+    bool dump = false;
     parser.add_help_option("--help", "Print help", help);
     parser.add_option("--torrent", {}, "Torrent file to download", torrent_file,
                       true);
@@ -45,6 +46,8 @@ int main(int argc, const char* argv[]) noexcept {
         "--log-level", "info"s,
         "Log level (trace, debug, info, warning, error, critical, off)",
         log_level);
+    parser.add_option("--dump", {},
+                      "Dump info about specified .torrent file and exit", dump);
     parser.parse(argc, argv);
 
     if (help) {
@@ -59,6 +62,10 @@ int main(int argc, const char* argv[]) noexcept {
     console->set_level(lvl);
 
     zit::Torrent torrent(torrent_file);
+    if (dump) {
+      std::cout << torrent << std::endl;
+      return 0;
+    }
     zit::FileWriterThread file_writer(torrent, [&console](zit::Torrent& tor) {
       console->info("Download completed");
       for_each(tor.peers().begin(), tor.peers().end(),

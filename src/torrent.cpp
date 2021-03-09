@@ -403,28 +403,20 @@ void Torrent::piece_done(std::shared_ptr<Piece>& piece) {
 }
 
 ostream& operator<<(ostream& os, const zit::FileInfo& file_info) {
-  os << "(" << file_info.path() << ", " << file_info.length() << ", "
-     << file_info.md5sum() << ")\n";
+  os << "(" << file_info.path() << ", " << file_info.length();
+  auto md5 = file_info.md5sum();
+  if (!md5.empty()) {
+    os << ", " << file_info.md5sum();
+  }
+  os << ")\n";
   return os;
 }
 
 ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
-  os << "--------------------\n";
-  if (torrent.is_single_file()) {
-    os << "Name:          " << torrent.name() << "\n";
-    os << "Length:        " << torrent.length() << "\n";
-    if (!torrent.md5sum().empty()) {
-      os << "MD5Sum:        " << torrent.md5sum() << "\n";
-    }
-  } else {
-    os << "Files:\n";
-    for (const auto& fi : torrent.files()) {
-      os << "  " << fi << "\n";
-    }
-  }
+  os << "----------------------------------------\n";
   auto creation = numeric_cast<time_t>(torrent.creation_date());
-  os << "Creation date: " << creation << " ("
-     << put_time(localtime(&creation), "%F %T %Z") << ")\n";
+  os << "Creation date: " << put_time(localtime(&creation), "%F %T %Z") << " ("
+     << creation << ")\n";
   os << "Comment:       " << torrent.comment() << "\n";
   if (!torrent.created_by().empty()) {
     os << "Created by:    " << torrent.created_by() << "\n";
@@ -434,17 +426,29 @@ ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
   }
   os << "Piece length:  " << torrent.piece_length() << "\n";
   os << "Private:       " << (torrent.is_private() ? "Yes" : "No") << "\n";
+  if (torrent.is_single_file()) {
+    os << "Name:          " << torrent.name() << "\n";
+    os << "Length:        " << torrent.length() << "\n";
+    if (!torrent.md5sum().empty()) {
+      os << "MD5Sum:        " << torrent.md5sum() << "\n";
+    }
+  } else {
+    os << "Files:\n";
+    for (const auto& fi : torrent.files()) {
+      os << "               " << fi;
+    }
+  }
   os << "Announce List:\n";
   for (const auto& list : torrent.announce_list()) {
     for (const auto& url : list) {
-      os << "  " << url;
+      os << "               " << url;
     }
     os << "\n";
   }
   if (torrent.announce_list().empty()) {
-    os << "  " << torrent.announce() << "\n";
+    os << "               " << torrent.announce() << "\n";
   }
-  os << "--------------------\n";
+  os << "----------------------------------------\n";
   return os;
 }
 
