@@ -5,6 +5,7 @@
 #include "string_utils.h"
 
 #include <cstdio>
+#include <filesystem>
 #include <fstream>
 
 namespace zit {
@@ -107,7 +108,35 @@ void FileWriter::write_next_piece() {
 
     if (torrent->done()) {
       logger()->info("Final piece written");
-      filesystem::rename(tmpfile_name, torrent->name());
+
+      if (torrent->is_single_file()) {
+        filesystem::rename(tmpfile_name, torrent->name());
+      } else {
+        logger()->info("Writing destination files");
+        // FIXME: Error handling. What to do when we throw below?
+        ifstream src(tmpfile_name, ios::binary);
+        src.exceptions(ofstream::failbit | ofstream::badbit);
+        bytes buf;
+        // FIXME: Sensible value?
+        constexpr long buflen = 0xFFFF;
+        buf.resize(buflen);
+        for (const auto& fi : torrent->files()) {
+          const auto dst_name = torrent->name() / fi.path();
+          logger()->info("  Writing {}", dst_name);
+          fs::create_directory(torrent->name());
+          ofstream dst(dst_name, ios::binary | ios::out);
+          dst.exceptions(ofstream::failbit | ofstream::badbit);
+          auto rem = fi.length();
+          while (rem > 0) {
+            const auto len = std::min(rem, buflen);
+            logger()->debug("    Writing {} bytes to {}", len, dst_name);
+            src.read(reinterpret_cast<char*>(buf.data()), len);
+            dst.write(reinterpret_cast<char*>(buf.data()), len);
+            rem -= len;
+          }
+        }
+        fs::remove(tmpfile_name);
+      }
       if (m_torrent_written_callback) {
         m_torrent_written_callback(*torrent);
       }

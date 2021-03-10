@@ -18,6 +18,7 @@
 #include <chrono>
 #include <filesystem>
 #include <thread>
+#include <utility>
 
 #include <file_writer.h>
 #include <torrent.h>
@@ -176,6 +177,34 @@ class TemporaryDir : public ::testing::Test {
                             '_', 'X', 'X', 'X', 'X', 'X', 'X', '\0'};
 };
 
+static auto download(const fs::path& data_dir,
+                     const fs::path& torrent_file,
+                     zit::Torrent& torrent,
+                     uint8_t max) {
+  spdlog::get("console")->info("Starting {} seeders...", max);
+  vector<Process> seeders;
+  for (int i = 0; i < max; ++i) {
+    seeders.emplace_back(start_seeder(data_dir, torrent_file));
+  }
+
+  // Allow some time for the seeders to start
+  this_thread::sleep_for(1s);
+
+  // Download torrent with zit
+  auto target = torrent.name();
+
+  // Ensure we do not already have it
+  fs::remove(target);
+
+  zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
+    spdlog::get("console")->info("Download completed");
+    for_each(torrent.peers().begin(), torrent.peers().end(),
+             [](auto& peer) { peer->stop(); });
+  });
+  start(torrent);
+  return target;
+}
+
 class IntegrateF : public ::testing::Test,
                    public ::testing::WithParamInterface<uint8_t> {};
 
@@ -189,44 +218,54 @@ TEST_P(IntegrateF, DISABLED_download) {
 
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = data_dir / "1MiB.torrent";
-
   const uint8_t max = GetParam();
-  spdlog::get("console")->info("Starting {} seeders...", max);
-  vector<Process> seeders;
-  for (int i = 0; i < max; ++i) {
-    seeders.emplace_back(start_seeder(data_dir, torrent_file));
-  }
 
-  // Allow some time for the seeders to start
-  this_thread::sleep_for(1s);
-
-  // Download torrent with zit
   zit::Torrent torrent(torrent_file);
-  auto target = torrent.name();
-
-  // Ensure we do not already have it
-  fs::remove(target);
-
-  zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
-    spdlog::get("console")->info("Download completed");
-    for_each(torrent.peers().begin(), torrent.peers().end(),
-             [](auto& peer) { peer->stop(); });
-  });
-  start(torrent);
+  auto target = download(data_dir, torrent_file, torrent, max);
 
   // Transfer done - Verify content
-  auto source = data_dir / "1MiB.dat";
+  auto source = data_dir / "multi" / "";
   auto source_sha1 = zit::Sha1::calculateFile(source).hex();
   auto target_sha1 = zit::Sha1::calculateFile(target).hex();
   EXPECT_EQ(source_sha1, target_sha1);
 
-  // Delete downloaded file
-  fs::remove(target);
+  // Delete downloaded files
+  // fs::remove(target);
 }
 
 INSTANTIATE_TEST_SUITE_P(SeedCount,
                          IntegrateF,
                          ::testing::Values<uint8_t>(1, 2, 5, 10));
+
+#ifdef INTEGRATION_TESTS
+TEST(Integrate, download_multi) {
+#else
+TEST(Integrate, DISABLED_download_multi) {
+#endif  // INTEGRATION_TESTS
+  spdlog::get("console")->set_level(spdlog::level::info);
+  auto tracker = start_tracker();
+
+  const auto data_dir = fs::path(DATA_DIR);
+  const auto torrent_file = data_dir / "multi.torrent";
+  // const uint8_t max = GetParam();
+
+  zit::Torrent torrent(torrent_file);
+  auto target = download(data_dir, torrent_file, torrent, 1);
+  std::cout << "TARGET: " << target << std::endl;
+
+  // Transfer done - Verify content
+  const auto name = torrent.name();
+  for (const auto& fi : torrent.files()) {
+    auto source = data_dir / name / fi.path();
+    auto dst = name / fi.path();
+    auto source_sha1 = zit::Sha1::calculateFile(source).hex();
+    auto target_sha1 = zit::Sha1::calculateFile(dst).hex();
+    EXPECT_EQ(source_sha1, target_sha1) << fi.path();
+    // Delete downloaded file
+    fs::remove(dst);
+  }
+  fs::remove(name);
+}
 
 using Integrate = TemporaryDir;
 

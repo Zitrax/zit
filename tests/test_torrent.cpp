@@ -59,7 +59,7 @@ TEST(torrent, construct_single_2) {
 
 TEST(torrent, construct_multi) {
   const auto data_dir = fs::path(DATA_DIR);
-  zit::Torrent t(data_dir / "multi.torrent");
+  zit::Torrent t(data_dir / "multi_kali.torrent");
 
   EXPECT_EQ(t.announce(), "http://tracker.kali.org:6969/announce");
   const auto& announce_list = t.announce_list();
