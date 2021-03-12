@@ -104,7 +104,9 @@ void FileWriter::write_next_piece() {
       throw runtime_error("Unexpected (B) file size " + to_string(fsize));
     }
     piece->set_piece_written(true);
-    logger()->info("Wrote piece {} for '{}'", piece->id(), torrent->name());
+    auto [have, total] = torrent->piece_status();
+    logger()->info("Wrote piece {} for '{}' ({}/{})", piece->id(),
+                   torrent->name(), have, total);
 
     if (torrent->done()) {
       logger()->info("Final piece written");

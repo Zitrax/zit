@@ -276,7 +276,7 @@ void Torrent::start() {
   }
 
   // Add listening peer for incoming connections
-  m_logger->warn("Adding listening peer");
+  m_logger->info("Adding listening peer");
   m_peers.emplace_back(make_shared<Peer>(*this))->listen();
 }
 

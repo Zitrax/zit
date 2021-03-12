@@ -39,3 +39,6 @@
 * Should connect to tracker again with the specified interval, and cleanup list of 
   peers, killing of the ones that never connected and eventually connect to new
   that we are not already connected to.
+
+* Currently we only try the tracker in the "announce" field. But we also have the
+  "announce-list" which is currently not looked at. We should.

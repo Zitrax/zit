@@ -181,7 +181,8 @@ void PeerConnection::handle_connect(const asio::error_code& err,
                           });
   } else {
     endpoint_ = {};
-    m_logger->error("Connect failed: {}", err.message());
+    // No need to spam about this. Quite normal.
+    m_logger->debug("Connect failed: {}", err.message());
   }
 }
 
