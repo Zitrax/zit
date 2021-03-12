@@ -112,6 +112,12 @@ void FileWriter::write_next_piece() {
       if (torrent->is_single_file()) {
         filesystem::rename(tmpfile_name, torrent->name());
       } else {
+        //
+        // Note: This is not optimal. We will use twice the
+        //       disk space. Should eventually change this
+        //       to create the target files already from the
+        //       beginning to avoid that.
+        //
         logger()->info("Writing destination files");
         // FIXME: Error handling. What to do when we throw below?
         ifstream src(tmpfile_name, ios::binary);
