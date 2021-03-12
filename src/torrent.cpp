@@ -244,9 +244,11 @@ void Torrent::start() {
   // First try string form
   try {
     // NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores)
-    auto string_peers = peers_dict->to<TypedElement<BeDict>>()->val();
-    // FIXME: implement
-    throw runtime_error("Dict peers not implemented");
+    if (peers_dict->is<TypedElement<BeDict>>()) {
+      // FIXME: implement
+      m_logger->warn("Dict peers not implemented");
+      throw runtime_error("Dict peers not implemented");
+    }
   } catch (const BencodeConversionError&) {
     // This is fine - try the next format
   }

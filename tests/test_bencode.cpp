@@ -92,6 +92,8 @@ TEST(bencode, decode_int) {
   // auto a = decode("i3e");
   // auto b = decode("i3e")->to<TypedElement<int64_t&>>();
   // std::cout << b;
+  EXPECT_TRUE(decode("i3e")->is<TypedElement<int64_t>>());
+  EXPECT_FALSE(decode("i3e")->is<TypedElement<int32_t>>());
   EXPECT_EQ(*decode("i3e")->to<TypedElement<int64_t>>(), 3);
   EXPECT_EQ(*decode("i-3e")->to<TypedElement<int64_t>>(), -3);
   EXPECT_EQ(*decode("i1234567890123456789e")->to<TypedElement<int64_t>>(),

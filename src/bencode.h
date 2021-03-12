@@ -104,6 +104,13 @@ class Element : public std::enable_shared_from_this<Element> {
     return ptr;
   }
 
+  template <typename T>
+  auto is() const {
+    static_assert(std::is_base_of<Element, T>::value,
+                  "Can only return sublasses of Element");
+    return std::dynamic_pointer_cast<const T>(shared_from_this()) != nullptr;
+  }
+
   virtual std::ostream& print(std::ostream& os) = 0;
 
   /**
