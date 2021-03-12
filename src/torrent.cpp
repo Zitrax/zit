@@ -441,9 +441,8 @@ ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
   os << "Announce List:\n";
   for (const auto& list : torrent.announce_list()) {
     for (const auto& url : list) {
-      os << "               " << url;
+      os << "               " << url << "\n";
     }
-    os << "\n";
   }
   if (torrent.announce_list().empty()) {
     os << "               " << torrent.announce() << "\n";
