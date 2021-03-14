@@ -100,6 +100,11 @@ Sha1 Sha1::fromBuffer(const T& buffer, typename T::size_type offset) {
   return ret;
 }
 
+std::ostream& operator<<(std::ostream& os, const Sha1& sha1) {
+  os << sha1.hex();
+  return os;
+}
+
 // To keep the implementation in the .cpp file
 template Sha1 Sha1::fromBuffer<string>(const string& buffer,
                                        string::size_type offset);

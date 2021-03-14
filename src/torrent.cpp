@@ -164,7 +164,7 @@ void Torrent::verify_existing_file() {
           is.seekg(offset);
           const auto tail = zit::numeric_cast<uint32_t>(length - offset);
           const auto len = std::min(m_piece_length, tail);
-          bytes data(m_piece_length);
+          bytes data(len);
           is.read(reinterpret_cast<char*>(data.data()), len);
           const auto fsha1 = Sha1::calculateData(data);
           if (sha1 == fsha1) {
@@ -175,6 +175,9 @@ void Torrent::verify_existing_file() {
             m_active_pieces.emplace(id, make_shared<Piece>(id, m_piece_length));
             m_active_pieces[id]->set_piece_written(true);
             ++pieces;
+          } else {
+            m_logger->trace("Piece {} does not match ({}!={})", id, sha1,
+                            fsha1);
           }
         });
     m_logger->info("Verification done. {}/{} pieces done.", pieces,

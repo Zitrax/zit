@@ -50,4 +50,6 @@ class Sha1 : public std::array<char, SHA_LENGTH> {
   [[nodiscard]] static Sha1 calculate(const unsigned char* src, size_t count);
 };
 
+std::ostream& operator<<(std::ostream& os, const Sha1& sha1);
+
 }  // namespace zit
