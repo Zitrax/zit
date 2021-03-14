@@ -301,6 +301,12 @@ void Torrent::run() {
   m_logger->debug("Run loop done");
 }
 
+void Torrent::stop() {
+  for (auto& peer : m_peers) {
+    peer->stop();
+  }
+}
+
 static auto now() {
   return std::chrono::system_clock::now();
 }
@@ -311,7 +317,7 @@ void Torrent::retry_pieces() {
 
   if (now() - last_call > 30s) {
     last_call = now();
-    m_logger->info("Checking pieces for retry");
+    m_logger->debug("Checking pieces for retry");
     std::size_t retry = 0;
     for (auto& [id, piece] : m_active_pieces) {
       retry += piece->retry_blocks();
@@ -320,7 +326,7 @@ void Torrent::retry_pieces() {
     if (!retry) {
       return;
     }
-    m_logger->debug("Marked {} blocks for retry", retry);
+    m_logger->info("Marked {} blocks for retry", retry);
 
     // To hit different peers for each invocation - shuffle the list
     std::random_device rd;

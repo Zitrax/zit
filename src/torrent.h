@@ -179,6 +179,11 @@ class Torrent {
   void run();
 
   /**
+   * Stopping all peers. Will cause the run() function to terminate.
+   */
+  void stop();
+
+  /**
    * Peer received remote piece info, make sure we have a non empty client side
    * bitfield of the same size.
    *

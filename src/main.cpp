@@ -7,6 +7,8 @@
 #include "net.h"
 #include "torrent.h"
 
+#include <csignal>
+
 #include "spdlog/sinks/stdout_color_sinks.h"
 #include "spdlog/spdlog.h"
 
@@ -28,6 +30,11 @@ static void print_exception(const exception& e,
   } catch (const exception& e) {
     cerr << "Error in error handling: " << e.what() << "\n";
   }
+}
+
+static std::function<void(int)> sigint_function;
+static void sigint_handler(int s) {
+  sigint_function(s);
 }
 
 int main(int argc, const char* argv[]) noexcept {
@@ -73,6 +80,19 @@ int main(int argc, const char* argv[]) noexcept {
     });
     spdlog::get("file_writer")->set_level(lvl);
     console->info("\n{}", torrent);
+
+    sigint_function = [&](int /*s*/) {
+      std::cout << "\nCTRL-C pressed. Stopping torrent...\n";
+      torrent.stop();
+    };
+
+    struct sigaction sigIntHandler {};
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
+    sigIntHandler.sa_handler = sigint_handler;
+    sigemptyset(&sigIntHandler.sa_mask);
+    sigIntHandler.sa_flags = 0;
+    sigaction(SIGINT, &sigIntHandler, nullptr);
+
     torrent.start();
     torrent.run();
   } catch (const exception& e) {
