@@ -73,10 +73,9 @@ int main(int argc, const char* argv[]) noexcept {
       std::cout << torrent << std::endl;
       return 0;
     }
-    zit::FileWriterThread file_writer(torrent, [&console](zit::Torrent& tor) {
-      console->info("Download completed");
-      for_each(tor.peers().begin(), tor.peers().end(),
-               [](auto& peer) { peer->stop(); });
+    zit::FileWriterThread file_writer(torrent, [&console](zit::Torrent& /*t*/) {
+      console->info(
+          "Download completed. Continuing to seed. Press ctrl-c to stop.");
     });
     spdlog::get("file_writer")->set_level(lvl);
     console->info("\n{}", torrent);
