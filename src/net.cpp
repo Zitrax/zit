@@ -9,6 +9,7 @@
 #include <iomanip>
 #include <iostream>
 #include <regex>
+#include <stdexcept>
 
 #include "string_utils.h"
 #include "types.h"
@@ -119,10 +120,20 @@ static std::tuple<std::string, std::string> request(Sock& sock,
   stringstream headers;
   while (getline(response_stream, header) && header != "\r" &&
          !header.empty()) {
-    if (header.starts_with("Location: ")) {
-      Url loc(rtrim_copy(header.substr(10, string::npos)));
+    constexpr auto location = "Location: ";
+    if (header.starts_with(location)) {
+      Url loc(rtrim_copy(header.substr(strlen(location), string::npos)));
       spdlog::get("console")->debug("Redirecting to {}", loc.str());
       return Net::httpGet(loc);
+    }
+    constexpr auto tencoding = "Transfer-Encoding: ";
+    if (header.starts_with(tencoding)) {
+      std::string encoding =
+          rtrim_copy(header.substr(strlen(tencoding), string::npos));
+      if (encoding == "chunked") {
+        throw runtime_error(
+            "chunked http transfer encoding currently not supported");
+      }
     }
     headers << header << "\n";
   }
