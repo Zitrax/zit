@@ -11,11 +11,13 @@
 
 #include <algorithm>
 #include <chrono>
+#include <exception>
 #include <execution>
 #include <iomanip>
 #include <iostream>
 #include <numeric>
 #include <random>
+#include <stdexcept>
 
 using namespace bencode;
 using namespace std;
@@ -234,7 +236,13 @@ void Torrent::start() {
   m_logger->info("\n{}", url);
 
   auto [headers, body] = Net::httpGet(url);
-  auto reply = decode(body);
+
+  ElmPtr reply;
+  try {
+    reply = decode(body);
+  } catch (const BencodeConversionError&) {
+    throw_with_nested(runtime_error("Could not decode peer list."));
+  }
 
   m_logger->info("=====HEADER=====\n{}\n=====BODY=====\n{}", headers, reply);
 
@@ -245,15 +253,10 @@ void Torrent::start() {
   }
   auto peers_dict = reply_dict["peers"];
   // First try string form
-  try {
-    // NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores)
-    if (peers_dict->is<TypedElement<BeDict>>()) {
-      // FIXME: implement
-      m_logger->warn("Dict peers not implemented");
-      throw runtime_error("Dict peers not implemented");
-    }
-  } catch (const BencodeConversionError&) {
-    // This is fine - try the next format
+  // NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores)
+  if (peers_dict->is<TypedElement<BeList>>()) {
+    // FIXME: implement
+    m_logger->warn("Dict peers not implemented");
   }
 
   auto binary_peers = peers_dict->to<TypedElement<string>>()->val();

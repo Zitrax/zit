@@ -26,3 +26,10 @@ TEST(string_utils, to_hex) {
   EXPECT_EQ(to_hex("\x09\x0A\x0B\x0C"), "090A0B0C");
   EXPECT_EQ(to_hex("\x0D\x0E\x0F\x10"), "0D0E0F10");
 }
+
+TEST(string_utils, to_lower) {
+  EXPECT_EQ(to_lower(""), "");
+  EXPECT_EQ(to_lower("a"), "a");
+  EXPECT_EQ(to_lower("A"), "a");
+  EXPECT_EQ(to_lower("AbCdE"), "abcde");
+}

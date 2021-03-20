@@ -2,12 +2,15 @@
 #include "net.h"
 
 #include <asio.hpp>
+#include <asio/buffers_iterator.hpp>
+#include <asio/error_code.hpp>
 #include <asio/ssl.hpp>
 
 #include <spdlog/spdlog.h>
 #include <experimental/array>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
 #include <regex>
 #include <stdexcept>
 
@@ -116,50 +119,91 @@ static std::tuple<std::string, std::string> request(Sock& sock,
   asio::read_until(sock, response, MatchMarkers({"\r\n\r\n", "\n\n"}));
 
   // Process the response headers.
+  string encoding;
   string header;
   stringstream headers;
+  auto logger = spdlog::get("console");
   while (getline(response_stream, header) && header != "\r" &&
          !header.empty()) {
-    constexpr auto location = "Location: ";
-    if (header.starts_with(location)) {
+    const auto lheader = to_lower(header);
+    constexpr auto location = "location: ";
+    if (lheader.starts_with(location)) {
       Url loc(rtrim_copy(header.substr(strlen(location), string::npos)));
-      spdlog::get("console")->debug("Redirecting to {}", loc.str());
+      logger->debug("Redirecting to {}", loc.str());
       return Net::httpGet(loc);
     }
-    constexpr auto tencoding = "Transfer-Encoding: ";
-    if (header.starts_with(tencoding)) {
-      std::string encoding =
-          rtrim_copy(header.substr(strlen(tencoding), string::npos));
-      if (encoding == "chunked") {
-        throw runtime_error(
-            "chunked http transfer encoding currently not supported");
+    constexpr auto tencoding = "transfer-encoding: ";
+    if (lheader.starts_with(tencoding)) {
+      encoding = rtrim_copy(header.substr(strlen(tencoding), string::npos));
+      if (encoding != "chunked") {
+        throw runtime_error(encoding +
+                            " http transfer encoding currently not supported");
       }
     }
     headers << header << "\n";
   }
 
-  spdlog::get("console")->trace("=====RESPONSE=====\n'{}'\n", headers.str());
+  logger->trace("=====RESPONSE=====\n'{}'\n", headers.str());
 
   stringstream resp;
-  // Write whatever content we already have to output.
-  if (response.size() > 0) {
-    resp << &response;
-  }
-
-  // Read until EOF, writing data to output as we go.
   asio::error_code error;
-  while (asio::read(sock, response, asio::transfer_at_least(1), error)) {
-    resp << &response;
-  }
 
-  // FIXME: For some reason https get "stream truncated" here. Might be
-  // related to "SSL short read" discussed here:
-  // https://github.com/boostorg/beast/issues/38. So far I am not sure what
-  // the "proper" fix for this is.
-  if (url.scheme() != "https") {
-    if (error != asio::error::eof) {
-      throw asio::system_error(error, url.str());
+  auto check_error = [&error, &url] {
+    // FIXME: For some reason https get "stream truncated" here. Might be
+    // related to "SSL short read" discussed here:
+    // https://github.com/boostorg/beast/issues/38. So far I am not sure what
+    // the "proper" fix for this is.
+    if (url.scheme() != "https") {
+      if (error && error != asio::error::eof) {
+        throw asio::system_error(error, url.str());
+      }
     }
+  };
+
+  if (encoding == "chunked") {
+    logger->debug("chunked transfer encoding");
+    while (true) {
+      logger->trace("  response.size()={}", response.size());
+      string chunk_str_len;
+      if (response.size() == 0) {
+        logger->trace("  Read next line");
+        asio::read_until(sock, response, MatchMarkers({"\r\n\r\n", "\n\n"}));
+        logger->trace("  response.size()={}", response.size());
+      }
+      getline(response_stream, chunk_str_len);
+      rtrim(chunk_str_len);
+      logger->trace("  chunk_len_str='{}'", chunk_str_len);
+      auto chunk_len =
+          numeric_cast<unsigned long>(std::stol(chunk_str_len, nullptr, 16));
+      logger->trace("  chunk len={}", chunk_len);
+      if (chunk_len == 0) {
+        break;
+      }
+      chunk_len += 2;  // To include \r\n
+      if (response.size() < chunk_len) {
+        const auto read_n = chunk_len - response.size();
+        logger->trace("  read_n={}", read_n);
+        error.clear();
+        asio::read(sock, response, asio::transfer_at_least(read_n), error);
+        check_error();
+      }
+      std::copy_n(asio::buffers_begin(response.data()), chunk_len - 2,
+                  std::ostream_iterator<char>(resp));
+      response.consume(chunk_len);
+    }
+  } else {
+    // Write whatever content we already have to output.
+    if (response.size() > 0) {
+      resp << &response;
+    }
+
+    // Read until EOF, writing data to output as we go.
+    error.clear();
+    while (asio::read(sock, response, asio::transfer_at_least(1), error)) {
+      resp << &response;
+    }
+
+    check_error();
   }
 
   return {headers.str(), resp.str()};

@@ -1,6 +1,7 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
+#include <cctype>
 #include <iomanip>
 #include <sstream>
 #include <stdexcept>
@@ -90,6 +91,13 @@ inline std::string ltrim_copy(std::string s) {
 inline std::string rtrim_copy(std::string s) {
   rtrim(s);
   return s;
+}
+
+inline std::string to_lower(const std::string& s) {
+  std::string res;
+  res.resize(s.size());
+  std::transform(s.begin(), s.end(), res.begin(), ::tolower);
+  return res;
 }
 
 }  // namespace zit

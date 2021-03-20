@@ -54,3 +54,4 @@
   it seems like this is a HTTP chunked response where the "Chunk size" 3736350D0A (76e..)
   preceeds the real data. This is currently included in our parsed data. This should be
   indicated by the "Transfer-Encoding: chunked" header.
+  * Chunked encoding implemented, but the response does not seem bencoded but json? Further investigation needed.

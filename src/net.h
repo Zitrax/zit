@@ -118,6 +118,11 @@ class Net {
 
   Net() = default;
 
+  /**
+   * Perform a http request.
+   *
+   * @return A tuple with headers and response.
+   */
   static std::tuple<std::string, std::string> httpGet(const Url& url);
 
   /**

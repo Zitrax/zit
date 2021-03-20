@@ -2,6 +2,9 @@
 #include "gtest/gtest.h"
 #include "net.h"
 
+#include <spdlog/common.h>
+#include <spdlog/spdlog.h>
+#include <algorithm>
 #include <asio.hpp>
 using asio::detail::socket_ops::host_to_network_short;
 
@@ -74,4 +77,26 @@ TEST(net, httpGetHTTPS) {
   const auto reply = Net::httpGet(url);
   Url url2("https://www.google.com:443");
   const auto reply2 = Net::httpGet(url2);
+}
+
+TEST(net, chunkedTransfer) {
+  Url url("https://jigsaw.w3.org/HTTP/ChunkedScript");
+
+  constexpr auto sep =
+      "------------------------------------------------------------------------"
+      "-\n";
+  constexpr auto line =
+      "01234567890123456789012345678901234567890123456789012345678901"
+      "234567890\n";
+  std::stringstream expected;
+  expected << sep;
+  for (int i = 0; i < 1000; i++) {
+    expected << line;
+  }
+
+  auto [headers, response] = Net::httpGet(url);
+  const auto pos = response.find(sep);
+  ASSERT_TRUE(pos != std::string::npos);
+  response.erase(0, pos);
+  EXPECT_EQ(expected.str(), response);
 }
