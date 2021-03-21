@@ -223,6 +223,10 @@ void Torrent::disconnected(Peer* peer) {
 }
 
 void Torrent::start() {
+  if (!m_peers.empty()) {
+    throw runtime_error("Local peer vector not empty");
+  }
+
   Url url(m_announce);
   url.add_param("info_hash=" + Net::urlEncode(m_info_hash));
   // FIXME: Use proper id - should be unique per peer thus not fixed
@@ -244,35 +248,39 @@ void Torrent::start() {
     throw_with_nested(runtime_error("Could not decode peer list."));
   }
 
-  m_logger->info("=====HEADER=====\n{}\n=====BODY=====\n{}", headers, reply);
+  m_logger->debug("=====HEADER=====\n{}\n=====BODY=====\n{}", headers, reply);
 
-  // The peers might be in binary or string form
   auto reply_dict = reply->to<TypedElement<BeDict>>()->val();
   if (reply_dict.find("peers") == reply_dict.end()) {
     throw runtime_error("Invalid tracker reply, no peer list");
   }
   auto peers_dict = reply_dict["peers"];
-  // First try string form
-  // NOLINTNEXTLINE(clang-analyzer-deadcode.DeadStores)
+  // The peers might be in binary or string form
+  // First try string form ...
   if (peers_dict->is<TypedElement<BeList>>()) {
-    // FIXME: implement
-    m_logger->warn("Dict peers not implemented");
-  }
-
-  auto binary_peers = peers_dict->to<TypedElement<string>>()->val();
-  if (binary_peers.empty()) {
-    throw runtime_error("Peer list is empty");
-  }
-
-  if (!m_peers.empty()) {
-    throw runtime_error("Local peer vector not empty");
-  }
-
-  const int THREE_HEX_BYTES = 6;
-  for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
-    auto purl = Url(binary_peers.substr(i, THREE_HEX_BYTES), true);
-    if (!(purl.host() == "127.0.0.1" && purl.port() == m_listening_port)) {
+    m_logger->debug("Peer list in string form");
+    const auto peer_list = peers_dict->to<TypedElement<BeList>>()->val();
+    for (const auto& elm : peer_list) {
+      const auto peer = elm->to<TypedElement<BeDict>>()->val();
+      const auto purl = Url(fmt::format(
+          "http://{}:{}", peer.at("ip")->to<TypedElement<std::string>>()->val(),
+          peer.at("port")->to<TypedElement<int64_t>>()->val()));
       m_peers.emplace_back(make_shared<Peer>(purl, *this));
+    }
+  } else {
+    // ... else binary form
+    auto binary_peers = peers_dict->to<TypedElement<string>>()->val();
+    m_logger->debug("Peer list in binary form");
+    if (binary_peers.empty()) {
+      throw runtime_error("Peer list is empty");
+    }
+
+    const int THREE_HEX_BYTES = 6;
+    for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
+      const auto purl = Url(binary_peers.substr(i, THREE_HEX_BYTES), true);
+      if (!(purl.host() == "127.0.0.1" && purl.port() == m_listening_port)) {
+        m_peers.emplace_back(make_shared<Peer>(purl, *this));
+      }
     }
   }
 

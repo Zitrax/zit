@@ -55,3 +55,9 @@
   preceeds the real data. This is currently included in our parsed data. This should be
   indicated by the "Transfer-Encoding: chunked" header.
   * Chunked encoding implemented, but the response does not seem bencoded but json? Further investigation needed.
+
+* Resseding multi torrent fails with: "exception: filesystem error: cannot get file size: Is a directory",
+  it would probably fail to keep seeding it as well due to the split operation.
+
+* Pieces marked for retry could be printed on a single line to reduce spam.
+
