@@ -29,7 +29,7 @@
 * Disconnect peers that have not sent KeepAlive in a while.
 * Handle http 301 (permanently moved) for torrents. Like here: http://www.publicdomaintorrents.info/nshowmovie.html?movieid=1066
 
-* Handle multi file torrents, they are currently dumped to a single file. Maybe just separate the blob to files when done (instead of removing suffix).
+* DONE Handle multi file torrents, they are currently dumped to a single file. Maybe just separate the blob to files when done (instead of removing suffix).
 * "Connect failed: Connection refused" should prefix with ip
 
 * http://tracker.etree.org:6969/announce?info_hash=%7Bs%AD%1C%F1%D4%2B%00%F2%D7QW%87%F5%DD%22r%15%BDC&peer_id=abcdefghijklmnopqrst&port=20001&uploaded=0&downloaded=0&left=470589861&event=started&compact=1 works in browser but return 404 by client. See files here: https://bt.etree.org/index.php?sort=seeders
@@ -56,8 +56,11 @@
   indicated by the "Transfer-Encoding: chunked" header.
   * Chunked encoding implemented, but the response does not seem bencoded but json? Further investigation needed.
 
-* Resseding multi torrent fails with: "exception: filesystem error: cannot get file size: Is a directory",
+* Reseeding multi torrent fails with: "exception: filesystem error: cannot get file size: Is a directory",
   it would probably fail to keep seeding it as well due to the split operation.
 
 * Pieces marked for retry could be printed on a single line to reduce spam.
 
+* Check multi torrent seeding. Need upload test.
+
+* Fix: ninja && ./bin/zitest --gtest_filter='Integrate*' (TEST + TEST_F)
