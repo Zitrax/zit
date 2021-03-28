@@ -224,23 +224,22 @@ TEST_P(IntegrateF, DISABLED_download) {
   auto target = download(data_dir, torrent_file, torrent, max);
 
   // Transfer done - Verify content
-  auto source = data_dir / "multi" / "";
+  auto source = data_dir / "1MiB.dat";
   auto source_sha1 = zit::Sha1::calculateFile(source).hex();
   auto target_sha1 = zit::Sha1::calculateFile(target).hex();
   EXPECT_EQ(source_sha1, target_sha1);
-
-  // Delete downloaded files
-  // fs::remove(target);
 }
 
 INSTANTIATE_TEST_SUITE_P(SeedCount,
                          IntegrateF,
                          ::testing::Values<uint8_t>(1, 2, 5, 10));
 
+using Integrate = TemporaryDir;
+
 #ifdef INTEGRATION_TESTS
-TEST(Integrate, download_multi) {
+TEST_F(Integrate, download_multi) {
 #else
-TEST(Integrate, DISABLED_download_multi) {
+TEST_F(Integrate, DISABLED_download_multi) {
 #endif  // INTEGRATION_TESTS
   spdlog::get("console")->set_level(spdlog::level::info);
   auto tracker = start_tracker();
@@ -266,8 +265,6 @@ TEST(Integrate, DISABLED_download_multi) {
   }
   fs::remove(name);
 }
-
-using Integrate = TemporaryDir;
 
 #ifdef INTEGRATION_TESTS
 TEST_F(Integrate, upload) {

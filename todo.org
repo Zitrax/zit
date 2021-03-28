@@ -62,5 +62,3 @@
 * Pieces marked for retry could be printed on a single line to reduce spam.
 
 * Check multi torrent seeding. Need upload test.
-
-* Fix: ninja && ./bin/zitest --gtest_filter='Integrate*' (TEST + TEST_F)
