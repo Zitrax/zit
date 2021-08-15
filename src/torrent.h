@@ -251,6 +251,14 @@ class Torrent {
    */
   [[nodiscard]] auto connection_port() const { return m_connection_port; }
 
+  /**
+   * Find the file at a specific position in the torrent.
+   * @param pos The offset into the torrent file
+   * @return A tuple with (FileInfo, int64_t offset_in_file, int64_t tail)
+   */
+  [[nodiscard]] std::tuple<FileInfo, int64_t, int64_t> file_at_pos(
+      int64_t pos) const;
+
  private:
   /**
    * If a piece have requests but have not received data in a while we mark the

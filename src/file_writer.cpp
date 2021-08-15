@@ -169,24 +169,13 @@ class MultiTorrentDestination : public TorrentDestination {
   }
 
   void writePiece(const Piece& piece) override {
-    auto fileAtPos = [&](int64_t pos) {
-      int64_t cpos = 0;
-      for (const auto& fi : torrent()->files()) {
-        if (pos < (cpos + fi.length())) {
-          return make_tuple(fi, pos - cpos, cpos + fi.length() - pos);
-        }
-        cpos += fi.length();
-      }
-      throw runtime_error("pos > torrent size");
-    };
-
     // The piece might be spread over more than one file
     auto remaining = numeric_cast<int64_t>(piece.piece_size());
     while (remaining > 0) {
       const auto done = piece.piece_size() - remaining;
       const auto pos =
           numeric_cast<int64_t>(piece.id() * torrent()->piece_length() + done);
-      const auto [fi, offset, left] = fileAtPos(pos);
+      const auto [fi, offset, left] = torrent()->file_at_pos(pos);
       const auto len = min(remaining, left);
       logger()->debug("Writing: {} -> {} ({}) done={} offset={} (In: {})", pos,
                       pos + len, len, done, offset, fi.path());
