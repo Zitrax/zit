@@ -1,6 +1,7 @@
-build
+build*
 /.vs
 doc
 *.kdev4
 *.vscode
+.cache
 
