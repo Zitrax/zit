@@ -1,5 +1,6 @@
 option(COVERAGE "Enable coverage of unit tests" OFF)
 option(INTEGRATION_TESTS "Enable integration tests" OFF)
+option(TESTS_ASAN "Enable address sanitizer" OFF)
 
 find_package(Threads)
 
@@ -57,6 +58,11 @@ if(INTEGRATION_TESTS)
 endif()
 
 target_compile_definitions(zitest PUBLIC DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
+
+if(TESTS_ASAN)
+  target_compile_options(zitest PRIVATE -fsanitize=address)
+  target_link_options(zitest PRIVATE -fsanitize=address)
+endif()
 
 # For getting backtraces use:
 # sudo ln -s /usr/bin/llvm-symbolizer-3.8 /usr/bin/llvm-symbolizer
