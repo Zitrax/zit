@@ -41,7 +41,7 @@ PeerConnection::PeerConnection(Peer& peer,
 }
 
 void PeerConnection::listen() {
-  m_logger->info("{}", PRETTY_FUNCTION);
+  m_logger->info("{} port={}", PRETTY_FUNCTION, m_listening_port);
   // if (!acceptor_.is_open()) {
   asio::socket_base::reuse_address option(true);
   acceptor_.set_option(option);

@@ -341,7 +341,11 @@ void Torrent::start() {
 
   // Add listening peer for incoming connections
   m_logger->info("Adding listening peer");
-  m_peers.emplace_back(make_shared<Peer>(*this))->listen();
+  try {
+    m_peers.emplace_back(make_shared<Peer>(*this))->listen();
+  } catch (const std::exception& ex) {
+    m_logger->warn("Could not start listening peer: {}", ex.what());
+  }
 }
 
 void Torrent::run() {
