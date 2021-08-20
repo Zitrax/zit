@@ -29,9 +29,12 @@ void FileWriter::run() {
   logger()->info("FileWriter done");
 }
 
+// FIXME: Support for multi torrents
 bytes FileWriter::read_block(uint32_t offset,
                              uint32_t length,
                              const fs::path& filename) {
+  logger()->debug("read_block(offset={}, length={}, filename={})", offset,
+                  length, filename);
   unique_lock<mutex> lock(m_file_mutex);
   ifstream is(filename, ios::binary);
   is.exceptions(fstream::failbit | fstream::badbit);
