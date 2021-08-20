@@ -17,6 +17,15 @@ namespace zit {
 using TorrentPiece = std::tuple<Torrent*, std::shared_ptr<Piece>>;
 using TorrentWrittenCallback = std::function<void(Torrent&)>;
 
+static auto init_logger() {
+  auto logger = spdlog::get("file_writer");
+  if (!logger) {
+    logger = spdlog::stdout_color_mt("file_writer");
+    logger->set_level(spdlog::level::debug);
+  }
+  return logger;
+}
+
 /**
  * Queue of pieces to write to disk.
  * Whenever a piece is done it will be added to the queue,
@@ -32,7 +41,7 @@ class FileWriter {
   FileWriter(TorrentWrittenCallback cb)
       : m_torrent_written_callback(std::move(cb)) {}
 
-  auto logger() { return spdlog::get("file_writer"); }
+  auto logger() { return init_logger(); }
 
  public:
   static FileWriter& getInstance(TorrentWrittenCallback cb = {}) {
@@ -95,16 +104,6 @@ class FileWriter {
  * Managing the thread running FileWriter
  */
 class FileWriterThread {
- private:
-  static auto init_logger() {
-    auto logger = spdlog::get("file_writer");
-    if (!logger) {
-      logger = spdlog::stdout_color_mt("file_writer");
-    }
-    logger->set_level(spdlog::level::info);
-    return logger;
-  }
-
  public:
   explicit FileWriterThread(Torrent& torrent, TorrentWrittenCallback cb = {})
       : m_logger(init_logger()),
