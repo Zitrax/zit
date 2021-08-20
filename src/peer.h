@@ -44,6 +44,11 @@ class PeerConnection {
    */
   void listen();
 
+  /**
+   * Stops the peer connection.
+   */
+  void stop();
+
  private:
   void handle_resolve(const asio::error_code& err,
                       asio::ip::tcp::resolver::iterator endpoint_iterator);

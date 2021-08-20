@@ -218,6 +218,12 @@ void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
   }
 }
 
+void PeerConnection::stop() {
+  resolver_.cancel();
+  acceptor_.close();
+  socket_.close();
+}
+
 void Peer::request(uint32_t index, uint32_t begin, uint32_t length) {
   auto piece = m_torrent.active_piece(index);
   if (!piece) {
@@ -380,6 +386,7 @@ void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
 
 void Peer::stop() {
   m_logger->info("Stopping peer {}", str());
+  m_connection->stop();
   m_io_service->stop();
 }
 
