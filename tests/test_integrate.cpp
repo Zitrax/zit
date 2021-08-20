@@ -75,6 +75,8 @@ class Process {
         throw runtime_error("Process " + m_name +
                             " is already dead. Aborting!");
       }
+      auto console = spdlog::get("console");
+      console->info("Process {} started", m_name);
     }
   }
 
@@ -91,7 +93,7 @@ class Process {
    * Terminate the process. Try to be nice and send SIGTERM first, and SIGKILL
    * later if that did not help.
    */
-  ~Process() {
+  void terminate() {
     if (m_pid) {
       auto console = spdlog::get("console");
       kill(m_pid, SIGTERM);
@@ -102,10 +104,11 @@ class Process {
         if (ret > 0) {
           console->info("{} exited with status: {}", m_name,
                         WEXITSTATUS(status));
+          m_pid = 0;
           return;
         }
         if (ret == -1) {
-          console->error("waitpid errored");
+          console->error("waitpid errored - {}", strerror(errno));
           return;
         }
         std::this_thread::sleep_for(10ms);
@@ -115,7 +118,13 @@ class Process {
       waitpid(m_pid, &status, 0);
       console->info("{} exited with status: {}", m_name, WEXITSTATUS(status));
     }
+    m_pid = 0;
   }
+
+  /**
+   * Kill the process if not already dead.
+   */
+  ~Process() { terminate(); }
 
  private:
   pid_t m_pid;
@@ -123,27 +132,38 @@ class Process {
 };
 
 static auto start_tracker() {
-  auto tracker = Process("tracker", {"bittorrent-tracker", "--http"}, nullptr);
+  auto tracker = Process(
+      "tracker", {"/home/danielb/git/opentracker/opentracker", "-p", "8000"},
+      nullptr);
+
   // Allow some time for the tracker to start
   this_thread::sleep_for(1s);
   return tracker;
 }
 
+// FIXME: ctorrent is ancient (2008)
+//        should find something maintained
+// TODO:  Change this to transmission-cli as below
 static auto start_seeder(const fs::path& data_dir,
                          const fs::path& torrent_file) {
   return Process("seeder", {"ctorrent", "-v", torrent_file.c_str()},
                  data_dir.c_str());
 }
 
+/**
+ * With transmission-cli leeching need to be done like this:
+ *  - Start tracker
+ *  - rm -rf ~/.config/transmission
+ *  - rm eventual old file
+ *  - seed with zit
+ */
 static auto start_leecher(const fs::path& target,
                           const fs::path& torrent_file) {
-  auto bf = torrent_file;
-  // ctorrent keep a bitfield file - remove it if existing such
-  // that we start from scratch.
-  bf += ".bf";
-  fs::remove(bf);
-  return Process("leecher",
-                 {"ctorrent", "-s", target.c_str(), torrent_file.c_str()});
+  fs::remove(target);
+  // FIXME: get hold of the home dir properly
+  fs::remove_all("/home/danielb/.config/transmission");
+  return Process("leecher", {"transmission-cli", "-w", target.c_str(),
+                             torrent_file.c_str()});
 }
 
 static void start(zit::Torrent& torrent) {
@@ -198,8 +218,7 @@ static auto download(const fs::path& data_dir,
 
   zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
     spdlog::get("console")->info("Download completed");
-    for_each(torrent.peers().begin(), torrent.peers().end(),
-             [](auto& peer) { peer->stop(); });
+    torrent.stop();
   });
   start(torrent);
   return target;
@@ -281,23 +300,29 @@ TEST_F(Integrate, DISABLED_upload) {
   zit::Torrent torrent(torrent_file, data_dir);
   ASSERT_TRUE(torrent.done());
 
-  torrent.set_disconnect_callback([](zit::Peer* peer) {
-    spdlog::get("console")->info("Peer disconnect - stopping");
-    peer->stop();
-  });
-
-  // Connects to tracker and retrieves peers
-  torrent.start();
   // Start a leecher that we will upload to
   auto target = tmp_dir() / "upload_test";
   auto leecher = start_leecher(target, torrent_file);
+
+  torrent.set_disconnect_callback([&](zit::Peer*) {
+    spdlog::get("console")->info("Peer disconnect - stopping");
+    torrent.stop();
+    leecher.terminate();
+  });
+
+  // FIXME: How to avoid this sleep?
+  this_thread::sleep_for(15s);
+
+  // Connects to tracker and retrieves peers
+  torrent.start();
+
   // Run the peer connections
   torrent.run();
 
   // Transfer done - Verify content
   auto source = data_dir / "1MiB.dat";
   auto source_sha1 = zit::Sha1::calculateFile(source).hex();
-  auto target_sha1 = zit::Sha1::calculateFile(target).hex();
+  auto target_sha1 = zit::Sha1::calculateFile(target / "1MiB.dat").hex();
   EXPECT_EQ(source_sha1, target_sha1);
 }
 
