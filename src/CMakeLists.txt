@@ -1,4 +1,5 @@
 option(USE_CLANG_TIDY "Use clang-tidy if available" ON)
+option(ASIO_DEBUG "Add asio debug output" OFF)
 
 # Clang tidy only in the src dir since it can't run on the gtest sources
 # used in the tests folder. Not possible yet to exclude only
@@ -37,6 +38,10 @@ add_library(zitlib OBJECT
   arg_parser.cpp
 )
 add_executable(zit main.cpp $<TARGET_OBJECTS:zitlib>)
+
+if(ASIO_DEBUG)
+  target_compile_definitions(zitlib PRIVATE ASIO_ENABLE_HANDLER_TRACKING)
+endif()
 
 install(TARGETS zit RUNTIME DESTINATION bin)
 
