@@ -7,10 +7,10 @@
 /**
  * Note that the integration tests depend on a third party tracker and seeder:
  *
- *  - Tracker (bittorrent-tracker)
- *    - sudo npm install -g bittorrent-tracker
- *  - Seeder (ctorrent)
- *    - sudo apt install ctorrent
+ *  - Tracker (opentracker)
+ *    - https://erdgeist.org/arts/software/opentracker/
+ *  - Seeder (transmission-cli)
+ *    - sudo apt install transmission-cli
  */
 
 #include <sys/prctl.h>
@@ -141,13 +141,12 @@ static auto start_tracker() {
   return tracker;
 }
 
-// FIXME: ctorrent is ancient (2008)
-//        should find something maintained
-// TODO:  Change this to transmission-cli as below
 static auto start_seeder(const fs::path& data_dir,
                          const fs::path& torrent_file) {
-  return Process("seeder", {"ctorrent", "-v", torrent_file.c_str()},
-                 data_dir.c_str());
+  // FIXME: get hold of the home dir properly
+  fs::remove_all("/home/danielb/.config/transmission");
+  return Process("leecher", {"transmission-cli", "-w", data_dir.c_str(),
+                             torrent_file.c_str()});
 }
 
 /**
@@ -160,10 +159,7 @@ static auto start_seeder(const fs::path& data_dir,
 static auto start_leecher(const fs::path& target,
                           const fs::path& torrent_file) {
   fs::remove(target);
-  // FIXME: get hold of the home dir properly
-  fs::remove_all("/home/danielb/.config/transmission");
-  return Process("leecher", {"transmission-cli", "-w", target.c_str(),
-                             torrent_file.c_str()});
+  return start_seeder(target, torrent_file);
 }
 
 static void start(zit::Torrent& torrent) {
@@ -208,7 +204,8 @@ static auto download(const fs::path& data_dir,
   }
 
   // Allow some time for the seeders to start
-  this_thread::sleep_for(1s);
+  // FIXME: Avoid this sleep
+  this_thread::sleep_for(15s);
 
   // Download torrent with zit
   auto target = torrent.name();
