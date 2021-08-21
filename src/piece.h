@@ -10,6 +10,8 @@
 
 namespace zit {
 
+class Torrent;
+
 /**
  * Represents one torrent piece and its current state.
  */
@@ -56,9 +58,11 @@ class Piece {
    *
    * @param offset the piece offset for the block
    * @param filename the file to read data from if not in memory
+   * @param length if specified only read the first n bytes
    */
   [[nodiscard]] bytes get_block(uint32_t offset,
-                                const std::filesystem::path& filename) const;
+                                const Torrent& filename,
+                                uint32_t length = 0) const;
 
   /**
    * Update status whether the piece has been written to disk or not.

@@ -225,21 +225,19 @@ void PeerConnection::stop() {
 }
 
 void Peer::request(uint32_t index, uint32_t begin, uint32_t length) {
+  m_logger->trace("Peer::request(index={}, begin={}, length={})", index, begin,
+                  length);
   auto piece = m_torrent.active_piece(index);
   if (!piece) {
     m_logger->warn("Requested non existing piece {}", index);
     return;
   }
-  if (piece->block_size() != length) {
-    m_logger->error("No support for block size {}", length);
-    return;
-  }
-  auto data = piece->get_block(begin, m_torrent.tmpfile());
+  auto data = piece->get_block(begin, m_torrent, length);
   if (data.empty()) {
     m_logger->warn("Empty block data - request failed");
     return;
   }
-  m_logger->debug("Sending PIECE");
+  m_logger->debug("Sending PIECE {}", piece->id());
   bytes msg;
   auto len = to_big_endian(numeric_cast<uint32_t>(9 + data.size()));
   auto offset = to_big_endian(begin);

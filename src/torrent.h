@@ -142,7 +142,9 @@ class Torrent {
   [[nodiscard]] auto left() const;
 
   /**
-   * File on disk to which the torrent is written during transfer
+   * File on disk to which the torrent is written during transfer.
+   * For a single torrent this is the actual file, for a multi torrent
+   * this is a directory.
    */
   [[nodiscard]] auto tmpfile() const { return m_tmpfile; }
 

@@ -474,14 +474,19 @@ bool Torrent::done() const {
 }
 
 std::tuple<FileInfo, int64_t, int64_t> Torrent::file_at_pos(int64_t pos) const {
-  int64_t cpos = 0;
-  for (const auto& fi : files()) {
-    if (pos < (cpos + fi.length())) {
-      return make_tuple(fi, pos - cpos, cpos + fi.length() - pos);
+  if (is_single_file()) {
+    return make_tuple(FileInfo(length(), tmpfile(), md5sum()), pos,
+                      length() - pos);
+  } else {
+    int64_t cpos = 0;
+    for (const auto& fi : files()) {
+      if (pos < (cpos + fi.length())) {
+        return make_tuple(fi, pos - cpos, cpos + fi.length() - pos);
+      }
+      cpos += fi.length();
     }
-    cpos += fi.length();
+    throw runtime_error(fmt::format("pos > torrent size {}>{}", pos, length()));
   }
-  throw runtime_error(fmt::format("pos > torrent size {}>{}", pos, length()));
 }
 
 void Torrent::piece_done(std::shared_ptr<Piece>& piece) {

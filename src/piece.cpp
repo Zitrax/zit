@@ -68,7 +68,8 @@ bool Piece::set_block(uint32_t offset, const bytes& data) {
 }
 
 bytes Piece::get_block(uint32_t offset,
-                       const filesystem::path& filename) const {
+                       const Torrent& torrent,
+                       uint32_t length) const {
   if (offset % m_block_size != 0) {
     throw runtime_error("Invalid block offset: " + to_string(offset));
   }
@@ -82,18 +83,18 @@ bytes Piece::get_block(uint32_t offset,
     m_logger->warn("Block {} in piece {} not done", block_id, m_id);
     return {};
   }
+  length = length ? length : m_block_size;
   // Is it in memory?
   if (!m_piece_written) {
     m_logger->debug("Returning block {} in piece {} from memory", block_id,
                     m_id);
     auto start = m_data.begin() + offset;
-    return bytes(start, start + m_block_size);
+    return bytes(start, start + length);
   }
   // Is it on disk?
   m_logger->debug("Returning block {} in piece {} from disk", block_id, m_id);
   auto file_offset = m_piece_size * m_id + offset;
-  return FileWriter::getInstance().read_block(file_offset, m_block_size,
-                                              filename);
+  return FileWriter::getInstance().read_block(file_offset, length, torrent);
 }
 
 void Piece::set_piece_written(bool written) {

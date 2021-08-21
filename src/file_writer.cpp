@@ -32,16 +32,32 @@ void FileWriter::run() {
 // FIXME: Support for multi torrents
 bytes FileWriter::read_block(uint32_t offset,
                              uint32_t length,
-                             const fs::path& filename) {
+                             const Torrent& torrent) {
   logger()->debug("read_block(offset={}, length={}, filename={})", offset,
-                  length, filename);
+                  length, torrent.tmpfile());
   unique_lock<mutex> lock(m_file_mutex);
-  ifstream is(filename, ios::binary);
-  is.exceptions(fstream::failbit | fstream::badbit);
-  is.seekg(offset);
+
+  auto remaining = numeric_cast<int64_t>(length);
   bytes data;
   data.resize(length);
-  is.read(reinterpret_cast<char*>(data.data()), length);
+  uint32_t cpos = offset;
+  uint32_t dpos = 0;
+  const auto base = torrent.is_single_file() ? torrent.tmpfile().parent_path()
+                                             : torrent.tmpfile();
+  while (remaining > 0) {
+    const auto [fi, offset, left] = torrent.file_at_pos(cpos);
+    const auto len = min(remaining, left);
+    const auto path = base / fi.path();
+    logger()->trace("Reading {} bytes from {} at offset {}", len, path, offset);
+    ifstream is(path, ios::binary);
+    is.exceptions(fstream::failbit | fstream::badbit);
+    is.seekg(offset);
+    is.read(reinterpret_cast<char*>(data.data() + dpos), len);
+    cpos += len;
+    remaining -= len;
+    dpos += len;
+  }
+
   return data;
 }
 

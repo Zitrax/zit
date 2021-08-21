@@ -85,9 +85,7 @@ class FileWriter {
    * @param length the number of bytes to read
    * @param filename the path to the file to read from
    */
-  bytes read_block(uint32_t offset,
-                   uint32_t length,
-                   const std::filesystem::path& filename);
+  bytes read_block(uint32_t offset, uint32_t length, const Torrent& filename);
 
  private:
   void write_next_piece();
