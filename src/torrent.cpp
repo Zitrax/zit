@@ -360,7 +360,9 @@ void Torrent::run() {
     retry_pieces();
     // If no handlers ran, then sleep.
     if (!ran) {
-      this_thread::sleep_for(10ms);
+      // For some reason this crashes clang-tidy 10,11,12, thus usleep
+      // this_thread::sleep_for(10ms);
+      usleep(10000);
     }
   }
   m_logger->debug("Run loop done");
@@ -380,6 +382,8 @@ void Torrent::retry_pieces() {
   // Do not need to call this too frequently so rate limit it
   static std::chrono::system_clock::time_point last_call{now() + 1min};
 
+  // False positive
+  // NOLINTNEXTLINE(hicpp-use-nullptr,modernize-use-nullptr)
   if (now() - last_call > 30s) {
     last_call = now();
     m_logger->debug("Checking pieces for retry");
@@ -464,13 +468,9 @@ bool Torrent::done() const {
   }
 
   // If any piece has not been written we are not done
-  for (const auto& piece : m_active_pieces) {
-    if (!piece.second->piece_written()) {
-      return false;
-    }
-  }
-
-  return true;
+  return std::ranges::all_of(m_active_pieces, [](const auto& piece) {
+    return piece.second->piece_written();
+  });
 }
 
 std::tuple<FileInfo, int64_t, int64_t> Torrent::file_at_pos(int64_t pos) const {
@@ -502,6 +502,8 @@ ostream& operator<<(ostream& os, const zit::FileInfo& file_info) {
 ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
   os << "----------------------------------------\n";
   auto creation = numeric_cast<time_t>(torrent.creation_date());
+  // Thread safety not critical here - just debug output
+  // NOLINTNEXTLINE(concurrency-mt-unsafe)
   os << "Creation date: " << put_time(localtime(&creation), "%F %T %Z") << " ("
      << creation << ")\n";
   os << "Comment:       " << torrent.comment() << "\n";

@@ -32,10 +32,13 @@ static void print_exception(const exception& e,
   }
 }
 
-static std::function<void(int)> sigint_function;
-static void sigint_handler(int s) {
+namespace {
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+std::function<void(int)> sigint_function;
+void sigint_handler(int s) {
   sigint_function(s);
 }
+}  // namespace
 
 int main(int argc, const char* argv[]) noexcept {
   try {
@@ -81,7 +84,7 @@ int main(int argc, const char* argv[]) noexcept {
     console->info("\n{}", torrent);
 
     sigint_function = [&](int /*s*/) {
-      std::cout << "\nCTRL-C pressed. Stopping torrent...\n";
+      console->info("CTRL-C pressed. Stopping torrent...");
       torrent.stop();
     };
 

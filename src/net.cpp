@@ -241,7 +241,9 @@ static std::tuple<std::string, std::string> httpsGet(const Url& url) {
               "SSL: {}", X509_verify_cert_error_string(
                              X509_STORE_CTX_get_error(ctx_.native_handle())));
 
-          const char* dir = getenv(X509_get_default_cert_dir_env());
+          // According to cppreference std::getenv is thread safe
+          // NOLINTNEXTLINE(concurrency-mt-unsafe)
+          const char* dir = std::getenv(X509_get_default_cert_dir_env());
           if (!dir) {
             dir = X509_get_default_cert_dir();
           }

@@ -13,6 +13,10 @@
 # -hicpp-avoid-c-arrays (covered by cppcore)
 # -clang-analyzer-cplusplus.NewDelete (temporary due to https://github.com/boostorg/asio/issues/341)
 # -llvmlibc-callee-namespace (llvm specific)
+# -misc-no-recursion (recursion is ok)
+# -altera-struct-pack-align (too specific performance issue)
+# -readability-function-cognitive-complexity (no hard limit on this)
+# -hicpp-named-parameter (fine to leave it out when unused)
 
 
 Checks:          '*,
@@ -27,7 +31,7 @@ Checks:          '*,
                  -hicpp-no-array-decay,
                  -hicpp-noexcept-move,
                  -hicpp-signed-bitwise,
-                 -llvm-*,
+                 -llvm*,
                  -modernize-avoid-c-arrays,
                  -modernize-use-trailing-return-type,
                  -objc-*,
@@ -38,7 +42,11 @@ Checks:          '*,
                  -readability-misleading-indentation,
                  -readability-named-parameter,
                  -clang-analyzer-cplusplus.NewDelete,
-                 -llvmlibc-callee-namespace
+                 -llvmlibc-callee-namespace,
+                 -misc-no-recursion,
+                 -altera-struct-pack-align,
+                 -readability-function-cognitive-complexity,
+                 -hicpp-named-parameter
                  '
 WarningsAsErrors: '*'
 HeaderFilterRegex: '(src|tests)/*.h$'

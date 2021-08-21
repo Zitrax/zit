@@ -117,6 +117,8 @@ std::size_t Piece::retry_blocks() {
   }
   const auto now = std::chrono::system_clock::now();
   const auto inactive = now - last_activity;
+  // False positive
+  // NOLINTNEXTLINE(hicpp-use-nullptr,modernize-use-nullptr)
   if (inactive > 30s && m_blocks_requested.next(true).has_value()) {
     m_logger->warn(
         "Piece {} inactive for {} seconds. Marking for retry.", m_id,
