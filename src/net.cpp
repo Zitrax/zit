@@ -116,7 +116,14 @@ static std::tuple<std::string, std::string> request(Sock& sock,
   }
 
   // Read the response headers, which are terminated by a blank line.
-  asio::read_until(sock, response, MatchMarkers({"\r\n\r\n", "\n\n"}));
+  try {
+    asio::read_until(sock, response, MatchMarkers({"\r\n\r\n", "\n\n"}));
+  } catch (const std::system_error& err) {
+    if (err.code().category().name() != "asio.misc"s ||
+        err.code().value() != asio::error::misc_errors::eof) {
+      throw;
+    }
+  }
 
   // Process the response headers.
   string encoding;
