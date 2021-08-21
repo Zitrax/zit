@@ -323,4 +323,50 @@ TEST_F(Integrate, DISABLED_upload) {
   EXPECT_EQ(source_sha1, target_sha1);
 }
 
+#ifdef INTEGRATION_TESTS
+TEST_F(Integrate, multi_upload) {
+#else
+TEST_F(Integrate, DISABLED_multi_upload) {
+#endif  // INTEGRATION_TESTS
+  spdlog::get("console")->set_level(spdlog::level::trace);
+  auto tracker = start_tracker();
+
+  const auto data_dir = fs::path(DATA_DIR);
+  const auto torrent_file = data_dir / "multi.torrent";
+
+  // Launch zit with existing file to seed it
+  zit::Torrent torrent(torrent_file, data_dir);
+  ASSERT_TRUE(torrent.done());
+
+  // Start a leecher that we will upload to
+  auto target = tmp_dir() / "multi_upload_test";
+  auto leecher = start_leecher(target, torrent_file);
+
+  torrent.set_disconnect_callback([&](zit::Peer*) {
+    spdlog::get("console")->info("Peer disconnect - stopping");
+    torrent.stop();
+    leecher.terminate();
+  });
+
+  // FIXME: How to avoid this sleep?
+  this_thread::sleep_for(15s);
+
+  // Connects to tracker and retrieves peers
+  torrent.start();
+
+  // Run the peer connections
+  torrent.run();
+
+  // Transfer done - Verify content
+  const auto name = torrent.name();
+  EXPECT_EQ(torrent.files().size(), 7);
+  for (const auto& fi : torrent.files()) {
+    auto source = data_dir / name / fi.path();
+    auto dst = target / name / fi.path();
+    auto source_sha1 = zit::Sha1::calculateFile(source).hex();
+    auto target_sha1 = zit::Sha1::calculateFile(dst).hex();
+    EXPECT_EQ(source_sha1, target_sha1) << fi.path();
+  }
+}
+
 #endif  // __linux__
