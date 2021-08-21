@@ -252,6 +252,8 @@ auto Torrent::left() const {
   // FIXME: Should not include pieces that are done
 
   if (is_single_file()) {
+    // FIXME: This might return negative for a finished torrent. Possibly tail
+    // included?
     return length() - accumulate(m_active_pieces.begin(), m_active_pieces.end(),
                                  static_cast<int64_t>(0),
                                  [](int64_t a, const auto& p) {
