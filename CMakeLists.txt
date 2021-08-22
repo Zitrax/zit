@@ -9,7 +9,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if(EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
   include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
   set(CONAN_SYSTEM_INCLUDES ON)
-  conan_basic_setup()
+  conan_basic_setup(TARGETS)
   message(STATUS "Conan libs: ${CONAN_LIBS}")
 endif()
 
@@ -66,7 +66,6 @@ if(WIN32)
 endif()
 
 find_package(OpenSSL REQUIRED)
-include_directories(${OPENSSL_INCLUDE_DIR})
 
 include_directories(SYSTEM "external")
 

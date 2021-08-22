@@ -222,13 +222,14 @@ static std::tuple<std::string, std::string> httpsGet(const Url& url) {
   using ssl_socket = ssl::stream<tcp::socket>;
   // Create a context that uses the default paths for
   // finding CA certificates.
-  ssl::context ctx(ssl::context::sslv23);
+  ssl::context ctx(ssl::context::tlsv12);
 
   ctx.set_default_verify_paths();
   // In my case the default path is not aligned with the systems on Ubuntu
   // (/usr/local/ssl/certs). Thus adding the standard linux directory in
   // addition. This is likely due OpenSSL being built by Conan with that path.
-  ctx.add_verify_path("/etc/ssl/certs");
+  // Note: With a newer conan openssl build this was no longer necessary
+  // ctx.add_verify_path("/etc/ssl/certs");
 
   // Open a socket and connect it to the remote host.
   asio::io_context io_context;

@@ -37,13 +37,14 @@ add_executable(zitest
   test_types.cpp
   $<TARGET_OBJECTS:zitlib>)
 target_link_libraries(zitest
-  gtest
-  ${OPENSSL_SSL_LIBRARIES}
-  ${OPENSSL_CRYPTO_LIBRARIES}
-  Threads::Threads
-  ${CMAKE_DL_LIBS}
-  tbb
+${OPENSSL_SSL_LIBRARIES}
+${OPENSSL_CRYPTO_LIBRARIES}
+Threads::Threads
+CONAN_PKG::tbb
+CONAN_PKG::gtest
+CONAN_PKG::spdlog
 )
+
 if(NOT WIN32)
   if(SANITIZED_LIBCXX)
     target_link_libraries(zitest c++fs)

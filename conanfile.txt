@@ -1,8 +1,9 @@
  [requires]
- OpenSSL/1.1.0j@conan/stable
- asio/1.13.0@bincrafters/stable
- gtest/1.10.0
- tbb/2020.1
-
+ openssl/1.1.1k
+ asio/1.19.2
+ gtest/1.11.0
+ tbb/2020.3
+ spdlog/1.9.2
+ 
  [generators]
  cmake
