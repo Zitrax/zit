@@ -178,7 +178,7 @@ class MultiTorrentDestination : public TorrentDestination {
 
   void verifyFileSize() override {
     const auto files = torrent()->files();
-    if (!all_of(files.begin(), files.end(), [&](const auto& fi) {
+    if (!ranges::all_of(files, [&](const auto& fi) {
           const auto expected = numeric_cast<uintmax_t>(fi.length());
           const auto actual = fs::file_size(torrent()->name() / fi.path());
           return actual == expected;

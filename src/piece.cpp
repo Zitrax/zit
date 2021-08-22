@@ -57,7 +57,7 @@ bool Piece::set_block(uint32_t offset, const bytes& data) {
     if (!m_blocks_requested[block_id]) {
       m_logger->warn("Got data for non requested block?");
     }
-    copy(data.cbegin(), data.cend(), m_data.begin() + offset);
+    ranges::copy(data, m_data.begin() + offset);
     m_blocks_done[block_id] = true;
     m_logger->debug("Block {}/{} of size {} stored for piece {}", block_id + 1,
                     block_count(), data.size(), m_id);

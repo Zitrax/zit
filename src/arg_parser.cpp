@@ -14,13 +14,13 @@ void ArgParser::add_option(const string& option,
                            const string& help,
                            T& dst,
                            bool required) {
-  if (std::find_if(m_options.begin(), m_options.end(), [&](const auto& a) {
+  if (ranges::find_if(m_options, [&](const auto& a) {
         return a->m_option == option;
       }) != m_options.end()) {
     throw runtime_error(fmt::format("Duplicate option '{}' added", option));
   }
 
-  if (std::find_if(m_options.begin(), m_options.end(), [&](const auto& a) {
+  if (ranges::find_if(m_options, [&](const auto& a) {
         return a->dst() == &dst;
       }) != m_options.end()) {
     throw runtime_error(
@@ -90,8 +90,8 @@ void ArgParser::parse(int argc, const char* argv[]) {
   for (int i = 1; i < argc; i++) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     std::string_view name = argv[i];
-    auto m = std::find_if(m_options.begin(), m_options.end(),
-                          [&](const auto& a) { return a->m_option == name; });
+    auto m = ranges::find_if(
+        m_options, [&](const auto& a) { return a->m_option == name; });
     if (m == m_options.end()) {
       throw runtime_error(fmt::format("Unknown argument: {}", name));
     }
@@ -145,11 +145,10 @@ void ArgParser::parse(int argc, const char* argv[]) {
   }
 
   // Check if all options got values
-  auto nop = std::find_if(
-      m_options.begin(), m_options.end(),
-      [](const auto& o) { return !o->m_provided && o->m_required; });
+  auto nop = ranges::find_if(
+      m_options, [](const auto& o) { return !o->m_provided && o->m_required; });
   if (nop != m_options.end()) {
-    if (!std::any_of(m_options.begin(), m_options.end(), [](const auto& o) {
+    if (!ranges::any_of(m_options, [](const auto& o) {
           return o->m_help_arg && o->m_provided;
         })) {
       throw runtime_error(
@@ -162,10 +161,9 @@ std::string ArgParser::usage() {
   stringstream ss;
   ss << "Usage:\n\n" << m_desc << "\n\n";
 
-  auto it = std::max_element(m_options.begin(), m_options.end(),
-                             [](const auto& a, const auto& b) {
-                               return a->m_option.size() < b->m_option.size();
-                             });
+  auto it = ranges::max_element(m_options, [](const auto& a, const auto& b) {
+    return a->m_option.size() < b->m_option.size();
+  });
   if (it == m_options.end()) {
     return ss.str();
   }

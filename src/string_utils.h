@@ -62,9 +62,8 @@ inline std::string to_hex(const std::string& str) {
 
 /** trim from start (in place) */
 inline void ltrim(std::string& s) {
-  s.erase(s.begin(),
-          std::find_if(s.begin(), s.end(),
-                       std::not1(std::ptr_fun<int, int>(std::isspace))));
+  s.erase(s.begin(), std::ranges::find_if(
+                         s, std::not1(std::ptr_fun<int, int>(std::isspace))));
 }
 
 /** trim from end (in place) */
@@ -96,7 +95,7 @@ inline std::string rtrim_copy(std::string s) {
 inline std::string to_lower(const std::string& s) {
   std::string res;
   res.resize(s.size());
-  std::transform(s.begin(), s.end(), res.begin(), ::tolower);
+  std::ranges::transform(s, res.begin(), ::tolower);
   return res;
 }
 

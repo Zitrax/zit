@@ -109,8 +109,7 @@ static std::tuple<std::string, std::string> request(Sock& sock,
   constexpr auto VALID_STATUSES =
       make_array(Net::m_http_status_ok, Net::m_http_status_found,
                  Net::m_http_status_moved);
-  if (find(VALID_STATUSES.begin(), VALID_STATUSES.end(), status_code) ==
-      VALID_STATUSES.end()) {
+  if (ranges::find(VALID_STATUSES, status_code) == VALID_STATUSES.end()) {
     throw runtime_error(fmt::format("{}: response returned with status code {}",
                                     url.str(), status_code));
   }
