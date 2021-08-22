@@ -497,7 +497,7 @@ void Torrent::piece_done(std::shared_ptr<Piece>& piece) {
 }
 
 ostream& operator<<(ostream& os, const zit::FileInfo& file_info) {
-  os << "(" << file_info.path() << ", " << file_info.length();
+  os << "(" << file_info.path() << ", " << file_info.length() << " bytes";
   auto md5 = file_info.md5sum();
   if (!md5.empty()) {
     os << ", " << file_info.md5sum();
@@ -531,7 +531,7 @@ ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
   } else {
     os << "Files:\n";
     for (const auto& fi : torrent.files()) {
-      os << "               " << fi;
+      os << "               " << fi << "\n";
     }
   }
   os << "Announce List:\n";
