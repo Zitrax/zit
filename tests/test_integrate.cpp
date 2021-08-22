@@ -167,16 +167,16 @@ static void start(zit::Torrent& torrent) {
   torrent.run();
 }
 
-class TemporaryDir : public ::testing::Test {
+class TestWithTmpDir : public ::testing::Test {
  public:
-  TemporaryDir() {
+  TestWithTmpDir() {
     if (!mkdtemp(m_dirname.data())) {
       throw runtime_error("Could not create temporary directory");
     }
     m_created = true;
   }
 
-  ~TemporaryDir() override {
+  ~TestWithTmpDir() override {
     if (m_created) {
       fs::remove_all(m_dirname.data());
     }
@@ -221,7 +221,7 @@ static auto download(const fs::path& data_dir,
   return target;
 }
 
-class IntegrateF : public ::testing::Test,
+class IntegrateF : public TestWithTmpDir,
                    public ::testing::WithParamInterface<uint8_t> {};
 
 #ifdef INTEGRATION_TESTS
@@ -236,7 +236,9 @@ TEST_P(IntegrateF, DISABLED_download) {
   const auto torrent_file = data_dir / "1MiB.torrent";
   const uint8_t max = GetParam();
 
-  zit::Torrent torrent(torrent_file);
+  const auto download_dir = tmp_dir();
+  zit::Torrent torrent(torrent_file, download_dir);
+  ASSERT_FALSE(torrent.done());
   auto target = download(data_dir, torrent_file, torrent, max);
 
   // Transfer done - Verify content
@@ -250,7 +252,7 @@ INSTANTIATE_TEST_SUITE_P(SeedCount,
                          IntegrateF,
                          ::testing::Values<uint8_t>(1, 2, 5, 10));
 
-using Integrate = TemporaryDir;
+using Integrate = TestWithTmpDir;
 
 #ifdef INTEGRATION_TESTS
 TEST_F(Integrate, download_multi) {
@@ -264,7 +266,9 @@ TEST_F(Integrate, DISABLED_download_multi) {
   const auto torrent_file = data_dir / "multi.torrent";
   // const uint8_t max = GetParam();
 
-  zit::Torrent torrent(torrent_file);
+  const auto download_dir = tmp_dir();
+  zit::Torrent torrent(torrent_file, download_dir);
+  ASSERT_FALSE(torrent.done());
   auto target = download(data_dir, torrent_file, torrent, 1);
   std::cout << "TARGET: " << target << std::endl;
 
