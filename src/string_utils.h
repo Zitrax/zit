@@ -99,4 +99,33 @@ inline std::string to_lower(const std::string& s) {
   return res;
 }
 
+/**
+ * Convert to human readable units (using base 2), i.e. KiB not KB.
+ *
+ * @param bytes Number of bytes to convert
+ */
+inline std::string bytesToHumanReadable(int64_t bytes) {
+  std::vector<std::tuple<int64_t, std::string>> limits{{1L << 40, "TiB"},
+                                                       {1L << 30, "GiB"},
+                                                       {1L << 20, "MiB"},
+                                                       {1L << 10, "KiB"},
+                                                       {0, "B"}};
+  const auto abytes = std::abs(bytes);
+  const auto sign = (bytes < 0 ? "-" : "");
+  for (const auto& [limit, unit] : limits) {
+    if (abytes >= limit) {
+      if (limit) {
+        const auto w = abytes / limit;
+        const auto f =
+            static_cast<float>(abytes - w * limit) / static_cast<float>(limit);
+        return fmt::format("{}{:.2f} {}", sign, static_cast<float>(w) + f,
+                           unit);
+      } else {
+        return fmt::format("{}{} {}", sign, abytes, unit);
+      }
+    }
+  }
+  throw std::runtime_error("Bogus byte conversion");
+}
+
 }  // namespace zit

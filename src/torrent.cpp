@@ -524,7 +524,8 @@ ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
   os << "Private:       " << (torrent.is_private() ? "Yes" : "No") << "\n";
   if (torrent.is_single_file()) {
     os << "Name:          " << torrent.name() << "\n";
-    os << "Length:        " << torrent.length() << "\n";
+    os << "Length:        " << torrent.length() << " bytes ("
+       << bytesToHumanReadable(torrent.length()) << ")\n";
     if (!torrent.md5sum().empty()) {
       os << "MD5Sum:        " << torrent.md5sum() << "\n";
     }

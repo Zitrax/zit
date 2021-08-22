@@ -33,3 +33,19 @@ TEST(string_utils, to_lower) {
   EXPECT_EQ(to_lower("A"), "a");
   EXPECT_EQ(to_lower("AbCdE"), "abcde");
 }
+
+TEST(string_utils, bytesToHumanReadable) {
+  EXPECT_EQ(bytesToHumanReadable(0), "0 B");
+  EXPECT_EQ(bytesToHumanReadable(1L << 0), "1 B");
+  EXPECT_EQ(bytesToHumanReadable(1L << 40), "1.00 TiB");
+  EXPECT_EQ(bytesToHumanReadable(1L << 30), "1.00 GiB");
+  EXPECT_EQ(bytesToHumanReadable((1L << 30) - 10000), "1023.99 MiB");
+  EXPECT_EQ(bytesToHumanReadable(1L << 20), "1.00 MiB");
+  EXPECT_EQ(bytesToHumanReadable(1L << 10), "1.00 KiB");
+  EXPECT_EQ(bytesToHumanReadable((1L << 40) + (1L << 39)), "1.50 TiB");
+  EXPECT_EQ(bytesToHumanReadable(1L << 26), "64.00 MiB");
+  EXPECT_EQ(bytesToHumanReadable(4'660'291), "4.44 MiB");
+
+  EXPECT_EQ(bytesToHumanReadable(-1L), "-1 B");
+  EXPECT_EQ(bytesToHumanReadable(-(1L << 40)), "-1.00 TiB");
+}
