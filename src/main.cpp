@@ -9,8 +9,9 @@
 
 #include <csignal>
 
-#include "spdlog/sinks/stdout_color_sinks.h"
-#include "spdlog/spdlog.h"
+#include <spdlog/cfg/env.h>
+#include <spdlog/sinks/stdout_color_sinks.h>
+#include <spdlog/spdlog.h>
 
 using namespace std;
 using namespace bencode;
@@ -53,7 +54,7 @@ int main(int argc, const char* argv[]) noexcept {
     parser.add_option("--torrent", {}, "Torrent file to download", torrent_file,
                       true);
     parser.add_option<std::string>(
-        "--log-level", "info"s,
+        "--log-level", ""s,
         "Log level (trace, debug, info, warning, error, critical, off)",
         log_level);
     parser.add_option("--dump", {},
@@ -65,11 +66,16 @@ int main(int argc, const char* argv[]) noexcept {
       return 0;
     }
 
-    const auto lvl = spdlog::level::from_str(log_level);
-    if (lvl == spdlog::level::off && log_level != "off") {
-      throw runtime_error("Unknown log level: " + log_level);
+    // This makes it possible to set the level using env: SPDLOG_LEVEL=trace
+    spdlog::cfg::load_env_levels();
+    if (!log_level.empty()) {
+      const auto lvl = spdlog::level::from_str(log_level);
+      if (lvl == spdlog::level::off && log_level != "off") {
+        throw runtime_error("Unknown log level: " + log_level);
+      }
+      console->set_level(lvl);
+      spdlog::stdout_color_mt("file_writer")->set_level(lvl);
     }
-    console->set_level(lvl);
 
     zit::Torrent torrent(torrent_file);
     if (dump) {
@@ -80,7 +86,6 @@ int main(int argc, const char* argv[]) noexcept {
       console->info(
           "Download completed. Continuing to seed. Press ctrl-c to stop.");
     });
-    spdlog::get("file_writer")->set_level(lvl);
     console->info("\n{}", torrent);
 
     sigint_function = [&](int /*s*/) {

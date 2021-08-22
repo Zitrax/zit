@@ -229,7 +229,6 @@ TEST_P(IntegrateF, download) {
 #else
 TEST_P(IntegrateF, DISABLED_download) {
 #endif  // INTEGRATION_TESTS
-  spdlog::get("console")->set_level(spdlog::level::info);
   auto tracker = start_tracker();
 
   const auto data_dir = fs::path(DATA_DIR);
@@ -259,7 +258,6 @@ TEST_F(Integrate, download_multi) {
 #else
 TEST_F(Integrate, DISABLED_download_multi) {
 #endif  // INTEGRATION_TESTS
-  spdlog::get("console")->set_level(spdlog::level::info);
   auto tracker = start_tracker();
 
   const auto data_dir = fs::path(DATA_DIR);
@@ -291,7 +289,6 @@ TEST_F(Integrate, upload) {
 #else
 TEST_F(Integrate, DISABLED_upload) {
 #endif  // INTEGRATION_TESTS
-  spdlog::get("console")->set_level(spdlog::level::info);
   auto tracker = start_tracker();
 
   const auto data_dir = fs::path(DATA_DIR);
@@ -332,7 +329,6 @@ TEST_F(Integrate, multi_upload) {
 #else
 TEST_F(Integrate, DISABLED_multi_upload) {
 #endif  // INTEGRATION_TESTS
-  spdlog::get("console")->set_level(spdlog::level::trace);
   auto tracker = start_tracker();
 
   const auto data_dir = fs::path(DATA_DIR);

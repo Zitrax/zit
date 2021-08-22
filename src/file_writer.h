@@ -21,7 +21,6 @@ static auto init_logger() {
   auto logger = spdlog::get("file_writer");
   if (!logger) {
     logger = spdlog::stdout_color_mt("file_writer");
-    logger->set_level(spdlog::level::debug);
   }
   return logger;
 }
