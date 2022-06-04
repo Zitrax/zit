@@ -4,7 +4,7 @@ jobs:
   build_and_test:
     strategy:
       matrix:
-        compiler: [g++]
+        compiler: [clang]
 
     runs-on: ubuntu-latest
     env:
@@ -16,10 +16,13 @@ jobs:
       uses: turtlebrowser/get-conan@v1.0
       
     - name: Create default profile
-      run: conan profile new default --detect
+      run: conan profile new default
       
     - name: Update profile
-      run: conan profile update settings.compiler.libcxx=libstdc++11 default
+      run: |
+        conan profile update settings.compiler=clang default
+        conan profile update settings.compiler.version=12 default
+        conan profile update settings.compiler.libcxx=libstdc++11 default
       
     - name: Install dependencies
       run: conan install . -s build_type=${{env.BUILD_TYPE}} --install-folder=${{github.workspace}}/build
