@@ -9,6 +9,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       BUILD_TYPE: Release
+      CC: clang-12
+      CXX: clang++-12
     steps:
     - uses: actions/checkout@v3
 
