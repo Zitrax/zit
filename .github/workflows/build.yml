@@ -13,7 +13,7 @@ jobs:
     - uses: actions/checkout@v3
 
     - name: Install compiler
-      run: apt install clang-12 clang-tidy-12
+      run: sudo apt install clang-12 clang-tidy-12
 
     - name: Get Conan
       uses: turtlebrowser/get-conan@v1.0
