@@ -52,6 +52,7 @@ bytes FileWriter::read_block(uint32_t offset,
     ifstream is(path, ios::binary);
     is.exceptions(fstream::failbit | fstream::badbit);
     is.seekg(offset);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     is.read(reinterpret_cast<char*>(data.data() + dpos), len);
     cpos += len;
     remaining -= len;
