@@ -12,12 +12,15 @@ jobs:
     steps:
     - uses: actions/checkout@v3
 
+    - name: Install compiler
+      run: apt install clang-12 clang-tidy-12
+
     - name: Get Conan
       uses: turtlebrowser/get-conan@v1.0
       
     - name: Create default profile
       run: conan profile new default
-      
+    
     - name: Update profile
       run: |
         conan profile update settings.compiler=clang default
