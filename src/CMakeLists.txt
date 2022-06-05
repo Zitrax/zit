@@ -9,7 +9,7 @@ option(ASIO_DEBUG "Add asio debug output" OFF)
 # the compile time went from 16s to 48s.
 #
 if(USE_CLANG_TIDY)
-  find_program(CLANG_TIDY NAMES clang-tidy-12 clang-tidy-10)
+  find_program(CLANG_TIDY NAMES clang-tidy-10)
 
   if(CLANG_TIDY)
     message(STATUS "Enabling clang-tidy: ${CLANG_TIDY}")
