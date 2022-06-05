@@ -46,7 +46,7 @@ bytes FileWriter::read_block(uint32_t offset,
                                              : torrent.tmpfile();
   while (remaining > 0) {
     const auto [fi, offset, left] = torrent.file_at_pos(cpos);
-    const auto len = min(remaining, left);
+    const auto len = numeric_cast<uint32_t>(min(remaining, left));
     const auto path = base / fi.path();
     logger()->trace("Reading {} bytes from {} at offset {}", len, path, offset);
     ifstream is(path, ios::binary);
