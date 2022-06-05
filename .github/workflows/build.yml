@@ -4,7 +4,7 @@ jobs:
   build_and_test:
     strategy:
       matrix:
-        compiler: [ {cxx:clang++-12, cc:clang-12} ] 
+        compiler: [ {cxx: clang++-12, cc: clang-12} ] 
 
     runs-on: ubuntu-latest
     env:
