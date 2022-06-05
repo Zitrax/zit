@@ -38,7 +38,7 @@ add_library(zitlib OBJECT
   arg_parser.cpp
 )
 add_executable(zit main.cpp $<TARGET_OBJECTS:zitlib>)
-target_link_libraries(zitlib PRIVATE CONAN_PKG::spdlog)
+target_link_libraries(zitlib PRIVATE CONAN_PKG::spdlog CONAN_PKG::asio)
 
 if(ASIO_DEBUG)
   target_compile_definitions(zitlib PRIVATE ASIO_ENABLE_HANDLER_TRACKING)
