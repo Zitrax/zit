@@ -71,6 +71,7 @@ add_executable(zit_afl EXCLUDE_FROM_ALL main_afl.cpp)
 target_link_libraries(zit
   ${OPENSSL_SSL_LIBRARIES}
   ${OPENSSL_CRYPTO_LIBRARIES}
+  CONAN_PKG::asio
   CONAN_PKG::tbb
   CONAN_PKG::spdlog
 )
