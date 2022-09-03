@@ -145,8 +145,8 @@ static auto start_seeder(const fs::path& data_dir,
                          const fs::path& torrent_file) {
   // FIXME: get hold of the home dir properly
   fs::remove_all("/home/danielb/.config/transmission");
-  return Process("leecher", {"transmission-cli", "-w", data_dir.c_str(),
-                             torrent_file.c_str()});
+  return Process("leecher", {"transmission-cli", "-B", "-M", "-w",
+                             data_dir.c_str(), torrent_file.c_str()});
 }
 
 /**
@@ -284,6 +284,8 @@ TEST_F(Integrate, DISABLED_download_multi) {
   fs::remove(name);
 }
 
+// TODO: Try using a docker images to get a different ip
+
 #ifdef INTEGRATION_TESTS
 TEST_F(Integrate, upload) {
 #else
@@ -298,6 +300,9 @@ TEST_F(Integrate, DISABLED_upload) {
   zit::Torrent torrent(torrent_file, data_dir);
   ASSERT_TRUE(torrent.done());
 
+  // Connects to tracker and retrieves peers
+  torrent.start();
+
   // Start a leecher that we will upload to
   auto target = tmp_dir() / "upload_test";
   auto leecher = start_leecher(target, torrent_file);
@@ -310,9 +315,6 @@ TEST_F(Integrate, DISABLED_upload) {
 
   // FIXME: How to avoid this sleep?
   this_thread::sleep_for(15s);
-
-  // Connects to tracker and retrieves peers
-  torrent.start();
 
   // Run the peer connections
   torrent.run();

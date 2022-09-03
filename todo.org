@@ -61,9 +61,17 @@
 
 * Pieces marked for retry could be printed on a single line to reduce spam.
 
-* Check multi torrent seeding. Need upload test.
+* DONE Check multi torrent seeding. Need upload test.
 
 * Seems like we contact a lot of peers even when starting up with a finished torrent,
   that is probably unnecessary. Should just wait for others to contact us.
+  Interestingly transmission-cli does not try connect to our listener, it just works
+  when we handshake with transmission. However ktorrent do connect to our listener?
 
 * Can reduce spam in printing verbose tracker url when starting up.
+
+* Handle serving multiple torrents, as of now each torrent has its own listener
+  that only checks against it's own hash. The listeners should initially be torrent
+  agnostic and then attach (or disconnect) to the relevant torrent.
+
+* We can announce and scrape the tracker too - not done at the moment.

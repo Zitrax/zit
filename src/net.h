@@ -83,6 +83,24 @@ class Url {
     return ss.str();
   }
 
+  /** More verbose print for debugging */
+  [[nodiscard]] auto str_verbose() const {
+    std::stringstream ss;
+    const auto port = m_port ? std::to_string(*m_port) : "<not set>";
+    ss << "Scheme:        " << m_scheme << "\n";
+    ss << "Host:          " << m_host << "\n";
+    ss << "Port:          " << port << "\n";
+    ss << "Path:          " << m_path << "\n";
+    if (!m_params.empty()) {
+      ss << "Params:\n";
+      for (const auto& param : m_params) {
+        ss << "  " << param << "\n";
+      }
+    }
+    ss << "Full URL:      " << str() << "\n";
+    return ss.str();
+  }
+
  private:
   std::string m_scheme = "";
   std::string m_host = "";
@@ -92,18 +110,7 @@ class Url {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
-  const auto port = url.port() ? std::to_string(*url.port()) : "<not set>";
-  os << "Scheme:        " << url.scheme() << "\n";
-  os << "Host:          " << url.host() << "\n";
-  os << "Port:          " << port << "\n";
-  os << "Path:          " << url.path() << "\n";
-  if (!url.params().empty()) {
-    os << "Params:\n";
-    for (const auto& param : url.params()) {
-      os << "  " << param << "\n";
-    }
-  }
-  os << "Full URL:      " << url.str() << "\n";
+  os << url.str();
   return os;
 }
 
