@@ -84,7 +84,7 @@ target_link_libraries(zit
 
 if(NOT WIN32)
   target_link_libraries(zit pthread)
-  if(SANITIZED_LIBCXX OR CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+  if(SANITIZED_LIBCXX)
     target_link_libraries(zit c++fs)
   else()
     target_link_libraries(zit stdc++fs)
