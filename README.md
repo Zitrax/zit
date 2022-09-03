@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/Zitrax/zit.svg?branch=master)](https://travis-ci.org/Zitrax/zit)
+![Build](https://github.com/Zitrax/zit/actions/workflows/build.yml/badge.svg)
 
 Build instructions
 
