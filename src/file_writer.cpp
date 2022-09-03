@@ -45,13 +45,13 @@ bytes FileWriter::read_block(uint32_t offset,
   const auto base = torrent.is_single_file() ? torrent.tmpfile().parent_path()
                                              : torrent.tmpfile();
   while (remaining > 0) {
-    const auto [fi, offset, left] = torrent.file_at_pos(cpos);
+    const auto [fi, off, left] = torrent.file_at_pos(cpos);
     const auto len = numeric_cast<uint32_t>(min(remaining, left));
     const auto path = base / fi.path();
-    logger()->trace("Reading {} bytes from {} at offset {}", len, path, offset);
+    logger()->trace("Reading {} bytes from {} at offset {}", len, path, off);
     ifstream is(path, ios::binary);
     is.exceptions(fstream::failbit | fstream::badbit);
-    is.seekg(offset);
+    is.seekg(off);
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     is.read(reinterpret_cast<char*>(data.data() + dpos), len);
     cpos += len;
