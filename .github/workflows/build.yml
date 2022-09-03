@@ -4,7 +4,7 @@ jobs:
   build_and_test:
     strategy:
       matrix:
-        compiler: [ {type: clang, bin: clang, ver: 12}, {type: gcc, bin: g++, ver: 10} ] 
+        compiler: [ {type: clang, bin: clang, ver: 14}, {type: gcc, bin: g++, ver: 11} ] 
 
     runs-on: ubuntu-22.04
     env:
