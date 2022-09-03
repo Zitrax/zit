@@ -37,9 +37,10 @@ add_executable(zitest
   test_types.cpp
   $<TARGET_OBJECTS:zitlib>)
 target_link_libraries(zitest
-${OPENSSL_SSL_LIBRARIES}
-${OPENSSL_CRYPTO_LIBRARIES}
+#${OPENSSL_SSL_LIBRARIES}
+#${OPENSSL_CRYPTO_LIBRARIES}
 Threads::Threads
+CONAN_PKG:openssl
 CONAN_PKG::asio
 CONAN_PKG::tbb
 CONAN_PKG::gtest
