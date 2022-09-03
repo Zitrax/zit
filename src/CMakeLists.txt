@@ -10,7 +10,7 @@ option(DISABLE_LTO "Turn off lto" OFF)
 # the compile time went from 16s to 48s.
 #
 if(USE_CLANG_TIDY)
-  find_program(CLANG_TIDY NAMES clang-tidy-10)
+  find_program(CLANG_TIDY NAMES clang-tidy-14)
 
   if(CLANG_TIDY)
     message(STATUS "Enabling clang-tidy: ${CLANG_TIDY}")

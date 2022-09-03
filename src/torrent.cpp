@@ -52,6 +52,8 @@ static auto beDictToFileInfo(const Element& element) {
       md5);
 }
 
+// Could possibly be grouped in a struct
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 Torrent::Torrent(const filesystem::path& file, std::filesystem::path data_dir)
     : m_data_dir(std::move(data_dir)) {
   m_logger = spdlog::get("console");
@@ -161,7 +163,7 @@ void Torrent::verify_existing_file() {
            this  // Be careful what is used from this. It needs to be thread
                  // safe.
       ](const Sha1& sha1) {
-            const auto id = zit::numeric_cast<uint32_t>(&sha1 - &m_pieces[0]);
+            const auto id = zit::numeric_cast<uint32_t>(&sha1 - m_pieces.data());
             const auto offset = id * m_piece_length;
             ifstream is{m_tmpfile, ios::in | ios::binary};
             is.exceptions(ifstream::failbit | ifstream::badbit);
@@ -195,7 +197,7 @@ void Torrent::verify_existing_file() {
            this  // Be careful what is used from this. It needs to be
                  // thread safe.
       ](const Sha1& sha1) {
-            const auto id = zit::numeric_cast<uint32_t>(&sha1 - &m_pieces[0]);
+            const auto id = zit::numeric_cast<uint32_t>(&sha1 - m_pieces.data());
             const auto pos = id * m_piece_length;
             // The piece might be spread over more than one file
             bytes data(m_piece_length, 0_b);
@@ -425,6 +427,8 @@ void Torrent::retry_pieces() {
   }
 }
 
+// TODO: Yes, should group these in one type
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 bool Torrent::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
   std::lock_guard<std::mutex> lock(m_mutex);
   // Look up relevant piece object among active pieces

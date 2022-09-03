@@ -25,9 +25,12 @@ namespace zit {
 // we use std::bind, std::shared_ptr, etc... which
 // differs slightly from the boost examples.
 
+// TODO: Use strong types
 PeerConnection::PeerConnection(Peer& peer,
                                asio::io_service& io_service,
+                               // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
                                unsigned short listening_port,
+                               // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
                                unsigned short connection_port)
     : peer_(peer),
       resolver_(io_service),

@@ -89,7 +89,7 @@ bytes Piece::get_block(uint32_t offset,
     m_logger->debug("Returning block {} in piece {} from memory", block_id,
                     m_id);
     auto start = m_data.begin() + offset;
-    return bytes(start, start + length);
+    return {start, start + length};
   }
   // Is it on disk?
   m_logger->debug("Returning block {} in piece {} from disk", block_id, m_id);

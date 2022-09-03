@@ -56,11 +56,11 @@ Bitfield::Bitfield(bytes::size_type count) {
 
 Bitfield::Proxy Bitfield::operator[](bytes::size_type i) const {
   // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-  return Bitfield::Proxy(const_cast<Bitfield&>(*this), i);
+  return {const_cast<Bitfield&>(*this), i};
 }
 
 Bitfield::Proxy Bitfield::operator[](bytes::size_type i) {
-  return Bitfield::Proxy(*this, i);
+  return {*this, i};
 }
 
 Bitfield Bitfield::operator-(const Bitfield& other) const {
