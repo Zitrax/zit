@@ -65,7 +65,7 @@ if(WIN32)
   endif()
 endif()
 
-find_package(OpenSSL REQUIRED)
+#find_package(OpenSSL REQUIRED)
 
 include_directories(SYSTEM "external")
 
