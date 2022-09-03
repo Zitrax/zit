@@ -82,7 +82,7 @@ if(UNIX)
       -Wno-global-constructors            # performance startup-time
       -Wno-exit-time-destructors          # similar as ^ for destructors
       -Wno-undefined-func-template        # does not seem very important
-      -Wno-return-std-move-in-c++11       # not relevant on new compilers
+     #-Wno-return-std-move-in-c++11       # not relevant on new compilers
       -Wno-zero-as-null-pointer-constant  # fails clang-10 on travis but not locally?
       -Wno-disabled-macro-expansion       # Does not work when interfacing with csignal
     )
