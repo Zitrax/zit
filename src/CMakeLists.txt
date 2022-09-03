@@ -43,6 +43,7 @@ target_link_libraries(zitlib PRIVATE
   CONAN_PKG::spdlog
   CONAN_PKG::asio
   CONAN_PKG::openssl
+  CONAN_PKG::tbb
 )
 
 if(ASIO_DEBUG)
