@@ -35,7 +35,7 @@ Sha1::Sha1() : array() {
 }
 
 std::string Sha1::str() const {
-  return std::string(data(), SHA_LENGTH);
+  return {data(), SHA_LENGTH};
 }
 
 std::string Sha1::hex() const {
@@ -78,7 +78,7 @@ Sha1 Sha1::calculateFile(const std::filesystem::path& file) {
   const int BUFFER_SIZE = 1024;
   vector<char> buffer(BUFFER_SIZE, 0);
 
-  while (file_stream.read(&buffer[0], BUFFER_SIZE)) {
+  while (file_stream.read(buffer.data(), BUFFER_SIZE)) {
     SHA1_Update(&ctxt, buffer.data(), BUFFER_SIZE);
   }
 
@@ -86,7 +86,7 @@ Sha1 Sha1::calculateFile(const std::filesystem::path& file) {
   SHA1_Update(&ctxt, buffer.data(), numeric_cast<size_t>(file_stream.gcount()));
 
   Sha1 ret;
-  SHA1_Final(reinterpret_cast<unsigned char*>(&ret[0]), &ctxt);
+  SHA1_Final(reinterpret_cast<unsigned char*>(ret.data()), &ctxt);
   return ret;
 }
 
@@ -96,7 +96,7 @@ Sha1 Sha1::fromBuffer(const T& buffer, typename T::size_type offset) {
     throw invalid_argument("Buffer too small for extracting sha1");
   }
   Sha1 ret;
-  copy_n(reinterpret_cast<const char*>(&buffer[offset]), SHA_LENGTH, &ret[0]);
+  copy_n(reinterpret_cast<const char*>(&buffer[offset]), SHA_LENGTH, ret.data());
   return ret;
 }
 

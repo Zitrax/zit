@@ -105,7 +105,7 @@ list(FILTER ALL_SOURCE_FILES EXCLUDE REGEX "#")
 list(FILTER ALL_HEADER_FILES EXCLUDE REGEX "#")
 set(ALL_INPUT_FILES ${ALL_SOURCE_FILES} ${ALL_HEADER_FILES})
 
-find_program(CLANG_FORMAT NAMES clang-format-10)
+find_program(CLANG_FORMAT NAMES clang-format-14)
 if(CLANG_FORMAT)
   add_custom_target(format
     COMMENT "Formatting ${ALL_INPUT_FILES}"

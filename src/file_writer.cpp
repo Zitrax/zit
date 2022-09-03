@@ -194,7 +194,7 @@ class MultiTorrentDestination : public TorrentDestination {
     while (remaining > 0) {
       const auto done = piece.piece_size() - remaining;
       const auto pos =
-          numeric_cast<int64_t>(piece.id() * torrent()->piece_length() + done);
+          numeric_cast<int64_t>(piece.id() * torrent()->piece_length()) + done;
       const auto [fi, offset, left] = torrent()->file_at_pos(pos);
       const auto len = min(remaining, left);
       logger()->debug("Writing: {} -> {} ({}) done={} offset={} (In: {})", pos,
