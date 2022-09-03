@@ -487,9 +487,9 @@ optional<shared_ptr<Piece>> Peer::next_piece(bool non_requested) {
     }
 
     const auto id = numeric_cast<uint32_t>(*next_id);
-    auto piece = m_torrent.active_piece(id);
+    const auto piece = m_torrent.active_piece(id);
     if (!non_requested || (piece && piece->next_offset(false))) {
-      return std::move(piece);
+      return piece;
     }
     (*next_id)++;
   }
