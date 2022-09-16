@@ -131,7 +131,9 @@ class Process {
   string m_name;
 };
 
-static auto start_tracker() {
+namespace {
+
+auto start_tracker() {
   auto tracker = Process(
       "tracker", {"/home/danielb/git/opentracker/opentracker", "-p", "8000"},
       nullptr);
@@ -141,10 +143,16 @@ static auto start_tracker() {
   return tracker;
 }
 
-static auto start_seeder(const fs::path& data_dir,
-                         const fs::path& torrent_file) {
-  // FIXME: get hold of the home dir properly
-  fs::remove_all("/home/danielb/.config/transmission");
+fs::path home_dir() {
+  const auto home = getenv("HOME");
+  if (!home || strlen(home) < 2) {
+    throw runtime_error("HOME environment variable not set or invalid");
+  }
+  return {home};
+}
+
+auto start_seeder(const fs::path& data_dir, const fs::path& torrent_file) {
+  fs::remove_all(home_dir() / ".config/transmission");
   return Process("leecher", {"transmission-cli", "-w", data_dir.c_str(),
                              torrent_file.c_str()});
 }
@@ -156,16 +164,45 @@ static auto start_seeder(const fs::path& data_dir,
  *  - rm eventual old file
  *  - seed with zit
  */
-static auto start_leecher(const fs::path& target,
-                          const fs::path& torrent_file) {
+auto start_leecher(const fs::path& target, const fs::path& torrent_file) {
   fs::remove(target);
   return start_seeder(target, torrent_file);
 }
 
-static void start(zit::Torrent& torrent) {
+void start(zit::Torrent& torrent) {
   torrent.start();
   torrent.run();
 }
+
+auto download(const fs::path& data_dir,
+              const fs::path& torrent_file,
+              zit::Torrent& torrent,
+              uint8_t max) {
+  spdlog::get("console")->info("Starting {} seeders...", max);
+  vector<Process> seeders;
+  for (int i = 0; i < max; ++i) {
+    seeders.emplace_back(start_seeder(data_dir, torrent_file));
+  }
+
+  // Allow some time for the seeders to start
+  // FIXME: Avoid this sleep
+  this_thread::sleep_for(15s);
+
+  // Download torrent with zit
+  auto target = torrent.name();
+
+  // Ensure we do not already have it
+  fs::remove(target);
+
+  zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
+    spdlog::get("console")->info("Download completed");
+    torrent.stop();
+  });
+  start(torrent);
+  return target;
+}
+
+}  // namespace
 
 class TestWithTmpDir : public ::testing::Test {
  public:
@@ -192,34 +229,6 @@ class TestWithTmpDir : public ::testing::Test {
   array<char, 16> m_dirname{'/', 't', 'm', 'p', '/', 'z', 'i', 't',
                             '_', 'X', 'X', 'X', 'X', 'X', 'X', '\0'};
 };
-
-static auto download(const fs::path& data_dir,
-                     const fs::path& torrent_file,
-                     zit::Torrent& torrent,
-                     uint8_t max) {
-  spdlog::get("console")->info("Starting {} seeders...", max);
-  vector<Process> seeders;
-  for (int i = 0; i < max; ++i) {
-    seeders.emplace_back(start_seeder(data_dir, torrent_file));
-  }
-
-  // Allow some time for the seeders to start
-  // FIXME: Avoid this sleep
-  this_thread::sleep_for(15s);
-
-  // Download torrent with zit
-  auto target = torrent.name();
-
-  // Ensure we do not already have it
-  fs::remove(target);
-
-  zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
-    spdlog::get("console")->info("Download completed");
-    torrent.stop();
-  });
-  start(torrent);
-  return target;
-}
 
 class IntegrateF : public TestWithTmpDir,
                    public ::testing::WithParamInterface<uint8_t> {};
