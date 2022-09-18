@@ -157,14 +157,14 @@ class Torrent {
    * Callback that will be called whenever a piece has finished downloading.
    */
   void set_piece_callback(PieceCallback piece_callback) {
-    m_piece_callback = piece_callback;
+    m_piece_callback = std::move(piece_callback);
   }
 
   /**
    * Callback when a peer disconnects.
    */
   void set_disconnect_callback(DisconnectCallback disconnect_callback) {
-    m_disconnect_callback = disconnect_callback;
+    m_disconnect_callback = std::move(disconnect_callback);
   }
 
   void disconnected(Peer* peer);

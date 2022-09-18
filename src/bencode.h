@@ -245,7 +245,7 @@ inline std::string encode_internal(const BeDict& emap) {
 }
 
 inline ElmPtr decodeInt(std::istringstream& iss) {
-  int64_t i64;
+  int64_t i64{};
   iss >> i64;
   if (iss.fail()) {
     throw std::invalid_argument("Could not convert to integer");
@@ -257,7 +257,7 @@ inline ElmPtr decodeInt(std::istringstream& iss) {
 }
 
 inline ElmPtr decodeString(std::istringstream& iss) {
-  uint64_t strlen;
+  uint64_t strlen{};
   iss >> strlen;
   if (iss.fail()) {
     throw std::invalid_argument("Could not convert string length to integer");
@@ -270,7 +270,7 @@ inline ElmPtr decodeString(std::istringstream& iss) {
                                 " larger than max size");
   }
   std::string str(strlen, '\0');
-  iss.read(&str[0], zit::numeric_cast<std::streamsize>(strlen));
+  iss.read(str.data(), zit::numeric_cast<std::streamsize>(strlen));
   if (iss.eof()) {
     throw std::invalid_argument("String not of expected length");
   }

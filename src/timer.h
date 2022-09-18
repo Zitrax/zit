@@ -7,8 +7,8 @@ namespace zit {
 
 class Timer {
  public:
-  Timer(const std::string& name)
-      : m_name(name), m_start(std::chrono::system_clock::now()) {}
+  explicit Timer(std::string name)
+      : m_name(std::move(name)), m_start(std::chrono::system_clock::now()) {}
 
   ~Timer() {
     const std::chrono::duration<double> total =

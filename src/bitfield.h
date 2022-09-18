@@ -62,7 +62,7 @@ class Bitfield {
     operator bool() const;
 
    private:
-    uint8_t bit() const;
+    [[nodiscard]] uint8_t bit() const;
 
     Bitfield& m_bitfield;
     bytes::size_type m_i;

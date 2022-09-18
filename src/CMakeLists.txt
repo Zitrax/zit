@@ -14,7 +14,7 @@ if(USE_CLANG_TIDY)
 
   if(CLANG_TIDY)
     message(STATUS "Enabling clang-tidy: ${CLANG_TIDY}")
-    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY}")
+    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY};--header-filter=${CMAKE_CURRENT_SOURCE_DIR}/.*\\.h")
   else()
       message(WARNING "Could not find clang-tidy, tidy checking not available")
   endif()
