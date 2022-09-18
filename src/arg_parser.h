@@ -88,7 +88,7 @@ class ArgParser {
     void* dst() override { return &m_dst; }
 
     [[nodiscard]] auto dst() const { return m_dst; }
-    void set_dst(T t) { t = std::move(t); }
+    void set_dst(T t) { m_dst = std::move(t); }
 
    private:
     T& m_dst{};
