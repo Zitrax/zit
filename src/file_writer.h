@@ -37,13 +37,13 @@ static auto init_logger() {
  */
 class FileWriter {
  private:
-  FileWriter(TorrentWrittenCallback cb)
+  explicit FileWriter(TorrentWrittenCallback cb)
       : m_torrent_written_callback(std::move(cb)) {}
 
-  auto logger() { return init_logger(); }
+  static auto logger() { return init_logger(); }
 
  public:
-  static FileWriter& getInstance(TorrentWrittenCallback cb = {}) {
+  static FileWriter& getInstance(const TorrentWrittenCallback& cb = {}) {
     static FileWriter instance(cb);
     // FIXME: This not really good - an singleton that is reset for each
     // time getInstance() called.
@@ -68,7 +68,7 @@ class FileWriter {
   void run();
 
   /**
-   * Call this to stop the FileWriter. If will stop after finishing current
+   * Call this to stop the FileWriter. It will stop after finishing current
    * write.
    */
   void stop() {
@@ -102,13 +102,17 @@ class FileWriter {
  */
 class FileWriterThread {
  public:
-  explicit FileWriterThread(Torrent& torrent, TorrentWrittenCallback cb = {})
+  explicit FileWriterThread(Torrent& torrent,
+                            const TorrentWrittenCallback& cb = {})
       : m_logger(init_logger()),
         m_file_writer(FileWriter::getInstance(cb)),
         m_file_writer_thread([this]() { m_file_writer.run(); }) {
     using std::placeholders::_1;
     using std::placeholders::_2;
-    torrent.set_piece_callback(bind(&FileWriter::add, &m_file_writer, _1, _2));
+    torrent.set_piece_callback(
+        [&](Torrent* t, const std::shared_ptr<Piece>& piece) {
+          m_file_writer.add(t, piece);
+        });
   }
 
   ~FileWriterThread() {

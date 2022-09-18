@@ -15,7 +15,7 @@ void ArgParser::add_option(const string& option,
                            T& dst,
                            bool required) {
   if (ranges::find_if(m_options, [&](const auto& a) {
-        return a->m_option == option;
+        return a->option() == option;
       }) != m_options.end()) {
     throw runtime_error(fmt::format("Duplicate option '{}' added", option));
   }
@@ -52,7 +52,7 @@ void ArgParser::add_help_option(const std::string& option,
                                 const std::string& help,
                                 bool& dst) {
   add_option(option, {false}, help, dst, false);
-  m_options.back()->m_help_arg = true;
+  m_options.back()->set_help_arg(true);
 }
 
 template void ArgParser::add_option<bool>(const string&,
@@ -91,14 +91,14 @@ void ArgParser::parse(int argc, const char* argv[]) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     std::string_view name = argv[i];
     auto m = ranges::find_if(
-        m_options, [&](const auto& a) { return a->m_option == name; });
+        m_options, [&](const auto& a) { return a->option() == name; });
     if (m == m_options.end()) {
       throw runtime_error(fmt::format("Unknown argument: {}", name));
     }
     auto& arg = *m;
 
-    if (arg->m_type == Type::BOOL) {
-      as<bool>(arg).m_dst = true;
+    if (arg->type() == Type::BOOL) {
+      as<bool>(arg).set_dst(true);
     } else {
       // Read next arg
       if (i == argc - 1) {
@@ -107,19 +107,19 @@ void ArgParser::parse(int argc, const char* argv[]) {
       // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
       const char* val = argv[i++ + 1];
 
-      switch (arg->m_type) {
+      switch (arg->type()) {
         case Type::FLOAT: {
           float fval = std::strtof(val, nullptr);
           if (errno == ERANGE) {
             throw std::out_of_range(fmt::format(
                 "Value for argument '{}' is out of range for type", name));
           }
-          as<float>(arg).m_dst = fval;
+          as<float>(arg).set_dst(fval);
         } break;
         case Type::INT:
           try {
-            as<int>(arg).m_dst =
-                numeric_cast<int>(std::strtol(val, nullptr, 10));
+            as<int>(arg).set_dst(
+                numeric_cast<int>(std::strtol(val, nullptr, 10)));
           } catch (const std::out_of_range&) {
             throw std::out_of_range(fmt::format(
                 "Value for argument '{}' is out of range for type", name));
@@ -127,32 +127,32 @@ void ArgParser::parse(int argc, const char* argv[]) {
           break;
         case Type::UINT:
           try {
-            as<unsigned>(arg).m_dst =
-                numeric_cast<unsigned>(std::strtol(val, nullptr, 10));
+            as<unsigned>(arg).set_dst(
+                numeric_cast<unsigned>(std::strtol(val, nullptr, 10)));
           } catch (const std::out_of_range&) {
             throw std::out_of_range(fmt::format(
                 "Value for argument '{}' is out of range for type", name));
           }
           break;
         case Type::STRING:
-          as<string>(arg).m_dst = val;
+          as<string>(arg).set_dst(val);
           break;
         case Type::BOOL:
           throw runtime_error("Invalid option type");
       }
     }
-    arg->m_provided = true;
+    arg->set_provided(true);
   }
 
   // Check if all options got values
   auto nop = ranges::find_if(
-      m_options, [](const auto& o) { return !o->m_provided && o->m_required; });
+      m_options, [](const auto& o) { return !o->provided() && o->required(); });
   if (nop != m_options.end()) {
     if (!ranges::any_of(m_options, [](const auto& o) {
-          return o->m_help_arg && o->m_provided;
+          return o->help_arg() && o->provided();
         })) {
       throw runtime_error(
-          fmt::format("Required option '{}' not provided", (*nop)->m_option));
+          fmt::format("Required option '{}' not provided", (*nop)->option()));
     }
   }
 }
@@ -162,16 +162,16 @@ std::string ArgParser::usage() {
   ss << "Usage:\n\n" << m_desc << "\n\n";
 
   auto it = ranges::max_element(m_options, [](const auto& a, const auto& b) {
-    return a->m_option.size() < b->m_option.size();
+    return a->option().size() < b->option().size();
   });
   if (it == m_options.end()) {
     return ss.str();
   }
-  const auto width = (*it)->m_option.size();
+  const auto width = (*it)->option().size();
 
   for (const auto& option : m_options) {
-    ss << fmt::format("  {:{}}    {} {}\n", option->m_option, width,
-                      option->m_help, option->m_required ? "(required)"s : ""s);
+    ss << fmt::format("  {:{}}    {} {}\n", option->option(), width,
+                      option->help(), option->required() ? "(required)"s : ""s);
   }
   return ss.str();
 }

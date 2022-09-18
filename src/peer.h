@@ -129,7 +129,7 @@ class Peer {
   /**
    * Verify that an info hash is the one we are handling.
    */
-  bool verify_info_hash(const Sha1& info_hash) const;
+  [[nodiscard]] bool verify_info_hash(const Sha1& info_hash) const;
 
   /**
    * Report the pieces we have to the remote client. This will only be done if
@@ -152,7 +152,7 @@ class Peer {
   /**
    * Return true if this listening to incoming connections.
    */
-  bool is_listening() const { return m_listening; }
+  [[nodiscard]] bool is_listening() const { return m_listening; }
 
   /**
    * Return next piece.
