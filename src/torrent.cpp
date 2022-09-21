@@ -1,11 +1,11 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
-#include "torrent.h"
-#include "bencode.h"
-#include "file_utils.h"
-#include "peer.h"
-#include "sha1.h"
-#include "string_utils.h"
-#include "timer.h"
+#include "torrent.hpp"
+#include "bencode.hpp"
+#include "file_utils.hpp"
+#include "peer.hpp"
+#include "sha1.hpp"
+#include "string_utils.hpp"
+#include "timer.hpp"
 
 #include "spdlog/spdlog.h"
 

@@ -1,6 +1,6 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
-#include "bitfield.h"
-#include "types.h"
+#include "bitfield.hpp"
+#include "types.hpp"
 
 #include <array>
 #include <iostream>

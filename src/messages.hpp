@@ -5,7 +5,7 @@
 #include <limits>
 #include <type_traits>
 
-#include "peer.h"
+#include "peer.hpp"
 
 #include "spdlog/spdlog.h"
 

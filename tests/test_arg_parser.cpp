@@ -1,4 +1,4 @@
-#include "arg_parser.h"
+#include "arg_parser.hpp"
 #include "gtest/gtest.h"
 
 #include <limits.h>

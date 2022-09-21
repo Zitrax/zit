@@ -9,7 +9,7 @@
 #include <type_traits>
 #include <vector>
 
-#include "types.h"
+#include "types.hpp"
 
 namespace bencode {
 

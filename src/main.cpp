@@ -1,11 +1,11 @@
 #include <filesystem>
 #include <iostream>
 #include <vector>
-#include "arg_parser.h"
-#include "bencode.h"
-#include "file_writer.h"
-#include "net.h"
-#include "torrent.h"
+#include "arg_parser.hpp"
+#include "bencode.hpp"
+#include "file_writer.hpp"
+#include "net.hpp"
+#include "torrent.hpp"
 
 #include <csignal>
 

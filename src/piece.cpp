@@ -1,9 +1,9 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
-#include "piece.h"
+#include "piece.hpp"
 
 #include "spdlog/spdlog.h"
 
-#include "file_writer.h"
+#include "file_writer.hpp"
 
 using namespace std;
 

@@ -1,8 +1,8 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
-#include "arg_parser.h"
+#include "arg_parser.hpp"
 
 #include "spdlog/fmt/fmt.h"
-#include "types.h"
+#include "types.hpp"
 
 using namespace std;
 

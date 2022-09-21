@@ -1,5 +1,5 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
-#include "bitfield.h"
+#include "bitfield.hpp"
 #include "gtest/gtest.h"
 
 #include <iostream>

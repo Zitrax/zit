@@ -1,6 +1,6 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "gtest/gtest.h"
-#include "string_utils.h"
+#include "string_utils.hpp"
 
 using namespace std;
 using namespace zit;

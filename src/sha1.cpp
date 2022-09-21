@@ -1,5 +1,5 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
-#include "sha1.h"
+#include "sha1.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -8,7 +8,7 @@
 
 #include <openssl/sha.h>
 
-#include "string_utils.h"
+#include "string_utils.hpp"
 
 using namespace std;
 

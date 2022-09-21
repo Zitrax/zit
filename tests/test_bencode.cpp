@@ -1,5 +1,5 @@
-#include "bencode.h"
-#include "file_utils.h"
+#include "bencode.hpp"
+#include "file_utils.hpp"
 #include "gtest/gtest.h"
 
 using namespace bencode;

@@ -1,6 +1,6 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "gtest/gtest.h"
-#include "torrent.h"
+#include "torrent.hpp"
 
 namespace fs = std::filesystem;
 

@@ -20,8 +20,8 @@
 #include <thread>
 #include <utility>
 
-#include <file_writer.h>
-#include <torrent.h>
+#include <file_writer.hpp>
+#include <torrent.hpp>
 
 #include "gtest/gtest.h"
 
