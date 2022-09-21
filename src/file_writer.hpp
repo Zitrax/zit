@@ -1,7 +1,7 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
-#include "torrent.h"
+#include "torrent.hpp"
 
 #include <condition_variable>
 #include <filesystem>

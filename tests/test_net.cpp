@@ -1,6 +1,6 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "gtest/gtest.h"
-#include "net.h"
+#include "net.hpp"
 
 #include <spdlog/common.h>
 #include <spdlog/spdlog.h>

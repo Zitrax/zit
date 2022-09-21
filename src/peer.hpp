@@ -1,11 +1,11 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
-#include "bitfield.h"
-#include "net.h"
-#include "piece.h"
-#include "sha1.h"
-#include "types.h"
+#include "bitfield.hpp"
+#include "net.hpp"
+#include "piece.hpp"
+#include "sha1.hpp"
+#include "types.hpp"
 
 #include "spdlog/spdlog.h"
 

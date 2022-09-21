@@ -1,5 +1,5 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
-#include "messages.h"
+#include "messages.hpp"
 
 #include <algorithm>
 #include <cstring>
@@ -8,7 +8,7 @@
 #include <optional>
 
 #include "spdlog/spdlog.h"
-#include "string_utils.h"
+#include "string_utils.hpp"
 
 using namespace std;
 

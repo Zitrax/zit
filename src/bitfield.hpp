@@ -1,7 +1,7 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
-#include "types.h"
+#include "types.hpp"
 
 #include <optional>
 

@@ -3,8 +3,8 @@
 
 #include <cstdint>
 #include <filesystem>
-#include "bitfield.h"
-#include "types.h"
+#include "bitfield.hpp"
+#include "types.hpp"
 
 #include "spdlog/spdlog.h"
 

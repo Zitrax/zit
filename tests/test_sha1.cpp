@@ -1,5 +1,5 @@
 #include "gtest/gtest.h"
-#include "sha1.h"
+#include "sha1.hpp"
 
 using namespace zit;
 namespace fs = std::filesystem;

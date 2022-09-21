@@ -1,5 +1,5 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
-#include "net.h"
+#include "net.hpp"
 
 #include <asio.hpp>
 #include <asio/buffers_iterator.hpp>
@@ -14,8 +14,8 @@
 #include <regex>
 #include <stdexcept>
 
-#include "string_utils.h"
-#include "types.h"
+#include "string_utils.hpp"
+#include "types.hpp"
 
 using asio::detail::socket_ops::host_to_network_short;
 using asio::ip::tcp;

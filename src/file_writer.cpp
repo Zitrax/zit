@@ -1,8 +1,8 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
-#include "file_writer.h"
+#include "file_writer.hpp"
 
-#include "sha1.h"
-#include "string_utils.h"
+#include "sha1.hpp"
+#include "string_utils.hpp"
 
 #include <cstdio>
 #include <filesystem>

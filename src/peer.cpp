@@ -1,14 +1,14 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
-#include "peer.h"
+#include "peer.hpp"
 
-#include "string_utils.h"
+#include "string_utils.hpp"
 
 #include <iostream>
 #include <memory>
 #include <optional>
-#include "messages.h"
+#include "messages.hpp"
 #include "spdlog/spdlog.h"
-#include "torrent.h"
+#include "torrent.hpp"
 
 using asio::ip::tcp;
 using namespace std;

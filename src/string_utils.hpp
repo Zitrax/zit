@@ -7,7 +7,7 @@
 #include <stdexcept>
 #include <string>
 
-#include "types.h"
+#include "types.hpp"
 
 namespace zit {
 

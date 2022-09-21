@@ -1,6 +1,6 @@
 #include <fstream>
 #include <iostream>
-#include "bencode.h"
+#include "bencode.hpp"
 
 int main(int argc, char** argv) {
   if (argc > 1) {

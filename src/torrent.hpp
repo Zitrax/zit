@@ -5,8 +5,8 @@
 #include <utility>
 #include <vector>
 
-#include "peer.h"
-#include "sha1.h"
+#include "peer.hpp"
+#include "sha1.hpp"
 
 // Needed for spdlog to handle operator<<
 #include "spdlog/fmt/ostr.h"

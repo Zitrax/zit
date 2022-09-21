@@ -1,6 +1,6 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "gtest/gtest.h"
-#include "types.h"
+#include "types.hpp"
 
 using namespace zit;
 
