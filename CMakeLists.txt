@@ -2,7 +2,14 @@ cmake_minimum_required (VERSION 3.13)
 set(CMAKE_CXX_STANDARD 20)
 project(zit CXX)
 
+include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
+
 option(USE_CLANG_TIDY "Use clang-tidy when building" ON)
+
+find_package(asio)
+find_package(OpenSSL)
+find_package(spdlog)
+find_package(TBB)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 

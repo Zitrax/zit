@@ -6,7 +6,7 @@
 #include "bitfield.hpp"
 #include "types.hpp"
 
-#include "spdlog/spdlog.h"
+#include <spdlog/spdlog.h>
 
 namespace zit {
 

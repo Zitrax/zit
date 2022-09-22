@@ -9,7 +9,7 @@
 
 #include <asio.hpp>
 
-#include "spdlog/fmt/fmt.h"
+#include <spdlog/fmt/fmt.h>
 
 using asio::detail::socket_ops::host_to_network_long;
 

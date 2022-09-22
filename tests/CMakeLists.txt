@@ -3,6 +3,7 @@ option(INTEGRATION_TESTS "Enable integration tests" OFF)
 option(TESTS_ASAN "Enable address sanitizer" OFF)
 
 find_package(Threads)
+find_package(GTest)
 
 if(COVERAGE)
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
@@ -38,12 +39,12 @@ add_executable(zitest
   $<TARGET_OBJECTS:zitlib>)
 
 target_link_libraries(zitest
+  asio::asio
+  GTest::gtest
+  OpenSSL::OpenSSL
+  spdlog::spdlog
+  tbb
   Threads::Threads
-  CONAN_PKG::openssl
-  CONAN_PKG::asio
-  CONAN_PKG::tbb
-  CONAN_PKG::gtest
-  CONAN_PKG::spdlog
 )
 
 if(NOT WIN32)
