@@ -2,7 +2,8 @@ cmake_minimum_required (VERSION 3.13)
 set(CMAKE_CXX_STANDARD 20)
 project(zit CXX)
 
-include(${CMAKE_BINARY_DIR}/conan_paths.cmake)
+# Read conan path info if existing
+include(${CMAKE_BINARY_DIR}/conan_paths.cmake OPTIONAL)
 
 option(USE_CLANG_TIDY "Use clang-tidy when building" ON)
 

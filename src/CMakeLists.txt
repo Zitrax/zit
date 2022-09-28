@@ -42,7 +42,7 @@ add_library(zitlib OBJECT
 target_link_libraries(zitlib
   PRIVATE
     asio::asio
-    OpenSSL::OpenSSL
+    OpenSSL::SSL
     spdlog::spdlog
     tbb
 )
@@ -81,7 +81,7 @@ add_custom_target(doc COMMAND doxygen WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 add_executable(zit_afl EXCLUDE_FROM_ALL main_afl.cpp)
 target_link_libraries(zit
   asio::asio
-  OpenSSL::OpenSSL
+  OpenSSL::SSL
   spdlog::spdlog
   tbb
 )
