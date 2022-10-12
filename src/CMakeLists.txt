@@ -44,7 +44,7 @@ target_link_libraries(zitlib
     asio::asio
     OpenSSL::SSL
     spdlog::spdlog
-    tbb
+    TBB::tbb
 )
 
 add_executable(zit main.cpp)
@@ -83,7 +83,7 @@ target_link_libraries(zit
   asio::asio
   OpenSSL::SSL
   spdlog::spdlog
-  tbb
+  TBB::tbb
 )
 
 if(NOT WIN32)

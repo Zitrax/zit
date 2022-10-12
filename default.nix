@@ -30,7 +30,7 @@ in pkgs.stdenv.mkDerivation rec {
   # Adding FindXXX.cmake for packages not providing CMake support
   configurePhase = ''
         echo '
-    find_path(ASIO_INCLUDE_DIR NAMES asio.hpp PATHS ${asio}/include REQUIRED)
+    find_path(ASIO_INCLUDE_DIR NAMES asio.hpp PATHS ${asio}/include REQUIRED NO_DEFAULT_PATH)
     message(STATUS "Found asio include: ''${ASIO_INCLUDE_DIR}")
     set(ASIO_FOUND TRUE)
     set(ASIO_INCLUDE_DIRS ''${ASIO_INCLUDE_DIR})
@@ -38,11 +38,20 @@ in pkgs.stdenv.mkDerivation rec {
     mark_as_advanced(ASIO_INCLUDE_DIR)' > Findasio.cmake
 
         echo '
-    find_path(TBB_INCLUDE_DIR NAMES asio.hpp PATHS ${pkgs.tbb}/include REQUIRED)
+    find_path(TBB_INCLUDE_DIR NAMES tbb PATHS ${pkgs.tbb}/include REQUIRED NO_DEFAULT_PATH)
     message(STATUS "Found tbb include: ''${TBB_INCLUDE_DIR}")
+    find_library(TBB_LIBRARY NAMES tbb PATHS ${pkgs.tbb}/lib REQUIRED NO_DEFAULT_PATH)
+    message(STATUS "Found tbb lib: ''${TBB_LIBRARY}")
     set(TBB_FOUND TRUE)
     set(TBB_INCLUDE_DIRS ''${TBB_INCLUDE_DIR})
-    mark_as_advanced(TBB_INCLUDE_DIR)' > FindTBB.cmake
+    set(TBB_LIBRARIES TBB::tbb)
+    add_library(TBB::tbb SHARED IMPORTED GLOBAL)
+    set_target_properties(TBB::tbb PROPERTIES
+      IMPORTED_LOCATION "''${TBB_LIBRARY}"
+      INTERFACE_INCLUDE_DIRECTORIES "''${TBB_INCLUDE_DIR}"
+    )
+    mark_as_advanced(TBB_INCLUDE_DIR)
+    mark_as_advanced(TBB_LIBRARIES)' > FindTBB.cmake
 
     rm -vf CMakeCache.txt
     cmake . -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_MODULE_PATH="$PWD" -DCMAKE_INSTALL_PREFIX="$out"

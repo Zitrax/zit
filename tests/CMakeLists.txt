@@ -43,7 +43,7 @@ target_link_libraries(zitest
   GTest::gtest
   OpenSSL::SSL
   spdlog::spdlog
-  tbb
+  TBB::tbb
   Threads::Threads
 )
 
