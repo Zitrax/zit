@@ -38,13 +38,18 @@ add_library(zitlib OBJECT
   file_writer.cpp
   arg_parser.cpp
 )
-add_executable(zit main.cpp $<TARGET_OBJECTS:zitlib>)
-target_link_libraries(zitlib PRIVATE
-  CONAN_PKG::spdlog
-  CONAN_PKG::asio
-  CONAN_PKG::openssl
-  CONAN_PKG::tbb
+
+target_link_libraries(zitlib
+  PRIVATE
+    asio::asio
+    OpenSSL::SSL
+    spdlog::spdlog
+    TBB::tbb
 )
+
+add_executable(zit main.cpp)
+
+target_link_libraries(zit zitlib)
 
 if(ASIO_DEBUG)
   target_compile_definitions(zitlib PRIVATE ASIO_ENABLE_HANDLER_TRACKING)
@@ -75,10 +80,10 @@ add_custom_target(doc COMMAND doxygen WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})
 # Note this needs to be compiled with afl-g++ or afl-clang++
 add_executable(zit_afl EXCLUDE_FROM_ALL main_afl.cpp)
 target_link_libraries(zit
-  CONAN_PKG::openssl
-  CONAN_PKG::asio
-  CONAN_PKG::tbb
-  CONAN_PKG::spdlog
+  asio::asio
+  OpenSSL::SSL
+  spdlog::spdlog
+  TBB::tbb
 )
 
 if(NOT WIN32)
