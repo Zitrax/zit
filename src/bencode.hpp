@@ -11,6 +11,26 @@
 
 #include "types.hpp"
 
+/**
+ * @brief Provides encode/decode support for the bencode format
+ *
+ * Example use (lists):
+ *
+ * Encode:
+ * @code {.cpp}
+ *   auto v = std::vector<ElmPtr>();
+ *   v.push_back(Element::build("spam"));
+ *   v.push_back(Element::build("egg"));
+ *   encode(v); // Returns: "l4:spam3:egge"
+ * @endcode
+ *
+ * Decode:
+ * @code {.cpp}
+ *   auto v = decode("l4:spam3:egge")->to<TypedElement<vector<ElmPtr>>>()->val();
+ *   *v[0]->to<TypedElement<string>>(); // Returns: "spam"
+ *   *v[1]->to<TypedElement<string>>(); // Returns: "egg"
+ * @endcode
+ */
 namespace bencode {
 
 // Forward declarations
@@ -27,6 +47,7 @@ using BeList = std::vector<ElmPtr>;
 constexpr auto MAX_LINE_WIDTH = 72;
 constexpr auto MAX_INVALID_STRING_LENGTH = 128;
 constexpr auto ASCII_LAST_CTRL_CHAR = 31;
+constexpr auto RECURSION_LIMIT = 200;
 
 // For stream indentation level
 static const auto INDENT_INDEX = std::ios_base::xalloc();
@@ -52,14 +73,14 @@ struct ArrayToPointerDecay<T[N]> {
 
 // Function templates
 template <typename T>
-std::string encode_internal(const T& in) {
+[[nodiscard]] std::string encode_internal(const T& in) {
   std::stringstream ss;
   ss << "i" << in << "e";
   return ss.str();
 }
 
 template <typename T>
-std::string encode(const T& in) {
+[[nodiscard]] std::string encode(const T& in) {
   using src = typename ArrayToPointerDecay<T>::type;
   return encode_internal<src>(in);
 }
@@ -79,22 +100,18 @@ class BencodeConversionError : public std::runtime_error {
 
 /**
  * One element/value in the Bencoded file.
+ *
+ * Use of std::enable_shared_from_this allows safe generation of shared_ptr
+ * instances that share ownership of this.
  */
 class Element : public std::enable_shared_from_this<Element> {
  public:
   virtual ~Element() = default;
 
-  // Special member functions (hicpp-special-member-functions)
-  Element() = default;
-  Element(const Element& other) = default;
-  Element(Element&& other) noexcept = default;
-  Element& operator=(const Element& rhs) = default;
-  Element& operator=(Element&& other) noexcept = default;
-
   virtual std::string encode() const = 0;
 
   template <typename T>
-  auto to() const {
+  [[nodiscard]] auto to() const {
     static_assert(std::is_base_of<Element, T>::value,
                   "Can only return sublasses of Element");
     auto ptr = std::dynamic_pointer_cast<const T>(shared_from_this());
@@ -105,7 +122,7 @@ class Element : public std::enable_shared_from_this<Element> {
   }
 
   template <typename T>
-  auto is() const {
+  [[nodiscard]] auto is() const {
     static_assert(std::is_base_of<Element, T>::value,
                   "Can only return sublasses of Element");
     return std::dynamic_pointer_cast<const T>(shared_from_this()) != nullptr;
@@ -114,17 +131,19 @@ class Element : public std::enable_shared_from_this<Element> {
   virtual std::ostream& print(std::ostream& os) = 0;
 
   /**
-   * First try used T&& val, but it couse storage of int references when we want
-   * such values copied. See https://stackoverflow.com/q/17316386/11722 and
+   * First try used T&& val, but it caoused storage of int references when we
+   * want such values copied. See https://stackoverflow.com/q/17316386/11722 and
    * https://isocpp.org/blog/2012/11/universal-references-in-c11-scott-meyers
    * for details.
    */
   template <typename T>
-  static auto build(T val) {
+  [[nodiscard]] static auto build(T val) {
     return std::make_shared<TypedElement<T>>(std::move(val));
   }
 
-  static auto build(const char* val) { return build(std::string(val)); }
+  [[nodiscard]] static auto build(const char* val) {
+    return build(std::string(val));
+  }
 };
 
 /**
@@ -141,7 +160,7 @@ class TypedElement : public Element {
       : m_data(std::forward<T>(data)) {}
   std::string encode() const override { return bencode::encode(m_data); }
 
-  auto val() const { return m_data; }
+  [[nodiscard]] auto val() const { return m_data; }
 
   /**
    * Pretty print to console.
@@ -211,14 +230,14 @@ class TypedElement : public Element {
 
 // Template specializations
 template <>
-inline std::string encode_internal(const std::string& str) {
+[[nodiscard]] inline std::string encode_internal(const std::string& str) {
   std::stringstream ss;
   ss << str.length() << ":" << str;
   return ss.str();
 }
 
 template <>
-inline std::string encode_internal(const BeList& elist) {
+[[nodiscard]] inline std::string encode_internal(const BeList& elist) {
   std::stringstream ss;
   ss << "l";
   for (const auto& elm : elist) {
@@ -229,12 +248,12 @@ inline std::string encode_internal(const BeList& elist) {
 }
 
 template <>
-inline std::string encode_internal(const char* const& in) {
+[[nodiscard]] inline std::string encode_internal(const char* const& in) {
   return encode_internal(std::string(in));
 }
 
 template <>
-inline std::string encode_internal(const BeDict& emap) {
+[[nodiscard]] inline std::string encode_internal(const BeDict& emap) {
   std::stringstream ss;
   ss << "d";
   for (const auto& elm : emap) {
@@ -244,7 +263,7 @@ inline std::string encode_internal(const BeDict& emap) {
   return ss.str();
 }
 
-inline ElmPtr decodeInt(std::istringstream& iss) {
+[[nodiscard]] inline ElmPtr decodeInt(std::istringstream& iss) {
   int64_t i64{};
   iss >> i64;
   if (iss.fail()) {
@@ -256,7 +275,7 @@ inline ElmPtr decodeInt(std::istringstream& iss) {
   return Element::build(i64);
 }
 
-inline ElmPtr decodeString(std::istringstream& iss) {
+[[nodiscard]] inline ElmPtr decodeString(std::istringstream& iss) {
   uint64_t strlen{};
   iss >> strlen;
   if (iss.fail()) {
@@ -279,24 +298,25 @@ inline ElmPtr decodeString(std::istringstream& iss) {
 
 [[noreturn]] inline void throw_invalid_string(std::istringstream& iss) {
   std::stringstream console_safe;
-  for (char c : iss.str().substr(0, MAX_INVALID_STRING_LENGTH)) {
+  for (const char c : iss.str().substr(0, MAX_INVALID_STRING_LENGTH)) {
     console_safe << (c > ASCII_LAST_CTRL_CHAR ? c : '?');
   }
-  auto pos = iss.tellg();
+  const auto pos = iss.tellg();
   iss.seekg(0, std::ios::end);
   if (iss.tellg() > MAX_INVALID_STRING_LENGTH) {
     console_safe << "...";
   }
 
-  auto pos_str =
+  const auto pos_str =
       pos == std::istringstream::pos_type(-1) ? "?" : std::to_string(pos);
   throw std::invalid_argument("Invalid bencode string: '" + console_safe.str() +
                               "' at position " + pos_str + "\n");
 }
 
-ElmPtr decode_internal(std::istringstream& iss, unsigned int);
+[[nodiscard]] ElmPtr decode_internal(std::istringstream& iss, unsigned int);
 
-inline ElmPtr decodeList(std::istringstream& iss, const unsigned int depth) {
+[[nodiscard]] inline ElmPtr decodeList(std::istringstream& iss,
+                                       const unsigned int depth) {
   iss.ignore();
   auto v = BeList();
   if (iss.peek() != 'e') {
@@ -314,13 +334,14 @@ inline ElmPtr decodeList(std::istringstream& iss, const unsigned int depth) {
   return Element::build(v);
 }
 
-inline ElmPtr decodeDict(std::istringstream& iss, const unsigned int depth) {
+[[nodiscard]] inline ElmPtr decodeDict(std::istringstream& iss,
+                                       const unsigned int depth) {
   iss.ignore();
   auto m = BeDict();
   if (iss.peek() != 'e') {
     while (true) {
-      auto key = decodeString(iss);
-      auto val = decode_internal(iss, depth);
+      const auto key = decodeString(iss);
+      const auto val = decode_internal(iss, depth);
       m[key->to<TypedElement<std::string>>()->val()] = val;
       if (iss.eof()) {
         throw std::invalid_argument("Unexpected eof: " + iss.str());
@@ -337,8 +358,9 @@ inline ElmPtr decodeDict(std::istringstream& iss, const unsigned int depth) {
 /**
  * @note Do not call this directly, use @ref decode() instead.
  */
-inline ElmPtr decode_internal(std::istringstream& iss, unsigned int depth) {
-  if (depth++ > 200) {
+[[nodiscard]] inline ElmPtr decode_internal(std::istringstream& iss,
+                                            unsigned int depth) {
+  if (depth++ > RECURSION_LIMIT) {
     throw std::invalid_argument("Recursion limit reached");
   }
   if (iss.peek() == 'i') {
@@ -368,7 +390,7 @@ inline ElmPtr decode_internal(std::istringstream& iss, unsigned int depth) {
  * @throws std::invalid_argument if the input string is not valid bencode
  *   format.
  */
-inline ElmPtr decode(const std::string& str) {
+[[nodiscard]] inline ElmPtr decode(const std::string& str) {
   std::istringstream iss(str);
   auto elm = decode_internal(iss, 0);
   if (!elm || !iss.ignore().eof()) {

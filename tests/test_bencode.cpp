@@ -140,6 +140,12 @@ TEST(bencode, decode_list) {
   EXPECT_EQ(v.size(), 1);
   EXPECT_EQ(*v[0]->to<TypedElement<string>>(), "spam");
 
+  // ["spam", "egg"]
+  v = decode("l4:spam3:egge")->to<TypedElement<vector<ElmPtr>>>()->val();
+  EXPECT_EQ(v.size(), 2);
+  EXPECT_EQ(*v[0]->to<TypedElement<string>>(), "spam");
+  EXPECT_EQ(*v[1]->to<TypedElement<string>>(), "egg");
+
   // ["spam", "egg", 99]
   v = decode("l4:spam3:eggi99ee")->to<TypedElement<vector<ElmPtr>>>()->val();
   EXPECT_EQ(v.size(), 3);
