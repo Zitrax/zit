@@ -263,22 +263,22 @@ void Peer::set_am_interested(bool am_interested) {
     }
     // Send INTERESTED
     m_logger->debug("Sending INTERESTED");
-    string interested = {0, 0, 0, 1,
-                         static_cast<pwid_t>(peer_wire_id::INTERESTED)};
+    string interested_msg = {0, 0, 0, 1,
+                             static_cast<pwid_t>(peer_wire_id::INTERESTED)};
     stringstream hs;
-    hs.write(interested.c_str(),
-             numeric_cast<std::streamsize>(interested.length()));
+    hs.write(interested_msg.c_str(),
+             numeric_cast<std::streamsize>(interested_msg.length()));
     m_connection->write(hs.str());
   }
 
   if (m_am_interested && !am_interested) {
     // Send NOT_INTERESTED
     m_logger->debug("Sending NOT_INTERESTED");
-    string interested = {0, 0, 0, 1,
+    string interested_msg = {0, 0, 0, 1,
                          static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED)};
     stringstream hs;
-    hs.write(interested.c_str(),
-             numeric_cast<std::streamsize>(interested.length()));
+    hs.write(interested_msg.c_str(),
+             numeric_cast<std::streamsize>(interested_msg.length()));
     m_connection->write(hs.str());
   }
 
@@ -296,7 +296,7 @@ std::size_t Peer::request_next_block(unsigned short count) {
     m_logger->debug("{}: Peer choked, not requesting blocks", str());
     return requests;
   }
-  bytes request;
+  bytes req;
   for (int i = 0; i < count; i++) {
     // We can now start requesting pieces
     auto has_piece = next_piece(true);
@@ -326,16 +326,16 @@ std::size_t Peer::request_next_block(unsigned short count) {
         "{}: Sending block request for piece {} with size {} and offset {}",
         str(), piece->id(), LENGTH, *block_offset);
     auto blength = to_big_endian(LENGTH);
-    request.insert(request.end(), len.begin(), len.end());
-    request.push_back(static_cast<byte>(peer_wire_id::REQUEST));
-    request.insert(request.end(), index.begin(), index.end());
-    request.insert(request.end(), begin.begin(), begin.end());
-    request.insert(request.end(), blength.begin(), blength.end());
+    req.insert(req.end(), len.begin(), len.end());
+    req.push_back(static_cast<byte>(peer_wire_id::REQUEST));
+    req.insert(req.end(), index.begin(), index.end());
+    req.insert(req.end(), begin.begin(), begin.end());
+    req.insert(req.end(), blength.begin(), blength.end());
     requests++;
   }
   // Important to write only once (to match write/read calls)
-  if (!request.empty()) {
-    m_connection->write(request);
+  if (!req.empty()) {
+    m_connection->write(req);
   }
   return requests;
 }
