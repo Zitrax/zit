@@ -37,7 +37,7 @@ class Piece {
   /** Total number of blocks in this piece */
   [[nodiscard]] uint32_t block_count() const {
     return (m_piece_size / m_block_size) +
-           (m_piece_size % m_block_size ? 1 : 0);
+           ((m_piece_size % m_block_size) ? 1 : 0);
   }
 
   /** Return the data of the piece */

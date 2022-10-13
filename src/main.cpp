@@ -25,11 +25,11 @@ static void print_exception(const exception& e,
                                   e.what());
     try {
       rethrow_if_nested(e);
-    } catch (const exception& e) {
-      print_exception(e, level + 1);
+    } catch (const exception& ex) {
+      print_exception(ex, level + 1);
     }
-  } catch (const exception& e) {
-    cerr << "Error in error handling: " << e.what() << "\n";
+  } catch (const exception& ex) {
+    cerr << "Error in error handling: " << ex.what() << "\n";
   }
 }
 

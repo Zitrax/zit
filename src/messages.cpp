@@ -203,11 +203,12 @@ size_t Message::parse(PeerConnection& connection) {
       // Not a full message - return and await more data
       return 0;
     }
-    if (len == 0 && m_msg.size() >= 4) {
+    assert(m_msg.size() >= 4);
+    if (len == 0) {
       m_logger->debug("{}: Keep Alive", connection.peer().str());
       return 4;
     }
-    if (len > 0 && m_msg.size() >= 5) {
+    if (m_msg.size() >= 5) {
       auto id = to_peer_wire_id(m_msg[4]);
       m_logger->debug("{}: Received: {}", connection.peer().str(), id);
       switch (id) {
