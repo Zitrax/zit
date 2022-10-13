@@ -108,6 +108,14 @@ class Element : public std::enable_shared_from_this<Element> {
  public:
   virtual ~Element() = default;
 
+  // Special member functions (hicpp-special-member-functions)
+  // clang needs this since we default the destructor
+  Element() = default;
+  Element(const Element& other) = default;
+  Element(Element&& other) noexcept = default;
+  Element& operator=(const Element& rhs) = default;
+  Element& operator=(Element&& other) noexcept = default;
+
   virtual std::string encode() const = 0;
 
   template <typename T>
