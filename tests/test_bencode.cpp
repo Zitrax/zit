@@ -81,13 +81,13 @@ TEST(bencode, dict) {
 
 TEST(bencode, decode_int) {
   // No end marker
-  EXPECT_THROW(decode("i3"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("i3"), std::invalid_argument);
   // No number
-  EXPECT_THROW(decode("ie"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("ie"), std::invalid_argument);
   // Invalid number
-  EXPECT_THROW(decode("iae"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("iae"), std::invalid_argument);
   // Negative nothing
-  EXPECT_THROW(decode("i-e"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("i-e"), std::invalid_argument);
   // OK
   // auto a = decode("i3e");
   // auto b = decode("i3e")->to<TypedElement<int64_t&>>();
@@ -104,10 +104,10 @@ TEST(bencode, decode_int) {
 
 TEST(bencode, decode_string) {
   // Longer than string
-  EXPECT_THROW(decode("2:a"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("2:a"), std::invalid_argument);
   // Missing :
-  EXPECT_THROW(decode("2aa"), std::invalid_argument);
-  EXPECT_THROW(decode("2"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("2aa"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("2"), std::invalid_argument);
   // OK
   EXPECT_EQ(*decode("4:spam")->to<TypedElement<string>>(), "spam"s);
   EXPECT_EQ(*decode("3:egg")->to<TypedElement<string>>(), "egg"s);
@@ -116,14 +116,14 @@ TEST(bencode, decode_string) {
 
 TEST(bencode, decode_list) {
   // Invalid lists
-  EXPECT_THROW(decode("l"), std::invalid_argument);
-  EXPECT_THROW(decode("lee"), std::invalid_argument);
-  EXPECT_THROW(decode("leee"), std::invalid_argument);
-  EXPECT_THROW(decode("leeee"), std::invalid_argument);
-  EXPECT_THROW(decode("lie"), std::invalid_argument);
-  EXPECT_THROW(decode("l4e"), std::invalid_argument);
-  EXPECT_THROW(decode("lle"), std::invalid_argument);
-  EXPECT_THROW(decode("lli3e"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("l"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("lee"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("leee"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("leeee"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("lie"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("l4e"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("lle"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("lli3e"), std::invalid_argument);
 
   // []
   auto v = decode("le")->to<TypedElement<vector<ElmPtr>>>()->val();
@@ -140,6 +140,12 @@ TEST(bencode, decode_list) {
   EXPECT_EQ(v.size(), 1);
   EXPECT_EQ(*v[0]->to<TypedElement<string>>(), "spam");
 
+  // ["spam", "egg"]
+  v = decode("l4:spam3:egge")->to<TypedElement<vector<ElmPtr>>>()->val();
+  EXPECT_EQ(v.size(), 2);
+  EXPECT_EQ(*v[0]->to<TypedElement<string>>(), "spam");
+  EXPECT_EQ(*v[1]->to<TypedElement<string>>(), "egg");
+
   // ["spam", "egg", 99]
   v = decode("l4:spam3:eggi99ee")->to<TypedElement<vector<ElmPtr>>>()->val();
   EXPECT_EQ(v.size(), 3);
@@ -150,14 +156,14 @@ TEST(bencode, decode_list) {
 
 TEST(bencode, decode_dict) {
   // Invalid dicts
-  EXPECT_THROW(decode("d"), std::invalid_argument);
-  EXPECT_THROW(decode("dee"), std::invalid_argument);
-  EXPECT_THROW(decode("deee"), std::invalid_argument);
-  EXPECT_THROW(decode("deeee"), std::invalid_argument);
-  EXPECT_THROW(decode("die"), std::invalid_argument);
-  EXPECT_THROW(decode("d4e"), std::invalid_argument);
-  EXPECT_THROW(decode("dde"), std::invalid_argument);
-  EXPECT_THROW(decode("ddi3e"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("d"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("dee"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("deee"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("deeee"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("die"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("d4e"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("dde"), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode("ddi3e"), std::invalid_argument);
 
   // { "spam" => "egg" }
   auto m = decode("d4:spam3:egge")->to<TypedElement<BeDict>>()->val();
@@ -177,7 +183,7 @@ TEST(bencode, decode_dict) {
 TEST(bencode, decode_recursion) {
   const auto data_dir = fs::path(DATA_DIR);
   auto s = read_file(data_dir / "bencode_recursion.txt");
-  EXPECT_THROW(decode(s), std::invalid_argument);
+  EXPECT_THROW(std::ignore = decode(s), std::invalid_argument);
 }
 
 TEST(bencode, decode_real) {
