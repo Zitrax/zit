@@ -96,7 +96,8 @@ Sha1 Sha1::fromBuffer(const T& buffer, typename T::size_type offset) {
     throw invalid_argument("Buffer too small for extracting sha1");
   }
   Sha1 ret;
-  copy_n(reinterpret_cast<const char*>(&buffer[offset]), SHA_LENGTH, ret.data());
+  copy_n(reinterpret_cast<const char*>(&buffer[offset]), SHA_LENGTH,
+         ret.data());
   return ret;
 }
 

@@ -222,8 +222,8 @@ void Torrent::verify_existing_file() {
             data.resize(data.size() - numeric_cast<size_t>(remaining));
             const auto fsha1 = Sha1::calculateData(data);
             if (sha1 == fsha1) {
-              // Lock when updating num_pieces, inserting into std::map is likely
-              // not thread safe.
+              // Lock when updating num_pieces, inserting into std::map is
+              // likely not thread safe.
               std::lock_guard<std::mutex> lock(mutex);
               m_client_pieces[id] = true;
               m_active_pieces.emplace(id,
@@ -431,7 +431,7 @@ void Torrent::retry_pieces() {
 
 // TODO: Yes, should group these in one type
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-bool Torrent::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
+bool Torrent::set_block(uint32_t piece_id, uint32_t offset, bytes_span data) {
   std::lock_guard<std::mutex> lock(m_mutex);
   // Look up relevant piece object among active pieces
   if (m_active_pieces.find(piece_id) != m_active_pieces.end()) {

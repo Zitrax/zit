@@ -50,7 +50,7 @@ class Piece {
    * Store incoming data
    * @return true if this was the last remaining block for this piece
    */
-  bool set_block(uint32_t offset, const bytes& data);
+  bool set_block(uint32_t offset, bytes_span data);
 
   /**
    * Return a specific block. Can return empty vector if

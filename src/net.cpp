@@ -242,9 +242,9 @@ static std::tuple<std::string, std::string> httpsGet(const Url& url) {
   // certificate.
   sock.set_verify_mode(ssl::verify_peer);
 
-  // Without this some servers fail with "handshake: sslv3 alert handshake failure"
-  // These servers rely on SNI (Server Name Indication)
-  if(!SSL_set_tlsext_host_name(sock.native_handle(), url.host().c_str())) {
+  // Without this some servers fail with "handshake: sslv3 alert handshake
+  // failure" These servers rely on SNI (Server Name Indication)
+  if (!SSL_set_tlsext_host_name(sock.native_handle(), url.host().c_str())) {
     spdlog::get("console")->warn("Could not set host name for SNI");
   }
 
