@@ -38,7 +38,7 @@ bytes Piece::data() const {
   return m_data;
 }
 
-bool Piece::set_block(uint32_t offset, const bytes& data) {
+bool Piece::set_block(uint32_t offset, bytes_span data) {
   if (offset % m_block_size != 0) {
     throw runtime_error("Invalid block offset: " + to_string(offset));
   }

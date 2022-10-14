@@ -4,6 +4,7 @@
 #include <cstdint>  // uint8_t
 #include <iostream>
 #include <limits>
+#include <span>
 #include <stdexcept>  // out_of_range
 #include <vector>
 
@@ -17,6 +18,7 @@ namespace zit {
 
 // Type aliases
 using bytes = std::vector<std::byte>;
+using bytes_span = const std::span<const std::byte>;
 
 // numeric_cast ( Copied from https://codereview.stackexchange.com/a/26496/39248
 // ) by user Matt Whitlock - functions renamed.

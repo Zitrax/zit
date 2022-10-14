@@ -219,14 +219,11 @@ size_t Message::parse(PeerConnection& connection) {
           peer.set_choking(false);
           return len + 4;
         case peer_wire_id::PIECE: {
-          auto index = big_endian(m_msg, 5);
-          auto offset = big_endian(m_msg, 9);
-          // FIXME: Optimization:
-          //        Could pass the range instead of copying the data
-          auto start = m_msg.begin() + 13;
-          auto end = start + (len - 9);
-          auto data = bytes(start, end);
-          peer.set_block(index, offset, data);
+          const auto index = big_endian(m_msg, 5);
+          const auto offset = big_endian(m_msg, 9);
+          const auto start = m_msg.begin() + 13;
+          const auto end = start + (len - 9);
+          peer.set_block(index, offset, {start, end});
         }
           return len + 4;
         case peer_wire_id::INTERESTED:

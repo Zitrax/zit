@@ -275,7 +275,7 @@ void Peer::set_am_interested(bool am_interested) {
     // Send NOT_INTERESTED
     m_logger->debug("Sending NOT_INTERESTED");
     string interested_msg = {0, 0, 0, 1,
-                         static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED)};
+                             static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED)};
     stringstream hs;
     hs.write(interested_msg.c_str(),
              numeric_cast<std::streamsize>(interested_msg.length()));
@@ -377,7 +377,7 @@ void Peer::have(uint32_t id) {
   m_remote_pieces[id] = true;
 }
 
-void Peer::set_block(uint32_t piece_id, uint32_t offset, const bytes& data) {
+void Peer::set_block(uint32_t piece_id, uint32_t offset, bytes_span data) {
   if (m_torrent.set_block(piece_id, offset, data)) {
     request_next_block(1);
   }

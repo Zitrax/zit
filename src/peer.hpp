@@ -178,7 +178,7 @@ class Peer {
   /**
    * Store a retrieved a block ( part of a piece )
    */
-  void set_block(uint32_t piece_id, uint32_t offset, const bytes& data);
+  void set_block(uint32_t piece_id, uint32_t offset, bytes_span data);
 
   /**
    * Stop this connection.

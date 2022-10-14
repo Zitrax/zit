@@ -227,7 +227,7 @@ class Torrent {
    *
    * @return true if the block was stored
    */
-  bool set_block(uint32_t piece_id, uint32_t offset, const bytes& data);
+  bool set_block(uint32_t piece_id, uint32_t offset, bytes_span data);
 
   /**
    * Create or return active piece for specific id.
