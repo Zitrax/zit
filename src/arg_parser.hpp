@@ -36,7 +36,6 @@ class ArgParser {
   /**
    * Parse arguments for options provided by add_option.
    */
-  // TODO: Can std::array be used here?
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
   void parse(int argc, const char* argv[]);
 

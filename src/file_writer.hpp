@@ -37,18 +37,12 @@ static auto init_logger() {
  */
 class FileWriter {
  private:
-  explicit FileWriter(TorrentWrittenCallback cb)
-      : m_torrent_written_callback(std::move(cb)) {}
-
+  FileWriter() = default;
   static auto logger() { return init_logger(); }
 
  public:
-  static FileWriter& getInstance(const TorrentWrittenCallback& cb = {}) {
-    static FileWriter instance(cb);
-    // FIXME: This not really good - an singleton that is reset for each
-    // time getInstance() called.
-    instance.m_torrent_written_callback = cb;
-    instance.m_stop = false;
+  static FileWriter& getInstance() {
+    static FileWriter instance;
     return instance;
   }
 
@@ -86,6 +80,13 @@ class FileWriter {
    */
   bytes read_block(uint32_t offset, uint32_t length, const Torrent& filename);
 
+  /**
+   * A callback called when the whole torrent is finished (final piece written)
+   */
+  void set_callback(TorrentWrittenCallback cb) {
+    m_torrent_written_callback = std::move(cb);
+  }
+
  private:
   void write_next_piece();
 
@@ -102,11 +103,11 @@ class FileWriter {
  */
 class FileWriterThread {
  public:
-  explicit FileWriterThread(Torrent& torrent,
-                            const TorrentWrittenCallback& cb = {})
+  explicit FileWriterThread(Torrent& torrent, TorrentWrittenCallback cb = {})
       : m_logger(init_logger()),
-        m_file_writer(FileWriter::getInstance(cb)),
+        m_file_writer(FileWriter::getInstance()),
         m_file_writer_thread([this]() { m_file_writer.run(); }) {
+    m_file_writer.set_callback(std::move(cb));
     using std::placeholders::_1;
     using std::placeholders::_2;
     torrent.set_piece_callback(
