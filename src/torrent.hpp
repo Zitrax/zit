@@ -81,6 +81,12 @@ class Torrent {
   [[nodiscard]] auto piece_length() const { return m_piece_length; }
 
   /**
+   * Number of bytes in specific piece
+   * Only since the last piece that might be shorter.
+   */
+  [[nodiscard]] uint32_t piece_length(uint32_t id) const;
+
+  /**
    * Vector consisting of all 20-byte SHA1 hash values one per piece.
    */
   [[nodiscard]] auto pieces() const { return m_pieces; }
