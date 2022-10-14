@@ -139,6 +139,15 @@ Torrent::Torrent(const filesystem::path& file, std::filesystem::path data_dir)
   verify_existing_file();
 }
 
+uint32_t Torrent::piece_length(uint32_t id) const {
+  if (id == pieces().size() - 1) {
+    // The last piece might be shorter
+    const auto mod = numeric_cast<uint32_t>(length() % m_piece_length);
+    return mod ? mod : m_piece_length;
+  }
+  return m_piece_length;
+}
+
 void Torrent::verify_existing_file() {
   bool full_file = false;
   if (filesystem::exists(m_name)) {
@@ -180,7 +189,7 @@ void Torrent::verify_existing_file() {
                         std::lock_guard<std::mutex> lock(mutex);
                         m_client_pieces[id] = true;
                         m_active_pieces.emplace(
-                            id, make_shared<Piece>(id, m_piece_length));
+                            id, make_shared<Piece>(id, piece_length(id)));
                         m_active_pieces[id]->set_piece_written(true);
                         ++num_pieces;
                       } else {
@@ -227,7 +236,7 @@ void Torrent::verify_existing_file() {
               std::lock_guard<std::mutex> lock(mutex);
               m_client_pieces[id] = true;
               m_active_pieces.emplace(id,
-                                      make_shared<Piece>(id, m_piece_length));
+                                      make_shared<Piece>(id, piece_length(id)));
               m_active_pieces[id]->set_piece_written(true);
               ++num_pieces;
             } else {
@@ -256,8 +265,6 @@ auto Torrent::left() const {
   // FIXME: Should not include pieces that are done
 
   if (is_single_file()) {
-    // FIXME: This might return negative for a finished torrent. Possibly tail
-    // included?
     return length() - accumulate(m_active_pieces.begin(), m_active_pieces.end(),
                                  static_cast<int64_t>(0),
                                  [](int64_t a, const auto& p) {
@@ -453,14 +460,7 @@ std::shared_ptr<Piece> Torrent::active_piece(uint32_t id, bool create) {
     if (!create) {
       return nullptr;
     }
-    int64_t active_piece_length = m_piece_length;
-    if (id == pieces().size() - 1) {
-      // Last piece
-      auto mod = length() % m_piece_length;
-      active_piece_length = mod ? mod : m_piece_length;
-      m_logger->debug("Last piece {} with length = {}", id,
-                      active_piece_length);
-    }
+    const int64_t active_piece_length = piece_length(id);
     auto it = m_active_pieces.emplace(
         make_pair(id, make_shared<Piece>(id, active_piece_length)));
     return it.first->second;
