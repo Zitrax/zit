@@ -29,8 +29,8 @@ class PeerConnection {
  public:
   PeerConnection(Peer& peer,
                  asio::io_service& io_service,
-                 unsigned short listening_port,
-                 unsigned short connection_port);
+                 ListeningPort listening_port,
+                 ConnectionPort connection_port);
 
   void write(const std::optional<Url>& url, const bytes& msg);
   void write(const std::optional<Url>& url, const std::string& msg);
@@ -71,8 +71,8 @@ class PeerConnection {
   std::deque<std::string> m_send_queue{};
   bool m_connected = false;
   bool m_sending = false;
-  unsigned short m_listening_port;
-  unsigned short m_connection_port;
+  ListeningPort m_listening_port;
+  ConnectionPort m_connection_port;
   std::shared_ptr<spdlog::logger> m_logger;
 };
 

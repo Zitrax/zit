@@ -10,6 +10,7 @@
 
 // Needed for spdlog to handle operator<<
 #include "spdlog/fmt/ostr.h"
+#include "types.hpp"
 
 namespace zit {
 
@@ -304,8 +305,8 @@ class Torrent {
   PieceCallback m_piece_callback{};
   DisconnectCallback m_disconnect_callback{};
   // FIXME: Configurable ports
-  unsigned short m_listening_port = 20001;
-  unsigned short m_connection_port = 20000;
+  ListeningPort m_listening_port{20001};
+  ConnectionPort m_connection_port{20000};
   std::vector<std::shared_ptr<Peer>> m_peers{};
 
   // Piece housekeeping

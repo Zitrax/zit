@@ -25,11 +25,10 @@ namespace zit {
 // we use std::bind, std::shared_ptr, etc... which
 // differs slightly from the boost examples.
 
-// TODO: Use strong types
 PeerConnection::PeerConnection(Peer& peer,
                                asio::io_service& io_service,
-                               unsigned short listening_port,
-                               unsigned short connection_port)
+                               ListeningPort listening_port,
+                               ConnectionPort connection_port)
     : peer_(peer),
       resolver_(io_service),
       acceptor_(io_service, tcp::v4()),
@@ -42,11 +41,11 @@ PeerConnection::PeerConnection(Peer& peer,
 }
 
 void PeerConnection::listen() {
-  m_logger->info("{} port={}", PRETTY_FUNCTION, m_listening_port);
+  m_logger->info("{} port={}", PRETTY_FUNCTION, m_listening_port.get());
   // if (!acceptor_.is_open()) {
   asio::socket_base::reuse_address option(true);
   acceptor_.set_option(option);
-  acceptor_.bind(tcp::endpoint(tcp::v4(), m_listening_port));
+  acceptor_.bind(tcp::endpoint(tcp::v4(), m_listening_port.get()));
   //}
   acceptor_.listen();
   acceptor_.async_accept(
@@ -115,7 +114,7 @@ void PeerConnection::handle_resolve(const asio::error_code& err,
     endpoint_ = endpoint_iterator;
     asio::socket_base::reuse_address option(true);
     socket_.set_option(option);
-    socket_.bind(tcp::endpoint(tcp::v4(), m_connection_port));
+    socket_.bind(tcp::endpoint(tcp::v4(), m_connection_port.get()));
     socket_.async_connect(endpoint, [this, it = ++endpoint_iterator](
                                         auto&& ec) { handle_connect(ec, it); });
   } else {
