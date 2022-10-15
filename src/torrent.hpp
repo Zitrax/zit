@@ -261,6 +261,11 @@ class Torrent {
   [[nodiscard]] auto connection_port() const { return m_connection_port; }
 
   /**
+   * The peer_id used in the handshakes and tracker requests.
+   */
+  [[nodiscard]] auto peer_id() const { return m_peer_id; }
+
+  /**
    * Find the file at a specific position in the torrent.
    * @param pos The offset into the torrent file
    * @return A tuple with (FileInfo, int64_t offset_in_file, int64_t tail)
@@ -308,6 +313,7 @@ class Torrent {
   ListeningPort m_listening_port{20001};
   ConnectionPort m_connection_port{20000};
   std::vector<std::shared_ptr<Peer>> m_peers{};
+  std::string m_peer_id{};
 
   // Piece housekeeping
   mutable std::mutex m_mutex{};

@@ -441,7 +441,7 @@ void Peer::handshake() {
   hs << static_cast<char>(19) << "BitTorrent protocol";
   hs.write(RESERVED.c_str(), numeric_cast<std::streamsize>(RESERVED.length()));
   hs << m_torrent.info_hash().str()
-     << "abcdefghijklmnopqrst";  // FIXME: Use proper peer-id
+     << m_torrent.peer_id();
 
   init_io_service();
   m_connection->write(m_url, hs.str());

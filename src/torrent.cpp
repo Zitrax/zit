@@ -32,11 +32,13 @@ static auto transform_all(const In& in, Out& out, Op func) {
   return transform(begin(in), end(in), back_inserter(out), func);
 }
 
+namespace {
+
 /**
  * Convenience function for converting a known BeDict element for the multi
  * file "files" part.
  */
-static auto beDictToFileInfo(const Element& element) {
+auto beDictToFileInfo(const Element& element) {
   const auto& dict = element.template to<TypedElement<BeDict>>()->val();
   string md5;
   if (dict.find("md5sum") != dict.end()) {
@@ -52,10 +54,26 @@ static auto beDictToFileInfo(const Element& element) {
       md5);
 }
 
+// Based on answers in https://stackoverflow.com/q/440133/11722
+auto random_string(std::size_t len) -> std::string {
+  static std::string chars =
+      "0123456789"
+      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+      "abcdefghijklmnopqrstuvwxyz";
+  thread_local static std::mt19937 rg{std::random_device{}()};
+  thread_local static auto dist =
+      std::uniform_int_distribution<unsigned long>{{}, chars.size() - 1};
+  std::string result(len, '\0');
+  std::generate_n(begin(result), len, [&] { return chars.at(dist(rg)); });
+  return result;
+}
+
+}  // namespace
+
 // Could possibly be grouped in a struct
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 Torrent::Torrent(const filesystem::path& file, std::filesystem::path data_dir)
-    : m_data_dir(std::move(data_dir)) {
+    : m_data_dir(std::move(data_dir)), m_peer_id(random_string(20)) {
   m_logger = spdlog::get("console");
   auto root = bencode::decode(read_file(file));
 
@@ -294,8 +312,7 @@ void Torrent::start() {
 
   Url url(m_announce);
   url.add_param("info_hash=" + Net::urlEncode(m_info_hash));
-  // FIXME: Use proper id - should be unique per peer thus not fixed
-  url.add_param("peer_id=abcdefghijklmnopqrst");
+  url.add_param(fmt::format("peer_id={}", peer_id()));
   url.add_param("port=" + to_string(m_listening_port.get()));
   url.add_param("uploaded=0");
   url.add_param("downloaded=0");
