@@ -166,37 +166,38 @@ void Torrent::verify_existing_file() {
       Timer timer("verifying existing file");
       const auto file_length = filesystem::file_size(m_tmpfile);
       // Verify each piece in parallel to speed it up
-      std::for_each(std::execution::par_unseq, m_pieces.begin(), m_pieces.end(),
-                    [&file_length, &num_pieces, &mutex,
-                     this  // Be careful what is used from this. It needs to be
-                           // thread safe.
+      std::for_each(
+          std::execution::par_unseq, m_pieces.begin(), m_pieces.end(),
+          [&file_length, &num_pieces, &mutex,
+           this  // Be careful what is used from this. It needs to be
+                 // thread safe.
       ](const Sha1& sha1) {
-                      const auto id =
-                          zit::numeric_cast<uint32_t>(&sha1 - m_pieces.data());
-                      const auto offset = id * m_piece_length;
-                      ifstream is{m_tmpfile, ios::in | ios::binary};
-                      is.exceptions(ifstream::failbit | ifstream::badbit);
-                      is.seekg(offset);
-                      const auto tail =
-                          zit::numeric_cast<uint32_t>(file_length - offset);
-                      const auto len = std::min(m_piece_length, tail);
-                      bytes data(len);
-                      is.read(reinterpret_cast<char*>(data.data()), len);
-                      const auto fsha1 = Sha1::calculateData(data);
-                      if (sha1 == fsha1) {
-                        // Lock when updating num_pieces, inserting into
-                        // std::map is likely not thread safe.
-                        std::lock_guard<std::mutex> lock(mutex);
-                        m_client_pieces[id] = true;
-                        m_active_pieces.emplace(
-                            id, make_shared<Piece>(id, piece_length(id)));
-                        m_active_pieces[id]->set_piece_written(true);
-                        ++num_pieces;
-                      } else {
-                        m_logger->trace("Piece {} does not match ({}!={})", id,
-                                        sha1, fsha1);
-                      }
-                    });
+            const auto id =
+                zit::numeric_cast<uint32_t>(&sha1 - m_pieces.data());
+            const auto offset = id * m_piece_length;
+            ifstream is{m_tmpfile, ios::in | ios::binary};
+            is.exceptions(ifstream::failbit | ifstream::badbit);
+            is.seekg(offset);
+            const auto tail = zit::numeric_cast<uint32_t>(file_length - offset);
+            const auto len = std::min(m_piece_length, tail);
+            bytes data(len);
+            is.read(reinterpret_cast<char*>(data.data()), len);
+            const auto fsha1 = Sha1::calculateData(data);
+            if (sha1 == fsha1) {
+              // Lock when updating num_pieces, inserting into
+              // std::map is likely not thread safe.
+              std::lock_guard<std::mutex> lock(mutex);
+              m_client_pieces[id] = true;
+              m_active_pieces.emplace(
+                  id,
+                  make_shared<Piece>(PieceId(id), PieceSize(piece_length(id))));
+              m_active_pieces[id]->set_piece_written(true);
+              ++num_pieces;
+            } else {
+              m_logger->trace("Piece {} does not match ({}!={})", id, sha1,
+                              fsha1);
+            }
+          });
     } else {
       m_logger->info("Verifying existing files in: {}", m_tmpfile);
       const auto global_len = length();
@@ -235,8 +236,9 @@ void Torrent::verify_existing_file() {
               // likely not thread safe.
               std::lock_guard<std::mutex> lock(mutex);
               m_client_pieces[id] = true;
-              m_active_pieces.emplace(id,
-                                      make_shared<Piece>(id, piece_length(id)));
+              m_active_pieces.emplace(
+                  id,
+                  make_shared<Piece>(PieceId(id), PieceSize(piece_length(id))));
               m_active_pieces[id]->set_piece_written(true);
               ++num_pieces;
             } else {
@@ -294,7 +296,7 @@ void Torrent::start() {
   url.add_param("info_hash=" + Net::urlEncode(m_info_hash));
   // FIXME: Use proper id - should be unique per peer thus not fixed
   url.add_param("peer_id=abcdefghijklmnopqrst");
-  url.add_param("port=" + to_string(m_listening_port));
+  url.add_param("port=" + to_string(m_listening_port.get()));
   url.add_param("uploaded=0");
   url.add_param("downloaded=0");
   url.add_param("left=" + to_string(left()));
@@ -341,7 +343,8 @@ void Torrent::start() {
     const int THREE_HEX_BYTES = 6;
     for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
       const auto purl = Url(binary_peers.substr(i, THREE_HEX_BYTES), true);
-      if (!(purl.host() == "127.0.0.1" && purl.port() == m_listening_port)) {
+      if (!(purl.host() == "127.0.0.1" &&
+            purl.port() == m_listening_port.get())) {
         m_peers.emplace_back(make_shared<Peer>(purl, *this));
       }
     }
@@ -460,9 +463,9 @@ std::shared_ptr<Piece> Torrent::active_piece(uint32_t id, bool create) {
     if (!create) {
       return nullptr;
     }
-    const int64_t active_piece_length = piece_length(id);
-    auto it = m_active_pieces.emplace(
-        make_pair(id, make_shared<Piece>(id, active_piece_length)));
+    const auto active_piece_length = piece_length(id);
+    auto it = m_active_pieces.emplace(make_pair(
+        id, make_shared<Piece>(PieceId(id), PieceSize(active_piece_length))));
     return it.first->second;
   }
   return m_active_pieces.at(id);

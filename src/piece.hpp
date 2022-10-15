@@ -12,16 +12,19 @@ namespace zit {
 
 class Torrent;
 
+using PieceId = StrongType<uint32_t, struct IdTag>;
+using PieceSize = StrongType<uint32_t, struct SizeTag>;
+
 /**
  * Represents one torrent piece and its current state.
  */
 class Piece {
  public:
-  explicit Piece(uint32_t id, uint32_t piece_size)
-      : m_piece_size(piece_size),
+  explicit Piece(PieceId id, PieceSize piece_size)
+      : m_piece_size(piece_size.get()),
         m_blocks_requested(block_count()),
         m_blocks_done(block_count()),
-        m_id(id),
+        m_id(id.get()),
         m_logger(spdlog::get("console")) {
     m_data.resize(m_piece_size);
   }

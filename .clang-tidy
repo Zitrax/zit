@@ -17,7 +17,6 @@
 # -altera-struct-pack-align (too specific performance issue)
 # -readability-function-cognitive-complexity (no hard limit on this)
 # -hicpp-named-parameter (fine to leave it out when unused)
-# -bugprone-easily-swappable-parameters(TODO: Fix this with strong types)
 # -cppcoreguidelines-special-member-functions (TODO: Fix this)
 # -hicpp-special-member-functions(same as cppcoreguidelines-special-member-functions)
 
@@ -52,7 +51,6 @@ Checks:          '*,
                  -altera-struct-pack-align,
                  -readability-function-cognitive-complexity,
                  -hicpp-named-parameter,
-                 -bugprone-easily-swappable-parameters,
                  -cppcoreguidelines-special-member-functions,
                  -hicpp-special-member-functions,
                  '

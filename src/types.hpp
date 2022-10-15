@@ -1,16 +1,15 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
+#include <spdlog/fmt/fmt.h>
+#include <asio.hpp>
 #include <cstdint>  // uint8_t
 #include <iostream>
 #include <limits>
 #include <span>
 #include <stdexcept>  // out_of_range
 #include <vector>
-
-#include <asio.hpp>
-
-#include <spdlog/fmt/fmt.h>
+#include "strong_type.hpp"
 
 using asio::detail::socket_ops::host_to_network_long;
 
@@ -19,6 +18,10 @@ namespace zit {
 // Type aliases
 using bytes = std::vector<std::byte>;
 using bytes_span = const std::span<const std::byte>;
+
+// String types
+using ListeningPort = StrongType<unsigned short, struct ListeningPortTag>;
+using ConnectionPort = StrongType<unsigned short, struct ConnectionPortTag>;
 
 // numeric_cast ( Copied from https://codereview.stackexchange.com/a/26496/39248
 // ) by user Matt Whitlock - functions renamed.
