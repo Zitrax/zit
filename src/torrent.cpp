@@ -318,7 +318,7 @@ void Torrent::start() {
   url.add_param("downloaded=0");
   url.add_param("left=" + to_string(left()));
   url.add_param("event=started");
-  url.add_param("compact=1");  // TODO: Look up what this really means
+  url.add_param("compact=1");
   m_logger->info("\n{}", url);
 
   auto [headers, body] = Net::httpGet(url);
@@ -331,6 +331,10 @@ void Torrent::start() {
   }
 
   m_logger->debug("=====HEADER=====\n{}\n=====BODY=====\n{}", headers, reply);
+
+  const auto is_local = [this](const auto& purl) {
+    return purl.host() == "127.0.0.1" && purl.port() == m_listening_port.get();
+  };
 
   auto reply_dict = reply->to<TypedElement<BeDict>>()->val();
   if (reply_dict.find("peers") == reply_dict.end()) {
@@ -347,10 +351,12 @@ void Torrent::start() {
       const auto purl = Url(fmt::format(
           "http://{}:{}", peer.at("ip")->to<TypedElement<std::string>>()->val(),
           peer.at("port")->to<TypedElement<int64_t>>()->val()));
-      m_peers.emplace_back(make_shared<Peer>(purl, *this));
+      if (!is_local(purl)) {
+        m_peers.emplace_back(make_shared<Peer>(purl, *this));
+      }
     }
   } else {
-    // ... else binary form
+    // ... else compact/binary form
     auto binary_peers = peers_dict->to<TypedElement<string>>()->val();
     m_logger->debug("Peer list in binary form");
     if (binary_peers.empty()) {
@@ -360,8 +366,7 @@ void Torrent::start() {
     const int THREE_HEX_BYTES = 6;
     for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
       const auto purl = Url(binary_peers.substr(i, THREE_HEX_BYTES), true);
-      if (!(purl.host() == "127.0.0.1" &&
-            purl.port() == m_listening_port.get())) {
+      if (!is_local(purl)) {
         m_peers.emplace_back(make_shared<Peer>(purl, *this));
       }
     }
