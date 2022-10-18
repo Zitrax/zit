@@ -1,5 +1,5 @@
  [requires]
- openssl/1.1.1k
+ openssl/1.1.1q
  asio/1.24.0
  gtest/1.11.0
  onetbb/2021.6.0
