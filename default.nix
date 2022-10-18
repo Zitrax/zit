@@ -8,10 +8,10 @@ let
 
   # Override asio to a custom version
   asio = pkgs.asio.overrideAttrs (finalAttrs: previousAttrs: rec {
-    version = "1.19.2";
+    version = "1.24.0";
     src = pkgs.fetchurl {
       url = "mirror://sourceforge/asio/asio-${version}.tar.bz2";
-      sha256 = "/JTIZPgEHFH/ekNl3PhFvpRK/pWgAVxD6WaX4Rmrl/8=";
+      sha256 = "iXaBLCShGGAPb88HGiBgZjCmmv5MCr7jsN6lKOaCxYU=";
     };
     enableParallelBuilding = true;
   });
