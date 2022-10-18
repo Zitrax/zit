@@ -24,6 +24,7 @@ in pkgs.stdenv.mkDerivation rec {
 
   src = ./.;
 
+  # Not strictly in sync with conanfile.txt, if that turns out to be a problem it can be synced then
   buildInputs =
     [ asio pkgs.cmake pkgs.gtest pkgs.ninja openssl.dev openssl.bin pkgs.spdlog pkgs.tbb pkgs.pkg-config ];
 
