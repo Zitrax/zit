@@ -2,7 +2,7 @@
  openssl/1.1.1k
  asio/1.24.0
  gtest/1.11.0
- tbb/2020.3
+ onetbb/2021.6.0
  spdlog/1.10.0
  
  [generators]
