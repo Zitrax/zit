@@ -1,6 +1,7 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "arg_parser.hpp"
 
+#include <regex>
 #include "spdlog/fmt/fmt.h"
 #include "types.hpp"
 
@@ -8,29 +9,30 @@ using namespace std;
 
 namespace zit {
 
+namespace {
+
+// String split from https://stackoverflow.com/a/64886763/11722
+std::vector<std::string>
+split(  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+    const std::string& str,
+    const std::string& regex_str) {
+  std::regex regexz(regex_str);
+  return {std::sregex_token_iterator(str.begin(), str.end(), regexz, -1),
+          std::sregex_token_iterator()};
+}
+}  // namespace
+
 template <typename T>
-void ArgParser::add_option(const string& option,
+void ArgParser::add_option(const string& options,
                            const optional<T>& def,
                            const string& help,
                            T& dst,
-                           bool required) {
-  if (ranges::find_if(m_options, [&](const auto& a) {
-        return a->option() == option;
-      }) != m_options.end()) {
-    throw runtime_error(fmt::format("Duplicate option '{}' added", option));
-  }
-
-  if (ranges::find_if(m_options, [&](const auto& a) {
-        return a->dst() == &dst;
-      }) != m_options.end()) {
-    throw runtime_error(
-        fmt::format("Duplicate value reference for '{}' added", option));
-  }
-
+                           bool required,
+                           bool help_option) {
   if (def) {
     dst = def.value();
   }
-  auto argType = []() {
+  const auto argType = [] {
     if constexpr (std::is_same_v<T, bool>) {
       return Type::BOOL;
     } else if (std::is_same_v<T, float>) {
@@ -42,43 +44,67 @@ void ArgParser::add_option(const string& option,
     } else if (std::is_same_v<T, string>) {
       return Type::STRING;
     }
-  };
+  }();
 
-  m_options.emplace_back(
-      std::make_unique<Arg<T>>(option, help, argType(), dst, required));
+  bool alias = false;
+  for (const auto& option : split(options, ",")) {
+    if (ranges::find_if(m_options, [&](const auto& a) {
+          return a->option() == option;
+        }) != m_options.end()) {
+      throw runtime_error(fmt::format("Duplicate option '{}' added", option));
+    }
+
+    if (!alias) {
+      if (ranges::find_if(m_options, [&](const auto& a) {
+            return a->dst() == &dst;
+          }) != m_options.end()) {
+        throw runtime_error(
+            fmt::format("Duplicate value reference for '{}' added", option));
+      }
+    }
+
+    m_options.emplace_back(std::make_unique<Arg<T>>(option, alias ? "〃" : help,
+                                                    argType, dst, required));
+    m_options.back()->set_help_arg(help_option);
+    alias = true;
+  }
 }
 
-void ArgParser::add_help_option(const std::string& option,
+void ArgParser::add_help_option(const std::string& options,
                                 const std::string& help,
                                 bool& dst) {
-  add_option(option, {false}, help, dst, false);
-  m_options.back()->set_help_arg(true);
+  add_option(options, {false}, help, dst, false, true);
 }
 
 template void ArgParser::add_option<bool>(const string&,
                                           const optional<bool>&,
                                           const string&,
                                           bool&,
+                                          bool,
                                           bool);
 template void ArgParser::add_option<int>(const string&,
                                          const optional<int>&,
                                          const string&,
                                          int&,
+                                         bool,
                                          bool);
 template void ArgParser::add_option<unsigned>(const string&,
                                               const optional<unsigned>&,
                                               const string&,
                                               unsigned&,
+                                              bool,
                                               bool);
 template void ArgParser::add_option<float>(const string&,
                                            const optional<float>&,
                                            const string&,
                                            float&,
+                                           bool,
                                            bool);
 template void ArgParser::add_option<string>(const string&,
                                             const optional<string>&,
                                             const string&,
                                             string&,
+                                            bool,
                                             bool);
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)

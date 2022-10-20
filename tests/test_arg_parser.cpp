@@ -259,3 +259,51 @@ TEST(arg_parser, duplicate_dst) {
   EXPECT_THROW(parser.add_option("--test2", {}, "test help", val),
                std::runtime_error);
 }
+
+TEST(arg_parser, alias) {
+  int val;
+  auto getParser = [&] {
+    ArgParser parser("desc");
+    parser.add_option("--test,-t", {}, "test help", val);
+    return parser;
+  };
+
+  {
+    const char* argv[] = {"cmd", "--test", "1"};
+    getParser().parse(3, argv);
+    EXPECT_EQ(val, 1);
+  }
+
+  {
+    const char* argv[] = {"cmd", "-t", "2"};
+    getParser().parse(3, argv);
+    EXPECT_EQ(val, 2);
+  }
+}
+
+TEST(arg_parser, alias_help) {
+  bool val;
+  auto getParser = [&] {
+    ArgParser parser("desc");
+    parser.add_help_option("--help,-h", "test help", val);
+    return parser;
+  };
+
+  {
+    const char* argv[] = {"cmd", "--help"};
+    getParser().parse(2, argv);
+    EXPECT_TRUE(val);
+  }
+
+  {
+    const char* argv[] = {"cmd", "-h"};
+    getParser().parse(2, argv);
+    EXPECT_TRUE(val);
+  }
+
+  {
+    const char* argv[] = {"cmd"};
+    getParser().parse(1, argv);
+    EXPECT_FALSE(val);
+  }
+}

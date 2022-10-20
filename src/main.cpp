@@ -50,7 +50,7 @@ int main(int argc, const char* argv[]) noexcept {
     std::string log_level;
     bool help = false;
     bool dump = false;
-    parser.add_help_option("--help", "Print help", help);
+    parser.add_help_option("--help,-h", "Print help", help);
     parser.add_option("--torrent", {}, "Torrent file to download", torrent_file,
                       true);
     parser.add_option<std::string>(

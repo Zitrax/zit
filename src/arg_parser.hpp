@@ -18,13 +18,22 @@ class ArgParser {
 
   /**
    * Add an option to be parsed by parse().
+   * @param options One arg like "--test", or a comma separated list like
+   *   "--test,-t" for providing aliases.
+   * @param def Optional default value.
+   * @param help Descriptive help text.
+   * @param dst Reference to variable to be filled with the option value.
+   * @param required True if the option is required.
+   * @param help_option True if the option is an help argument. See @ref
+   *   add_help_option.
    */
   template <typename T>
-  void add_option(const std::string& option,
+  void add_option(const std::string& options,
                   const std::optional<T>& def,
                   const std::string& help,
                   T& dst,
-                  bool required = false);
+                  bool required = false,
+                  bool help_option = false);
 
   /**
    * Add specific help option. This can be passed alone without required flags.
