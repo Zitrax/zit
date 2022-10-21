@@ -281,22 +281,17 @@ int64_t Torrent::length() const {
                    [](int64_t a, const FileInfo& b) { return a + b.length(); });
 }
 
-auto Torrent::left() const {
-  // FIXME: Should not include pieces that are done
-
-  if (is_single_file()) {
-    return length() - accumulate(m_active_pieces.begin(), m_active_pieces.end(),
-                                 static_cast<int64_t>(0),
-                                 [](int64_t a, const auto& p) {
-                                   return a + (p.second->piece_written()
-                                                   ? p.second->piece_size()
-                                                   : 0);
-                                 });
-  }
-
+auto Torrent::downloaded() const {
   return accumulate(
-      m_files.begin(), m_files.end(), static_cast<int64_t>(0),
-      [](int64_t a, const FileInfo& b) { return a + b.length(); });
+      m_active_pieces.begin(), m_active_pieces.end(), static_cast<int64_t>(0),
+      [](int64_t sum, const auto& piece) {
+        return sum +
+               (piece.second->piece_written() ? piece.second->piece_size() : 0);
+      });
+}
+
+auto Torrent::left() const {
+  return length() - downloaded();
 }
 
 void Torrent::disconnected(Peer* peer) {
@@ -305,72 +300,122 @@ void Torrent::disconnected(Peer* peer) {
   }
 }
 
-void Torrent::start() {
-  if (!m_peers.empty()) {
-    throw runtime_error("Local peer vector not empty");
+std::ostream& operator<<(std::ostream& os, const Torrent::TrackerEvent& te) {
+  switch (te) {
+    case Torrent::TrackerEvent::STARTED:
+      os << "started";
+      break;
+    case Torrent::TrackerEvent::COMPLETED:
+      os << "completed";
+      break;
+    case Torrent::TrackerEvent::STOPPED:
+      os << "stopped";
+      break;
+    case Torrent::TrackerEvent::UNSPECIFIED:
+      // The requests performed at regular intervals has no event name
+      os << "";
+      break;
+  }
+  return os;
+}
+
+namespace {
+
+bool is_local(const auto& purl, auto port) {
+  return purl.host() == "127.0.0.1" && purl.port() == port.get();
+}
+
+void read_peers_string_list(Torrent& torrent,
+                            const bencode::Element& peers_dict,
+                            std::vector<std::shared_ptr<Peer>>& peers) {
+  const auto peer_list = peers_dict.to<TypedElement<BeList>>()->val();
+  for (const auto& elm : peer_list) {
+    const auto peer = elm->to<TypedElement<BeDict>>()->val();
+    const auto purl = Url(fmt::format(
+        "http://{}:{}", peer.at("ip")->to<TypedElement<std::string>>()->val(),
+        peer.at("port")->to<TypedElement<int64_t>>()->val()));
+    if (!is_local(purl, torrent.listning_port())) {
+      peers.emplace_back(make_shared<Peer>(purl, torrent));
+    }
+  }
+}
+
+void read_peers_binary_form(Torrent& torrent,
+                            const bencode::Element& peers_dict,
+                            std::vector<std::shared_ptr<Peer>>& peers) {
+  auto binary_peers = peers_dict.to<TypedElement<string>>()->val();
+  if (binary_peers.empty()) {
+    throw runtime_error("Peer list is empty");
   }
 
+  const int THREE_HEX_BYTES = 6;
+  for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
+    const auto purl = Url(binary_peers.substr(i, THREE_HEX_BYTES), true);
+    if (!is_local(purl, torrent.listning_port())) {
+      peers.emplace_back(make_shared<Peer>(purl, torrent));
+    }
+  }
+}
+
+}  // namespace
+
+std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
+    TrackerEvent event) {
   Url url(m_announce);
   url.add_param("info_hash=" + Net::urlEncode(m_info_hash));
   url.add_param(fmt::format("peer_id={}", peer_id()));
   url.add_param("port=" + to_string(m_listening_port.get()));
   url.add_param("uploaded=0");
-  url.add_param("downloaded=0");
+  // TODO: According to the spec this should be the amount downloaded
+  //       since the started event to the tracker. For now using the total.
+  url.add_param("downloaded=" + to_string(downloaded()));
   url.add_param("left=" + to_string(left()));
-  url.add_param("event=started");
+  // FIXME: No one calls this with COMPLETED and STOPPED (we should)
+  url.add_param("event=" + fmt::format("{}", event));
   url.add_param("compact=1");
   m_logger->info("\n{}", url);
 
   auto [headers, body] = Net::httpGet(url);
 
-  ElmPtr reply;
-  try {
-    reply = decode(body);
-  } catch (const BencodeConversionError&) {
-    throw_with_nested(runtime_error("Could not decode peer list."));
-  }
+  std::vector<std::shared_ptr<Peer>> peers;
 
-  m_logger->debug("=====HEADER=====\n{}\n=====BODY=====\n{}", headers, reply);
-
-  const auto is_local = [this](const auto& purl) {
-    return purl.host() == "127.0.0.1" && purl.port() == m_listening_port.get();
-  };
-
-  auto reply_dict = reply->to<TypedElement<BeDict>>()->val();
-  if (reply_dict.find("peers") == reply_dict.end()) {
-    throw runtime_error("Invalid tracker reply, no peer list");
-  }
-  auto peers_dict = reply_dict["peers"];
-  // The peers might be in binary or string form
-  // First try string form ...
-  if (peers_dict->is<TypedElement<BeList>>()) {
-    m_logger->debug("Peer list in string form");
-    const auto peer_list = peers_dict->to<TypedElement<BeList>>()->val();
-    for (const auto& elm : peer_list) {
-      const auto peer = elm->to<TypedElement<BeDict>>()->val();
-      const auto purl = Url(fmt::format(
-          "http://{}:{}", peer.at("ip")->to<TypedElement<std::string>>()->val(),
-          peer.at("port")->to<TypedElement<int64_t>>()->val()));
-      if (!is_local(purl)) {
-        m_peers.emplace_back(make_shared<Peer>(purl, *this));
-      }
-    }
-  } else {
-    // ... else compact/binary form
-    auto binary_peers = peers_dict->to<TypedElement<string>>()->val();
-    m_logger->debug("Peer list in binary form");
-    if (binary_peers.empty()) {
-      throw runtime_error("Peer list is empty");
+  // We only care about decoding the peer list for certain events
+  if (event == TrackerEvent::UNSPECIFIED || event == TrackerEvent::STARTED) {
+    ElmPtr reply;
+    try {
+      reply = decode(body);
+    } catch (const BencodeConversionError&) {
+      throw_with_nested(runtime_error("Could not decode peer list."));
     }
 
-    const int THREE_HEX_BYTES = 6;
-    for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
-      const auto purl = Url(binary_peers.substr(i, THREE_HEX_BYTES), true);
-      if (!is_local(purl)) {
-        m_peers.emplace_back(make_shared<Peer>(purl, *this));
-      }
+    m_logger->debug("=====HEADER=====\n{}\n=====BODY=====\n{}", headers, reply);
+
+    auto reply_dict = reply->to<TypedElement<BeDict>>()->val();
+    if (reply_dict.find("peers") == reply_dict.end()) {
+      throw runtime_error("Invalid tracker reply, no peer list");
+    }
+    auto peers_dict = reply_dict["peers"];
+    // The peers might be in binary or string form
+    // First try string form ...
+    if (peers_dict->is<TypedElement<BeList>>()) {
+      m_logger->debug("Peer list in string form");
+      read_peers_string_list(*this, *peers_dict, peers);
+    } else {
+      // ... else compact/binary form
+      m_logger->debug("Peer list in binary form");
+      read_peers_binary_form(*this, *peers_dict, peers);
     }
   }
+  return peers;
+}
+
+void Torrent::start() {
+  if (!m_peers.empty()) {
+    throw runtime_error("Local peer vector not empty");
+  }
+
+  // Fetch a list of peers from the tracker
+  m_peers = tracker_request(TrackerEvent::STARTED);
 
   // Handshake with all the remote peers
   m_logger->info("Starting handshake with {} peers", m_peers.size());
@@ -411,6 +456,7 @@ void Torrent::stop() {
   for (auto& peer : m_peers) {
     peer->stop();
   }
+  tracker_request(TrackerEvent::STOPPED);
 }
 
 static auto now() {
@@ -521,6 +567,10 @@ std::tuple<FileInfo, int64_t, int64_t> Torrent::file_at_pos(int64_t pos) const {
     cpos += fi.length();
   }
   throw runtime_error(fmt::format("pos > torrent size {}>{}", pos, length()));
+}
+
+void Torrent::last_piece_written() {
+  tracker_request(TrackerEvent::COMPLETED);
 }
 
 void Torrent::piece_done(std::shared_ptr<Piece>& piece) {
