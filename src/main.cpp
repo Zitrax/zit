@@ -89,7 +89,7 @@ int main(int argc, const char* argv[]) noexcept {
     console->info("\n{}", torrent);
 
     sigint_function = [&](int /*s*/) {
-      console->info("CTRL-C pressed. Stopping torrent...");
+      console->warn("CTRL-C pressed. Stopping torrent...");
       torrent.stop();
     };
 

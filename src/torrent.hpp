@@ -144,6 +144,11 @@ class Torrent {
   [[nodiscard]] auto info_hash() const { return m_info_hash; }
 
   /**
+   * Number of bytes downloaded
+   */
+  [[nodiscard]] auto downloaded() const;
+
+  /**
    * Number of bytes left to download.
    */
   [[nodiscard]] auto left() const;
@@ -251,6 +256,11 @@ class Torrent {
   [[nodiscard]] bool done() const;
 
   /**
+   * Called by FileWriter when it has written the last piece to disk.
+   */
+  void last_piece_written();
+
+  /**
    * Port that we listen to.
    */
   [[nodiscard]] auto listning_port() const { return m_listening_port; }
@@ -279,6 +289,15 @@ class Torrent {
    * blocks as non requested to be tried again.
    */
   void retry_pieces();
+
+  enum class TrackerEvent { STARTED, STOPPED, COMPLETED, UNSPECIFIED };
+
+  friend std::ostream& operator<<(std::ostream& os, const TrackerEvent& te);
+
+  /**
+   * Request a list of peers from the tracker.
+   */
+  std::vector<std::shared_ptr<Peer>> tracker_request(TrackerEvent event);
 
   /**
    * Called when one piece has been downloaded.
