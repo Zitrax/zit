@@ -168,7 +168,7 @@ uint32_t Torrent::piece_length(uint32_t id) const {
 
 void Torrent::verify_existing_file() {
   bool full_file = false;
-  if (filesystem::exists(m_name)) {
+  if (is_single_file() && filesystem::exists(m_name)) {
     if (filesystem::exists(m_tmpfile)) {
       throw runtime_error("Temporary and full filename exists");
     }
@@ -260,7 +260,7 @@ void Torrent::verify_existing_file() {
               m_active_pieces[id]->set_piece_written(true);
               ++num_pieces;
             } else {
-              m_logger->debug("Piece {} does not match ({}!={})", id, sha1,
+              m_logger->trace("Piece {} does not match ({}!={})", id, sha1,
                               fsha1);
             }
           });
@@ -373,6 +373,7 @@ void Torrent::start() {
   }
 
   // Handshake with all the remote peers
+  m_logger->info("Starting handshake with {} peers", m_peers.size());
   for (auto& p : m_peers) {
     p->handshake();
   }

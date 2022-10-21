@@ -145,12 +145,11 @@ class Peer {
 
   /**
    * Alternative to handshake() to listen to incoming connections.
-   *
    */
   void listen();
 
   /**
-   * Return true if this listening to incoming connections.
+   * Return true if this peer is listening to incoming connections.
    */
   [[nodiscard]] bool is_listening() const { return m_listening; }
 

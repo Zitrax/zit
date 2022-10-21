@@ -9,6 +9,7 @@
 
 #include "spdlog/spdlog.h"
 #include "string_utils.hpp"
+#include "torrent.hpp"
 
 using namespace std;
 
@@ -175,23 +176,30 @@ size_t Message::parse(PeerConnection& connection) {
   auto handshake = HandshakeMsg::parse(m_msg);
   auto& peer = connection.peer();
   if (handshake) {
-    m_logger->info("{}: Handshake of size {}", connection.peer().str(),
-                   m_msg.size());
     auto consumed = handshake->getConsumed();
-    if (!peer.verify_info_hash(handshake->getInfoHash())) {
-      // TODO: Spec say that we should drop the connection
-      m_logger->warn("Unexpected info_hash");
-      return consumed;
+    if (consumed) {
+      m_logger->info("{}: Got handshake of size {}", connection.peer().str(),
+                     m_msg.size());
+      if (!peer.verify_info_hash(handshake->getInfoHash())) {
+        // TODO: Spec say that we should drop the connection
+        m_logger->warn("Unexpected info_hash");
+        return consumed;
+      }
+      const auto bf = handshake->getBitfield();
+      if (bf.size()) {
+        m_logger->info("{}: Has {}/{} pieces", connection.peer().str(),
+                       bf.count(), peer.torrent().pieces().size());
+        peer.set_remote_pieces(bf);
+      }
+      if (peer.is_listening()) {
+        peer.handshake();
+      }
+      peer.report_bitfield();
+      peer.set_am_interested(true);
+    } else {
+      m_logger->debug("{}: Got handshake part of size {}",
+                      connection.peer().str(), m_msg.size());
     }
-    auto bf = handshake->getBitfield();
-    if (bf.size() && consumed) {
-      peer.set_remote_pieces(bf);
-    }
-    if (peer.is_listening()) {
-      peer.handshake();
-    }
-    peer.report_bitfield();
-    peer.set_am_interested(true);
     return consumed;
   }
 
