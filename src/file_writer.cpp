@@ -169,6 +169,7 @@ class MultiTorrentDestination : public TorrentDestination {
       fs::create_directory(torrent()->name());
       for (const auto& fi : torrent()->files()) {
         const auto dst_name = torrent()->name() / fi.path();
+        fs::create_directories(dst_name.parent_path());
         logger()->info("  Creating {} with size {}", dst_name, fi.length());
         ofstream dst(dst_name, ios::binary | ios::out);
         dst.exceptions(ofstream::failbit | ofstream::badbit);

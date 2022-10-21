@@ -13,6 +13,7 @@
 #include <chrono>
 #include <exception>
 #include <execution>
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <numeric>
@@ -236,6 +237,10 @@ void Torrent::verify_existing_file() {
             int64_t ppos = 0;    // piece pos
             while (remaining > 0 && gpos < global_len) {
               const auto& [fi, offset, left] = file_at_pos(gpos);
+              const auto file = name() / fi.path();
+              if (!filesystem::exists(file)) {
+                return;
+              }
               ifstream is{name() / fi.path(), ios::in | ios::binary};
               is.exceptions(ifstream::failbit | ifstream::badbit);
               is.seekg(offset);
