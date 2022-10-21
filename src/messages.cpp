@@ -175,11 +175,11 @@ static string debugMsg(const bytes& msg, size_t len = 100) {
 size_t Message::parse(PeerConnection& connection) {
   auto handshake = HandshakeMsg::parse(m_msg);
   auto& peer = connection.peer();
+  peer.update_activity();
   if (handshake) {
     auto consumed = handshake->getConsumed();
     if (consumed) {
-      m_logger->info("{}: Got handshake of size {}", connection.peer().str(),
-                     m_msg.size());
+      m_logger->info("{}: Got handshake of size {}", peer.str(), m_msg.size());
       if (!peer.verify_info_hash(handshake->getInfoHash())) {
         // TODO: Spec say that we should drop the connection
         m_logger->warn("Unexpected info_hash");
@@ -187,8 +187,8 @@ size_t Message::parse(PeerConnection& connection) {
       }
       const auto bf = handshake->getBitfield();
       if (bf.size()) {
-        m_logger->info("{}: Has {}/{} pieces", connection.peer().str(),
-                       bf.count(), peer.torrent().pieces().size());
+        m_logger->info("{}: Has {}/{} pieces", peer.str(), bf.count(),
+                       peer.torrent().pieces().size());
         peer.set_remote_pieces(bf);
       }
       if (peer.is_listening()) {
@@ -197,8 +197,8 @@ size_t Message::parse(PeerConnection& connection) {
       peer.report_bitfield();
       peer.set_am_interested(true);
     } else {
-      m_logger->debug("{}: Got handshake part of size {}",
-                      connection.peer().str(), m_msg.size());
+      m_logger->debug("{}: Got handshake part of size {}", peer.str(),
+                      m_msg.size());
     }
     return consumed;
   }
@@ -206,19 +206,19 @@ size_t Message::parse(PeerConnection& connection) {
   if (m_msg.size() >= 4) {
     auto len = big_endian(m_msg);
     m_logger->debug("{}: Incoming length = {}, message/buffer size = {}",
-                    connection.peer().str(), len, m_msg.size());
+                    peer.str(), len, m_msg.size());
     if (len + 4 > m_msg.size()) {
       // Not a full message - return and await more data
       return 0;
     }
     assert(m_msg.size() >= 4);
     if (len == 0) {
-      m_logger->debug("{}: Keep Alive", connection.peer().str());
+      m_logger->debug("{}: Keep Alive", peer.str());
       return 4;
     }
     if (m_msg.size() >= 5) {
       auto id = to_peer_wire_id(m_msg[4]);
-      m_logger->debug("{}: Received: {}", connection.peer().str(), id);
+      m_logger->debug("{}: Received: {}", peer.str(), id);
       switch (id) {
         case peer_wire_id::CHOKE:
           peer.set_choking(true);
@@ -247,8 +247,7 @@ size_t Message::parse(PeerConnection& connection) {
           } catch (const std::out_of_range&) {
             // Seen cases of too short messages here, for when it happen again
             // print the full message.
-            m_logger->error("{}: Message: {}", connection.peer().str(),
-                            debugMsg(m_msg));
+            m_logger->error("{}: Message: {}", peer.str(), debugMsg(m_msg));
             throw;
           }
 
@@ -259,7 +258,7 @@ size_t Message::parse(PeerConnection& connection) {
           auto end = start + len - 1;
           auto bf = Bitfield(bytes(start, end));
           peer.set_remote_pieces(bf);
-          m_logger->debug("{}: {}", connection.peer().str(), bf);
+          m_logger->debug("{}: {}", peer.str(), bf);
           return len + 4;
         }
         case peer_wire_id::REQUEST: {
@@ -282,13 +281,13 @@ size_t Message::parse(PeerConnection& connection) {
         case peer_wire_id::UNKNOWN:
           break;
       }
-      m_logger->warn("{}: {} is unhandled", connection.peer().str(), id);
+      m_logger->warn("{}: {} is unhandled", peer.str(), id);
       return m_msg.size();
     }
   }
 
-  m_logger->warn("{}: Unknown message of length {} ({})",
-                 connection.peer().str(), m_msg.size(), debugMsg(m_msg));
+  m_logger->warn("{}: Unknown message of length {} ({})", peer.str(),
+                 m_msg.size(), debugMsg(m_msg));
   return m_msg.size();
 }
 

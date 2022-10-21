@@ -339,6 +339,11 @@ std::size_t Peer::request_next_block(unsigned short count) {
   return requests;
 }
 
+bool Peer::is_inactive() const {
+  // 2min suggested in torrent spec
+  return std::chrono::system_clock::now() - m_last_activity >= 2min;
+}
+
 void Peer::set_choking(bool choking) {
   if (m_choking && !choking) {
     m_choking = choking;

@@ -84,7 +84,8 @@ class Peer {
   explicit Peer(Url url, Torrent& torrent)
       : m_url(std::move(url)),
         m_torrent(torrent),
-        m_logger(spdlog::get("console")) {}
+        m_logger(spdlog::get("console")),
+        m_last_activity(std::chrono::system_clock::now()) {}
 
   /**
    * A listening host does not need a url when created.
@@ -198,6 +199,16 @@ class Peer {
 
   std::size_t request_next_block(unsigned short count = 5);
 
+  /**
+   * Update the last activity time stamp to be now.
+   */
+  void update_activity() { m_last_activity = std::chrono::system_clock::now(); }
+
+  /**
+   * Return true if this peer is inactive.
+   */
+  [[nodiscard]] bool is_inactive() const;
+
  private:
   std::optional<Url> m_url{};
   bool m_am_choking = true;
@@ -217,6 +228,7 @@ class Peer {
   Torrent& m_torrent;
   std::shared_ptr<spdlog::logger> m_logger;
   std::unique_ptr<asio::io_service::work> m_work{};
+  std::chrono::system_clock::time_point m_last_activity{};
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Peer& peer) {

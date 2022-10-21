@@ -442,6 +442,7 @@ void Torrent::run() {
       ran += p->io_service().poll_one();
     }
     retry_pieces();
+    retry_peers();
     // If no handlers ran, then sleep.
     if (!ran) {
       // For some reason this crashes clang-tidy 10,11,12, thus usleep
@@ -506,6 +507,61 @@ void Torrent::retry_pieces() {
       }
     }
   }
+}
+
+void Torrent::retry_peers() {
+  // Do not need to call this too frequently so rate limit it
+  static std::chrono::system_clock::time_point last_call{now() + 2min};
+
+  if (now() - last_call <= 2min) {
+    return;
+  }
+
+  last_call = now();
+  m_logger->debug("Checking peers for retry");
+
+  // Find and disconnect inactive peers
+  // TODO: Nicer to use ranges, however for clang we need to wait for clang16
+  const auto it = std::partition(m_peers.begin(), m_peers.end(), [](auto& p) {
+    return p->is_inactive() && !p->is_listening();
+  });
+
+  const auto inactive = std::distance(m_peers.begin(), it);
+
+  if (inactive) {
+    m_logger->info("Stopping {} inactive peers", inactive);
+    std::for_each(m_peers.begin(), it, [](auto& p) { p->stop(); });
+  }
+
+  // Connect to new peers (discarding the ones we just dropped)
+  const auto tracker_peers = tracker_request(TrackerEvent::UNSPECIFIED);
+  m_logger->debug("{} candidate peers", tracker_peers.size());
+  std::vector<std::shared_ptr<Peer>> new_peers;
+
+  for (const auto& tracker_peer : tracker_peers) {
+    const bool was_inactive =
+        std::find_if(m_peers.begin(), it, [&tracker_peer](auto& existing_peer) {
+          const auto& lurl = tracker_peer->url();
+          const auto& rurl = existing_peer->url();
+          return lurl.has_value() && rurl.has_value() &&
+                 tracker_peer->url().value().str() ==
+                     existing_peer->url().value().str();
+        }) != it;
+    m_logger->debug("Candidate {} was inactive: {}", tracker_peer->str(),
+                    was_inactive);
+    if (!was_inactive) {
+      tracker_peer->handshake();
+      new_peers.push_back(tracker_peer);
+    }
+  }
+
+  m_logger->info("Found {} new peers", new_peers.size());
+
+  if (inactive) {
+    m_peers.erase(m_peers.begin(), it);
+  }
+
+  m_peers.insert(m_peers.end(), new_peers.begin(), new_peers.end());
 }
 
 // TODO: Yes, should group these in one type
