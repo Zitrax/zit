@@ -290,6 +290,11 @@ class Torrent {
    */
   void retry_pieces();
 
+  /**
+   * Go over the list of peers and remove inactive ones, and reconnect to new.
+   */
+  void retry_peers();
+
   enum class TrackerEvent { STARTED, STOPPED, COMPLETED, UNSPECIFIED };
 
   friend std::ostream& operator<<(std::ostream& os, const TrackerEvent& te);
