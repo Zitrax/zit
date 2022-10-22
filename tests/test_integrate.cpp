@@ -20,6 +20,7 @@
 #include <thread>
 #include <utility>
 
+#include <file_utils.hpp>
 #include <file_writer.hpp>
 #include <torrent.hpp>
 
@@ -192,7 +193,9 @@ auto download(const fs::path& data_dir,
   auto target = torrent.name();
 
   // Ensure we do not already have it
-  fs::remove(target);
+  if (torrent.is_single_file()) {
+    fs::remove(target);
+  }
 
   zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
     spdlog::get("console")->info("Download completed");
@@ -262,6 +265,80 @@ INSTANTIATE_TEST_SUITE_P(SeedCount,
 
 using Integrate = TestWithTmpDir;
 
+// This test verifies that we can resume a download
+// where one piece is missing
+#ifdef INTEGRATION_TESTS
+TEST_F(Integrate, download_part) {
+#else
+TEST_P(IntegrateF, DISABLED_download_part) {
+#endif  // INTEGRATION_TESTS
+  auto tracker = start_tracker();
+
+  const auto data_dir = fs::path(DATA_DIR);
+  const auto torrent_file = data_dir / "1MiB.torrent";
+  const auto download_dir = tmp_dir();
+
+  // Copy ready file to download_dir and modify a piece
+  // such that it will be retransfered.
+  const auto fn = download_dir / "1MiB.dat.zit_downloading";
+  fs::copy_file(data_dir / "1MiB.dat", fn);
+  auto content = zit::read_file(fn);
+  constexpr auto byte_to_change = 300'000;
+  ASSERT_TRUE(content.at(byte_to_change) != 0);
+  content.at(byte_to_change) = 0;
+  zit::write_file(fn, content);
+
+  zit::Torrent torrent(torrent_file, download_dir);
+  ASSERT_FALSE(torrent.done());
+  auto target = download(data_dir, torrent_file, torrent, 1);
+
+  // Transfer done - Verify content
+  auto source = data_dir / "1MiB.dat";
+  auto source_sha1 = zit::Sha1::calculateFile(source).hex();
+  auto target_sha1 = zit::Sha1::calculateFile(target).hex();
+  EXPECT_EQ(source_sha1, target_sha1);
+}
+
+#ifdef INTEGRATION_TESTS
+TEST_F(Integrate, download_multi_part) {
+#else
+TEST_F(Integrate, DISABLED_download_multi_part) {
+#endif  // INTEGRATION_TESTS
+  auto tracker = start_tracker();
+
+  const auto data_dir = fs::path(DATA_DIR);
+  const auto torrent_file = data_dir / "multi.torrent";
+  const auto download_dir = tmp_dir();
+
+  // Copy ready files to download_dir and mofify one
+  // such that it will be retranfered.
+  fs::copy(data_dir / "multi", download_dir / "multi");
+  zit::write_file(download_dir / "multi.zit_downloading", "");
+  const auto fn = download_dir / "multi" / "b";
+  auto content = zit::read_file(fn);
+  constexpr auto byte_to_change = 500;
+  ASSERT_TRUE(content.at(byte_to_change) != 0);
+  content.at(byte_to_change) = 0;
+  zit::write_file(fn, content);
+
+  zit::Torrent torrent(torrent_file, download_dir);
+  ASSERT_FALSE(torrent.done());
+  auto target = download(data_dir, torrent_file, torrent, 1);
+
+  // Transfer done - Verify content
+  const auto name = torrent.name();
+  for (const auto& fi : torrent.files()) {
+    auto source = data_dir / name / fi.path();
+    auto dst = name / fi.path();
+    auto source_sha1 = zit::Sha1::calculateFile(source).hex();
+    auto target_sha1 = zit::Sha1::calculateFile(dst).hex();
+    EXPECT_EQ(source_sha1, target_sha1) << fi.path();
+    // Delete downloaded file
+    fs::remove(dst);
+  }
+  fs::remove(name);
+}
+
 #ifdef INTEGRATION_TESTS
 TEST_F(Integrate, download_multi) {
 #else
@@ -277,7 +354,6 @@ TEST_F(Integrate, DISABLED_download_multi) {
   zit::Torrent torrent(torrent_file, download_dir);
   ASSERT_FALSE(torrent.done());
   auto target = download(data_dir, torrent_file, torrent, 1);
-  std::cout << "TARGET: " << target << std::endl;
 
   // Transfer done - Verify content
   const auto name = torrent.name();
