@@ -120,6 +120,7 @@ class FileWriterThread {
     m_logger->debug("FileWriter stopping");
     m_file_writer.stop();
     m_file_writer_thread.join();
+    m_logger->debug("FileWriter stopped");
   }
 
  private:
