@@ -378,7 +378,12 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
   // FIXME: No one calls this with COMPLETED and STOPPED (we should)
   url.add_param("event=" + fmt::format("{}", event));
   url.add_param("compact=1");
-  m_logger->info("\n{}", url);
+
+  if (m_logger->should_log(spdlog::level::debug)) {
+    m_logger->debug("Tracker request:\n{}", url);
+  } else {
+    m_logger->info("Tracker request: {}", url.str());
+  }
 
   auto [headers, body] = Net::httpGet(url);
 

@@ -30,4 +30,20 @@ inline auto read_file(const std::filesystem::path& file_name) {
   }
 }
 
+/**
+ * Write a string to file
+ */
+inline void write_file(const std::filesystem::path& file_name,
+                       const std::string& str) {
+  try {
+    std::ofstream file_stream{file_name,
+                              std::ios_base::out | std::ios_base::binary};
+    file_stream.exceptions(std::ifstream::failbit);
+    file_stream << str;
+  } catch (const std::exception&) {
+    std::throw_with_nested(
+        std::runtime_error("Could not write: " + file_name.string()));
+  }
+}
+
 }  // namespace zit
