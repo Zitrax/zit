@@ -20,7 +20,7 @@ let
 
 in pkgs.stdenv.mkDerivation rec {
   pname = "zit";
-  version = "0.20.1";
+  version = "0.2";
 
   src = ./.;
 
