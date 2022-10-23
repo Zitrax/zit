@@ -23,6 +23,7 @@ void FileWriter::add(Torrent* torrent, const shared_ptr<Piece>& piece) {
 
 void FileWriter::run() {
   logger()->info("FileWriter starting");
+  m_stop = false;
   while (!m_stop) {
     write_next_piece();
   }
