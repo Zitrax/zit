@@ -85,7 +85,7 @@ Torrent::Torrent(const filesystem::path& file, std::filesystem::path data_dir)
   const auto& info = root_dict.at("info")->to<TypedElement<BeDict>>()->val();
 
   m_name = m_data_dir / info.at("name")->to<TypedElement<string>>()->val();
-  m_tmpfile = m_name + ".zit_downloading";
+  m_tmpfile = m_name + Torrent::tmpfileExtension();
   m_logger->debug("Using tmpfile {} for {}", m_tmpfile, file);
   auto pieces = info.at("pieces")->to<TypedElement<string>>()->val();
   if (pieces.size() % 20) {
@@ -177,6 +177,13 @@ void Torrent::verify_existing_file() {
     m_tmpfile = m_name;
     full_file = true;
   }
+
+  if (!is_single_file() && filesystem::exists(m_name)) {
+    // We have either started or finished this torrent
+    // Ensure that we verify the content.
+    m_tmpfile = m_name;
+  }
+
   if (filesystem::exists(m_tmpfile)) {
     std::atomic_uint32_t num_pieces = 0;
     std::mutex mutex;

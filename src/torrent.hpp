@@ -161,6 +161,11 @@ class Torrent {
   [[nodiscard]] auto tmpfile() const { return m_tmpfile; }
 
   /**
+   * The suffix of a file used during transfer (before completion)
+   */
+  [[nodiscard]] static auto tmpfileExtension() { return ".zit_downloading"; }
+
+  /**
    * List of connected peers
    */
   [[nodiscard]] auto& peers() { return m_peers; }
