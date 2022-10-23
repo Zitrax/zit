@@ -280,7 +280,8 @@ TEST_P(IntegrateF, DISABLED_download_part) {
 
   // Copy ready file to download_dir and modify a piece
   // such that it will be retransfered.
-  const auto fn = download_dir / "1MiB.dat.zit_downloading";
+  const auto fn = download_dir / "1MiB.dat" +=
+      zit::Torrent::tmpfileExtension();
   fs::copy_file(data_dir / "1MiB.dat", fn);
   auto content = zit::read_file(fn);
   constexpr auto byte_to_change = 300'000;
@@ -313,7 +314,8 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
   // Copy ready files to download_dir and mofify one
   // such that it will be retranfered.
   fs::copy(data_dir / "multi", download_dir / "multi");
-  zit::write_file(download_dir / "multi.zit_downloading", "");
+  zit::write_file(download_dir / "multi" += zit::Torrent::tmpfileExtension(),
+                  "");
   const auto fn = download_dir / "multi" / "b";
   auto content = zit::read_file(fn);
   constexpr auto byte_to_change = 500;

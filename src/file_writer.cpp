@@ -213,7 +213,19 @@ class MultiTorrentDestination : public TorrentDestination {
     }
   }
 
-  void torrentComplete() override { fs::remove(torrent()->tmpfile()); }
+  void torrentComplete() override {
+    // Depending on if we resumed or not we might or might not
+    // have the tmp file suffix. Thus try to only delete the suffixed one.
+    const auto tmpfile = [&] {
+      if (torrent()->tmpfile().native().ends_with(
+              Torrent::tmpfileExtension())) {
+        return torrent()->tmpfile();
+      }
+      return torrent()->tmpfile() += Torrent::tmpfileExtension();
+    }();
+
+    fs::remove(tmpfile);
+  }
 };
 
 shared_ptr<TorrentDestination> TorrentDestination::create(
