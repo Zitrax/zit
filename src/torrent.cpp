@@ -169,6 +169,7 @@ uint32_t Torrent::piece_length(uint32_t id) const {
 
 void Torrent::verify_existing_file() {
   bool full_file = false;
+
   if (is_single_file() && filesystem::exists(m_name)) {
     if (filesystem::exists(m_tmpfile)) {
       throw runtime_error("Temporary and full filename exists");
@@ -550,23 +551,24 @@ void Torrent::retry_peers() {
     std::for_each(m_peers.begin(), it, [](auto& p) { p->stop(); });
   }
 
-  // Connect to new peers (discarding the ones we just dropped)
+  // Connect to new peers (discarding the ones we just dropped or active ones)
   const auto tracker_peers = tracker_request(TrackerEvent::UNSPECIFIED);
   m_logger->debug("{} candidate peers", tracker_peers.size());
   std::vector<std::shared_ptr<Peer>> new_peers;
 
   for (const auto& tracker_peer : tracker_peers) {
-    const bool was_inactive =
-        std::find_if(m_peers.begin(), it, [&tracker_peer](auto& existing_peer) {
-          const auto& lurl = tracker_peer->url();
-          const auto& rurl = existing_peer->url();
-          return lurl.has_value() && rurl.has_value() &&
-                 tracker_peer->url().value().str() ==
-                     existing_peer->url().value().str();
-        }) != it;
+    const bool in_use =
+        std::find_if(m_peers.begin(), m_peers.end(),
+                     [&tracker_peer](auto& existing_peer) {
+                       const auto& lurl = tracker_peer->url();
+                       const auto& rurl = existing_peer->url();
+                       return lurl.has_value() && rurl.has_value() &&
+                              tracker_peer->url().value().str() ==
+                                  existing_peer->url().value().str();
+                     }) != m_peers.end();
     m_logger->debug("Candidate {} was inactive: {}", tracker_peer->str(),
-                    was_inactive);
-    if (!was_inactive) {
+                    in_use);
+    if (!in_use) {
       tracker_peer->handshake();
       new_peers.push_back(tracker_peer);
     }

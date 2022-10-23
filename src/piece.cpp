@@ -93,7 +93,9 @@ bytes Piece::get_block(uint32_t offset,
   }
   // Is it on disk?
   m_logger->debug("Returning block {} in piece {} from disk", block_id, m_id);
-  auto file_offset = m_piece_size * m_id + offset;
+  // Important to use the piece_length from the torrent, since the last
+  // piece is often shorter and can't thus be used to get the offset.
+  const auto file_offset = torrent.piece_length() * m_id + offset;
   return FileWriter::getInstance().read_block(file_offset, length, torrent);
 }
 
