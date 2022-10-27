@@ -217,7 +217,7 @@ class MultiTorrentDestination : public TorrentDestination {
     // Depending on if we resumed or not we might or might not
     // have the tmp file suffix. Thus try to only delete the suffixed one.
     const auto tmpfile = [&] {
-      if (torrent()->tmpfile().native().ends_with(
+      if (torrent()->tmpfile().string().ends_with(
               Torrent::tmpfileExtension())) {
         return torrent()->tmpfile();
       }

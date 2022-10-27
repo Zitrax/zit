@@ -63,7 +63,8 @@ auto random_string(std::size_t len) -> std::string {
       "abcdefghijklmnopqrstuvwxyz";
   thread_local static std::mt19937 rg{std::random_device{}()};
   thread_local static auto dist =
-      std::uniform_int_distribution<unsigned long>{{}, chars.size() - 1};
+      std::uniform_int_distribution<unsigned long>{
+        {}, zit::numeric_cast<unsigned long>(chars.size()) - 1};
   std::string result(len, '\0');
   std::generate_n(begin(result), len, [&] { return chars.at(dist(rg)); });
   return result;
@@ -84,7 +85,7 @@ Torrent::Torrent(const filesystem::path& file, std::filesystem::path data_dir)
   m_announce = root_dict.at("announce")->to<TypedElement<string>>()->val();
   const auto& info = root_dict.at("info")->to<TypedElement<BeDict>>()->val();
 
-  m_name = m_data_dir / info.at("name")->to<TypedElement<string>>()->val();
+  m_name = (m_data_dir / info.at("name")->to<TypedElement<string>>()->val()).string();
   m_tmpfile = m_name + Torrent::tmpfileExtension();
   m_logger->debug("Using tmpfile {} for {}", m_tmpfile, file);
   auto pieces = info.at("pieces")->to<TypedElement<string>>()->val();
@@ -463,9 +464,13 @@ void Torrent::run() {
     retry_peers();
     // If no handlers ran, then sleep.
     if (!ran) {
+#ifdef WIN32
+      this_thread::sleep_for(10ms);
+#else
       // For some reason this crashes clang-tidy 10,11,12, thus usleep
       // this_thread::sleep_for(10ms);
       usleep(10000);
+#endif // WIN32
     }
   }
   m_logger->debug("Run loop done");

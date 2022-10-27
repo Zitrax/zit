@@ -69,10 +69,12 @@ if(CMAKE_BUILD_TYPE MATCHES Release AND NOT DISABLE_LTO)
   endif()
 
   # Strip binary in release mode
-  add_custom_command(TARGET zit POST_BUILD
-    COMMENT "Stripping zit"
-    COMMAND ${CMAKE_STRIP} $<TARGET_FILE:zit>
-  )
+  if(NOT WIN32)
+    add_custom_command(TARGET zit POST_BUILD
+      COMMENT "Stripping zit"
+      COMMAND ${CMAKE_STRIP} $<TARGET_FILE:zit>
+    )
+  endif()
 endif()
 
 add_custom_target(doc COMMAND doxygen WORKING_DIRECTORY ${CMAKE_SOURCE_DIR})

@@ -93,12 +93,14 @@ int main(int argc, const char* argv[]) noexcept {
       torrent.stop();
     };
 
+#ifndef WIN32
     struct sigaction sigIntHandler {};
     // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
     sigIntHandler.sa_handler = sigint_handler;
     sigemptyset(&sigIntHandler.sa_mask);
     sigIntHandler.sa_flags = 0;
     sigaction(SIGINT, &sigIntHandler, nullptr);
+#endif // !WIN32
 
     torrent.start();
     torrent.run();
