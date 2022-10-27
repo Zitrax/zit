@@ -7,7 +7,6 @@
 #include <asio/ssl.hpp>
 
 #include <spdlog/spdlog.h>
-#include <experimental/array>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
@@ -20,7 +19,6 @@
 using asio::detail::socket_ops::host_to_network_short;
 using asio::ip::tcp;
 using namespace std;
-using std::experimental::make_array;
 namespace ssl = asio::ssl;
 
 namespace zit {
@@ -106,9 +104,9 @@ static std::tuple<std::string, std::string> request(Sock& sock,
     throw runtime_error("invalid response");
   }
 
-  constexpr auto VALID_STATUSES =
-      make_array(Net::m_http_status_ok, Net::m_http_status_found,
-                 Net::m_http_status_moved);
+  constexpr std::array VALID_STATUSES =
+      {Net::m_http_status_ok, Net::m_http_status_found,
+                 Net::m_http_status_moved};
   if (ranges::find(VALID_STATUSES, status_code) == VALID_STATUSES.end()) {
     throw runtime_error(fmt::format("{}: response returned with status code {}",
                                     url.str(), status_code));

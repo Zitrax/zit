@@ -27,7 +27,7 @@ optional<uint32_t> Piece::next_offset(bool mark) {
     m_blocks_requested[*next] = true;
     m_last_request = std::chrono::system_clock::now();
   }
-  return *next * m_block_size;
+  return numeric_cast<uint32_t>(*next) * m_block_size;
 }
 
 bytes Piece::data() const {

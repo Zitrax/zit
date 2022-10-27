@@ -19,7 +19,7 @@ namespace zit {
 inline std::string from_bytes(const bytes& buffer,
                               std::string::size_type start = 0,
                               std::string::size_type end = 0) {
-  using std::string_literals::operator""s;
+  using namespace std::string_literals;
   if (end > 0 && end < start) {
     throw std::invalid_argument(__FUNCTION__ + ": end < start"s);
   }
@@ -60,36 +60,42 @@ inline std::string to_hex(const std::string& str) {
 
 // trim functions below from https://stackoverflow.com/a/217605/11722
 
-/** trim from start (in place) */
-inline void ltrim(std::string& s) {
-  s.erase(s.begin(), std::ranges::find_if(
-                         s, std::not1(std::ptr_fun<int, int>(std::isspace))));
+// trim from start (in place)
+inline void ltrim(std::string &s) {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }));
 }
 
-/** trim from end (in place) */
-inline void rtrim(std::string& s) {
-  s.erase(std::find_if(s.rbegin(), s.rend(),
-                       std::not1(std::ptr_fun<int, int>(std::isspace)))
-              .base(),
-          s.end());
+// trim from end (in place)
+inline void rtrim(std::string &s) {
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), s.end());
 }
 
-/** trim from both ends (in place) */
-inline void trim(std::string& s) {
-  ltrim(s);
-  rtrim(s);
+// trim from both ends (in place)
+inline void trim(std::string &s) {
+    ltrim(s);
+    rtrim(s);
 }
 
-/** trim from start (copying) */
+// trim from start (copying)
 inline std::string ltrim_copy(std::string s) {
-  ltrim(s);
-  return s;
+    ltrim(s);
+    return s;
 }
 
-/** trim from end (copying) */
+// trim from end (copying)
 inline std::string rtrim_copy(std::string s) {
-  rtrim(s);
-  return s;
+    rtrim(s);
+    return s;
+}
+
+// trim from both ends (copying)
+inline std::string trim_copy(std::string s) {
+    trim(s);
+    return s;
 }
 
 inline std::string to_lower(const std::string& s) {
@@ -105,10 +111,10 @@ inline std::string to_lower(const std::string& s) {
  * @param bytes Number of bytes to convert
  */
 inline std::string bytesToHumanReadable(int64_t bytes) {
-  std::vector<std::tuple<int64_t, std::string>> limits{{1L << 40, "TiB"},
-                                                       {1L << 30, "GiB"},
-                                                       {1L << 20, "MiB"},
-                                                       {1L << 10, "KiB"},
+  std::vector<std::tuple<int64_t, std::string>> limits{{1LL << 40, "TiB"},
+                                                       {1LL << 30, "GiB"},
+                                                       {1LL << 20, "MiB"},
+                                                       {1LL << 10, "KiB"},
                                                        {0, "B"}};
   const auto abytes = std::abs(bytes);
   const auto* sign = (bytes < 0 ? "-" : "");
