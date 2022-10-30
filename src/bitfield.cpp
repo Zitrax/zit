@@ -8,6 +8,12 @@
 
 namespace zit {
 
+namespace {
+  uint8_t bit_mask(bytes::size_type i) {
+    return static_cast<uint8_t>(1 << (7 - (i % 8)));
+  }
+}
+
 // --- bitfield::proxy ---
 
 Bitfield::Proxy::Proxy(Bitfield& bf, bytes::size_type i)
@@ -21,29 +27,24 @@ Bitfield::Proxy& Bitfield::Proxy::operator=(Bitfield::Proxy&& rhs) {
 
 Bitfield::Proxy& Bitfield::Proxy::operator=(bool b) {
   // Get relevant byte
-  auto byte_index = m_i / 8;
+  const auto byte_index = m_i / 8;
   if (m_bitfield.m_bytes.size() <= byte_index) {
     m_bitfield.m_bytes.resize(byte_index + 1);
   }
   auto byte_val = static_cast<uint8_t>(m_bitfield.m_bytes[byte_index]);
   // Update bit
-  uint8_t cb = bit();
+  const uint8_t cb = bit_mask(m_i);
   if (b) {
-    byte_val |= static_cast<uint8_t>(cb);
+    byte_val |= cb;
   } else {
-    byte_val &= static_cast<uint8_t>(~cb);
+    byte_val &= ~cb;
   }
   m_bitfield.m_bytes[byte_index] = static_cast<std::byte>(byte_val);
   return *this;
 }
 
 Bitfield::Proxy::operator bool() const {
-  auto byte = static_cast<uint8_t>(m_bitfield.m_bytes.at(m_i / 8));
-  return byte & bit();
-}
-
-uint8_t Bitfield::Proxy::bit() const {
-  return static_cast<uint8_t>(1 << (7 - (m_i % 8)));
+  return m_bitfield.get(m_i);
 }
 
 // --- bitfield ---
@@ -54,9 +55,13 @@ Bitfield::Bitfield(bytes::size_type count) {
   m_bytes.resize(count / 8 + (count % 8 != 0));
 }
 
-Bitfield::Proxy Bitfield::operator[](bytes::size_type i) const {
-  // NOLINTNEXTLINE(cppcoreguidelines-pro-type-const-cast)
-  return {const_cast<Bitfield&>(*this), i};
+bool Bitfield::get(bytes::size_type i) const{
+  const auto byte = static_cast<uint8_t>(m_bytes.at(i / 8));
+  return byte & bit_mask(i);
+}
+
+bool Bitfield::operator[](bytes::size_type i) const {
+  return get(i);
 }
 
 Bitfield::Proxy Bitfield::operator[](bytes::size_type i) {
