@@ -62,13 +62,23 @@ class Bitfield {
     operator bool() const;
 
    private:
-    [[nodiscard]] uint8_t bit() const;
-
     Bitfield& m_bitfield;
     bytes::size_type m_i;
   };
 
-  Proxy operator[](bytes::size_type i) const;
+  /**
+   * Get bit value.
+   */
+  bool get(bytes::size_type i) const;
+
+  /**
+   * Get bit value.
+   */
+  bool operator[](bytes::size_type i) const;
+
+  /**
+   * Get bit value.
+   */
   Proxy operator[](bytes::size_type i);
 
   /**

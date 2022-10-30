@@ -413,3 +413,13 @@ TEST(Bitfield, count) {
   bf[7] = true;
   EXPECT_EQ(bf.count(), 7);
 }
+
+TEST(Bitfield, const) {
+  Bitfield bf;
+  bf[7] = true;
+  EXPECT_TRUE(bf[7]);
+  EXPECT_TRUE(bf.get(7));
+
+  const Bitfield& cbf = bf;
+  EXPECT_TRUE(cbf[7]);
+}
