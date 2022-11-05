@@ -165,7 +165,7 @@ void PeerConnection::handle_connect(const asio::error_code& err,
       m_logger->debug("Connected");
       send(true);
     } else {
-      m_logger->debug("Already connected");
+      m_logger->trace("Already connected");
       send();
     }
   } else if (endpoint_iterator != tcp::resolver::iterator()) {
