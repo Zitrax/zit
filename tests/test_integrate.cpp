@@ -153,6 +153,15 @@ fs::path home_dir() {
 }
 
 auto start_seeder(const fs::path& data_dir, const fs::path& torrent_file) {
+  // FIXME: A downside of Transmission is that it refuses to connect to
+  // localhost addresses which make it trickier to test properly. We either have
+  // to find a way to ensure that Zit and Transmission operate on different IP
+  // addresses or somehow convince transmission to connect to localhost
+  // addresses. Or even use yet another client. On the upside, Transmission does
+  // work fine with localhost if we initiate the connection, but that does not
+  // give us the correct coverage. KTorrent is a tool that does seem to work
+  // nicely with localhost addresses, but it seems to be GUI only :(
+
   fs::remove_all(home_dir() / ".config/transmission");
   return Process("leecher", {"transmission-cli", "-w", data_dir.c_str(),
                              torrent_file.c_str()});
