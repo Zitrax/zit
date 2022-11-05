@@ -579,7 +579,9 @@ void Torrent::retry_peers() {
     }
   }
 
-  m_logger->info("Found {} new peers", new_peers.size());
+  if (!new_peers.empty()) {
+    m_logger->info("Found {} new peers", new_peers.size());
+  }
 
   if (inactive) {
     m_peers.erase(m_peers.begin(), it);
