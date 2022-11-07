@@ -1,26 +1,13 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "arg_parser.hpp"
 
-#include <regex>
 #include "spdlog/fmt/fmt.h"
+#include "string_utils.hpp"
 #include "types.hpp"
 
 using namespace std;
 
 namespace zit {
-
-namespace {
-
-// String split from https://stackoverflow.com/a/64886763/11722
-std::vector<std::string>
-split(  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-    const std::string& str,
-    const std::string& regex_str) {
-  std::regex regexz(regex_str);
-  return {std::sregex_token_iterator(str.begin(), str.end(), regexz, -1),
-          std::sregex_token_iterator()};
-}
-}  // namespace
 
 template <typename T>
 void ArgParser::add_option(const string& options,

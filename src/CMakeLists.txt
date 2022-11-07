@@ -37,6 +37,7 @@ add_library(zitlib OBJECT
   piece.cpp
   file_writer.cpp
   arg_parser.cpp
+  global_config.cpp
 )
 
 target_link_libraries(zitlib

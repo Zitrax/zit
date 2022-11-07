@@ -19,6 +19,8 @@
 # -hicpp-named-parameter (fine to leave it out when unused)
 # -cppcoreguidelines-special-member-functions (TODO: Fix this)
 # -hicpp-special-member-functions(same as cppcoreguidelines-special-member-functions)
+# -misc-non-private-member-variables-in-classes (optimally I would like to allow protected but not private)
+# -cppcoreguidelines-non-private-member-variables-in-classes ( --"-- )
 
 
 Checks:          '*,
@@ -53,6 +55,8 @@ Checks:          '*,
                  -hicpp-named-parameter,
                  -cppcoreguidelines-special-member-functions,
                  -hicpp-special-member-functions,
+                 -misc-non-private-member-variables-in-classes,
+                 -cppcoreguidelines-non-private-member-variables-in-classes,
                  '
 WarningsAsErrors: '*'
 HeaderFilterRegex: '(src|tests)/*.h$'
