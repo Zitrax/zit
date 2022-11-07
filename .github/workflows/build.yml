@@ -41,4 +41,4 @@ jobs:
     
     - name: Tests
       working-directory: ${{github.workspace}}/build
-      run: ctest --output-on-failure --no-tests=error
+      run: SPDLOG_LEVEL=DEBUG ctest --output-on-failure --no-tests=error
