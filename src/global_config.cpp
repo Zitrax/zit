@@ -10,7 +10,6 @@
 #include <spdlog/logger.h>
 #include <cstdlib>
 #include <cstring>
-#include <filesystem>
 #include <optional>
 #include <stdexcept>
 #include <vector>
@@ -91,6 +90,35 @@ const std::map<std::string, BoolSetting> settings_map<BoolSetting>{
 
 }  // namespace
 
+FileConfig::FileConfig(std::filesystem::path config_file)
+    : m_logger(spdlog::get("console")), m_config_file(std::move(config_file)) {
+  if (!m_config_file.empty() && !try_file(m_config_file)) {
+    throw std::runtime_error(
+        fmt::format("Could not read/use config file '{}'", m_config_file));
+  }
+}
+
+bool FileConfig::try_file(const std::filesystem::path& config_file) {
+  m_logger->trace("Trying config file: {}", config_file);
+  if (fs::exists(config_file)) {
+    m_logger->info("Reading config from: {}", config_file);
+    const auto config_str = read_file(config_file);
+    for (const auto& line : split(config_str, "\n")) {
+      m_logger->trace("line: {}", line);
+      auto kv = split(line, "=");
+      if (kv.size() != 2) {
+        m_logger->warn("Ignoring invalid config line: {}", line);
+      } else {
+        trim(kv[0]);
+        trim(kv[1]);
+        update_value(kv[0], kv[1]);
+      }
+    }
+    return true;
+  }
+  return false;
+}
+
 void FileConfig::update_value(const std::string& key,
                               const std::string& value) {
   if (settings_map<BoolSetting>.contains(key)) {
@@ -106,24 +134,11 @@ void FileConfig::update_value(const std::string& key,
   }
 }
 
-FileConfig::FileConfig() : m_logger(spdlog::get("console")) {
+SingletonDirectoryFileConfig::SingletonDirectoryFileConfig() : FileConfig("") {
   // Read and apply config from disk
   for (const auto& config_dir : config_dirs(*m_logger)) {
     const auto config_file = config_dir / "zit" / ".zit";
-    if (fs::exists(config_file)) {
-      m_logger->info("Reading config from: {}", config_file);
-      const auto config_str = read_file(config_file);
-      for (const auto& line : split(config_str, "\n")) {
-        m_logger->trace("line: {}", line);
-        auto kv = split(line, "=");
-        if (kv.size() != 2) {
-          m_logger->warn("Ignoring invalid config line: {}", line);
-        } else {
-          trim(kv[0]);
-          trim(kv[1]);
-          update_value(kv[0], kv[1]);
-        }
-      }
+    if (try_file(config_file)) {
       break;
     }
   }

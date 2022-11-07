@@ -25,6 +25,7 @@
 #include <torrent.hpp>
 
 #include "gtest/gtest.h"
+#include "test_utils.hpp"
 
 using namespace std;
 using namespace std::chrono_literals;
@@ -216,32 +217,6 @@ auto download(const fs::path& data_dir,
 
 }  // namespace
 
-class TestWithTmpDir : public ::testing::Test {
- public:
-  TestWithTmpDir() {
-    if (!mkdtemp(m_dirname.data())) {
-      throw runtime_error("Could not create temporary directory");
-    }
-    m_created = true;
-  }
-
-  ~TestWithTmpDir() override {
-    if (m_created) {
-      fs::remove_all(m_dirname.data());
-    }
-  }
-
-  /**
-   * The temporary directory when running the test.
-   */
-  [[nodiscard]] fs::path tmp_dir() const { return m_dirname.data(); }
-
- private:
-  bool m_created = false;
-  array<char, 16> m_dirname{'/', 't', 'm', 'p', '/', 'z', 'i', 't',
-                            '_', 'X', 'X', 'X', 'X', 'X', 'X', '\0'};
-};
-
 class IntegrateF : public TestWithTmpDir,
                    public ::testing::WithParamInterface<uint8_t> {};
 
@@ -288,9 +263,8 @@ TEST_P(IntegrateF, DISABLED_download_part) {
   const auto download_dir = tmp_dir();
 
   // Copy ready file to download_dir and modify a piece
-  // such that it will be retransfered.
-  const auto fn = download_dir / "1MiB.dat" +=
-      zit::Torrent::tmpfileExtension();
+  // such that it will be retransferred.
+  const auto fn = download_dir / "1MiB.dat" += zit::Torrent::tmpfileExtension();
   fs::copy_file(data_dir / "1MiB.dat", fn);
   auto content = zit::read_file(fn);
   constexpr auto byte_to_change = 300'000;

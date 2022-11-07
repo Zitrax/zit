@@ -1,4 +1,5 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
+#include <stdexcept>
 #include "gtest/gtest.h"
 #include "torrent.hpp"
 
@@ -97,7 +98,8 @@ TEST(torrent, construct_fail) {
   EXPECT_THROW(zit::Torrent t("FOO"), std::runtime_error);
 
   const auto data_dir = fs::path(DATA_DIR);
-  EXPECT_THROW(zit::Torrent t(data_dir / "empty.torrent"), std::runtime_error);
+  EXPECT_THROW(zit::Torrent t(data_dir / "empty.torrent"),
+               std::invalid_argument);
   EXPECT_THROW(zit::Torrent t(data_dir / "invalid.torrent"),
                std::invalid_argument);
 }
