@@ -1,6 +1,7 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <string>
@@ -45,25 +46,51 @@ class DefaultConfig {
  *  KEY=VAL
  *
  * At the moment there is no support for escaping '='
+ *
+ * This class is mostly meant for testing such that we can lock in on one
+ * specific file.
  */
 class FileConfig : public DefaultConfig {
- private:
-  FileConfig();
-
-  std::shared_ptr<spdlog::logger> m_logger;
-
-  void update_value(const std::string& key, const std::string& value);
-
  public:
   ~FileConfig() override = default;
   FileConfig(const FileConfig&) = delete;
   FileConfig& operator=(const FileConfig&) = delete;
 
-  static FileConfig& getInstance() {
+  explicit FileConfig(std::filesystem::path config_file);
+
+ protected:
+  bool try_file(const std::filesystem::path& config_file);
+  void update_value(const std::string& key, const std::string& value);
+
+  std::shared_ptr<spdlog::logger> m_logger;
+  std::filesystem::path m_config_file;
+};
+
+/**
+ * Reads config from disk on the format:
+ *  KEY=VAL
+ *
+ * At the moment there is no support for escaping '='
+ *
+ * This is the main config for Zit. It will look for the config file
+ * zit/.zit in all the default locations based on XDG Base Directory
+ * Specification.
+ */
+class SingletonDirectoryFileConfig : public FileConfig {
+ public:
+  ~SingletonDirectoryFileConfig() override = default;
+  SingletonDirectoryFileConfig(const SingletonDirectoryFileConfig&) = delete;
+  SingletonDirectoryFileConfig& operator=(const SingletonDirectoryFileConfig&) =
+      delete;
+
+  static SingletonDirectoryFileConfig& getInstance() {
     // Meyers singleton
-    static FileConfig config;
+    static SingletonDirectoryFileConfig config;
     return config;
   }
+
+ private:
+  SingletonDirectoryFileConfig();
 };
 
 }  // namespace zit
