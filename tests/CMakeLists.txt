@@ -28,6 +28,7 @@ add_executable(zitest
   test_arg_parser.cpp
   test_bencode.cpp
   test_bitfield.cpp
+  test_global_config.cpp
   test_integrate.cpp
   test_torrent.cpp
   test_main.cpp

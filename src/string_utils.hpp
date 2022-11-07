@@ -3,6 +3,7 @@
 
 #include <cctype>
 #include <iomanip>
+#include <regex>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -61,41 +62,42 @@ inline std::string to_hex(const std::string& str) {
 // trim functions below from https://stackoverflow.com/a/217605/11722
 
 // trim from start (in place)
-inline void ltrim(std::string &s) {
-    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }));
+inline void ltrim(std::string& s) {
+  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+            return !std::isspace(ch);
+          }));
 }
 
 // trim from end (in place)
-inline void rtrim(std::string &s) {
-    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char ch) {
-        return !std::isspace(ch);
-    }).base(), s.end());
+inline void rtrim(std::string& s) {
+  s.erase(std::find_if(s.rbegin(), s.rend(),
+                       [](unsigned char ch) { return !std::isspace(ch); })
+              .base(),
+          s.end());
 }
 
 // trim from both ends (in place)
-inline void trim(std::string &s) {
-    ltrim(s);
-    rtrim(s);
+inline void trim(std::string& s) {
+  ltrim(s);
+  rtrim(s);
 }
 
 // trim from start (copying)
 inline std::string ltrim_copy(std::string s) {
-    ltrim(s);
-    return s;
+  ltrim(s);
+  return s;
 }
 
 // trim from end (copying)
 inline std::string rtrim_copy(std::string s) {
-    rtrim(s);
-    return s;
+  rtrim(s);
+  return s;
 }
 
 // trim from both ends (copying)
 inline std::string trim_copy(std::string s) {
-    trim(s);
-    return s;
+  trim(s);
+  return s;
 }
 
 inline std::string to_lower(const std::string& s) {
@@ -103,6 +105,16 @@ inline std::string to_lower(const std::string& s) {
   res.resize(s.size());
   std::ranges::transform(s, res.begin(), ::tolower);
   return res;
+}
+
+// String split from https://stackoverflow.com/a/64886763/11722
+inline std::vector<std::string>
+split(  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+    const std::string& str,
+    const std::string& regex_str) {
+  std::regex regexz(regex_str);
+  return {std::sregex_token_iterator(str.begin(), str.end(), regexz, -1),
+          std::sregex_token_iterator()};
 }
 
 /**

@@ -69,7 +69,7 @@ class Bitfield {
   /**
    * Get bit value.
    */
-  bool get(bytes::size_type i) const;
+  [[nodiscard]] bool get(bytes::size_type i) const;
 
   /**
    * Get bit value.
