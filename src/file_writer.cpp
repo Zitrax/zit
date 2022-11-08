@@ -69,7 +69,7 @@ bytes FileWriter::read_block(uint32_t offset,
  */
 class TorrentDestination {
  public:
-  explicit TorrentDestination(const Torrent* torrent,
+  explicit TorrentDestination(Torrent* torrent,
                               shared_ptr<spdlog::logger> logger)
       : m_torrent(torrent), m_logger(move(logger)) {}
   virtual ~TorrentDestination() = default;
@@ -93,21 +93,20 @@ class TorrentDestination {
   virtual void torrentComplete() = 0;
 
   static shared_ptr<TorrentDestination> create(
-      const Torrent* torrent,
+      Torrent* torrent,
       shared_ptr<spdlog::logger> logger);
 
   [[nodiscard]] auto torrent() const { return m_torrent; }
   [[nodiscard]] auto logger() const { return m_logger; }
 
  private:
-  const Torrent* m_torrent;
+  Torrent* m_torrent;
   shared_ptr<spdlog::logger> m_logger;
 };
 
 class SingleTorrentDestination : public TorrentDestination {
  public:
-  SingleTorrentDestination(const Torrent* torrent,
-                           shared_ptr<spdlog::logger> logger)
+  SingleTorrentDestination(Torrent* torrent, shared_ptr<spdlog::logger> logger)
       : TorrentDestination(torrent, move(logger)) {}
 
   void allocate() override {
@@ -150,13 +149,13 @@ class SingleTorrentDestination : public TorrentDestination {
 
   void torrentComplete() override {
     fs::rename(torrent()->tmpfile(), torrent()->name());
+    torrent()->last_piece_written();
   }
 };
 
 class MultiTorrentDestination : public TorrentDestination {
  public:
-  MultiTorrentDestination(const Torrent* torrent,
-                          shared_ptr<spdlog::logger> logger)
+  MultiTorrentDestination(Torrent* torrent, shared_ptr<spdlog::logger> logger)
       : TorrentDestination(torrent, move(logger)) {}
 
   void allocate() override {
@@ -225,11 +224,13 @@ class MultiTorrentDestination : public TorrentDestination {
     }();
 
     fs::remove(tmpfile);
+
+    torrent()->last_piece_written();
   }
 };
 
 shared_ptr<TorrentDestination> TorrentDestination::create(
-    const Torrent* torrent,
+    Torrent* torrent,
     shared_ptr<spdlog::logger> logger) {
   if (torrent->is_single_file()) {
     return make_shared<SingleTorrentDestination>(torrent, move(logger));

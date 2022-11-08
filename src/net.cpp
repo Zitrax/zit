@@ -104,9 +104,9 @@ static std::tuple<std::string, std::string> request(Sock& sock,
     throw runtime_error("invalid response");
   }
 
-  constexpr std::array VALID_STATUSES =
-      {Net::m_http_status_ok, Net::m_http_status_found,
-                 Net::m_http_status_moved};
+  constexpr std::array VALID_STATUSES = {Net::m_http_status_ok,
+                                         Net::m_http_status_found,
+                                         Net::m_http_status_moved};
   if (ranges::find(VALID_STATUSES, status_code) == VALID_STATUSES.end()) {
     throw runtime_error(fmt::format("{}: response returned with status code {}",
                                     url.str(), status_code));
