@@ -26,9 +26,9 @@ enum class BoolSetting {
 /**
  * Provides a config interface along with default values for all settings
  */
-class DefaultConfig {
+class Config {
  public:
-  virtual ~DefaultConfig() = default;
+  virtual ~Config() = default;
 
   /** Get the value of a bool setting */
   [[nodiscard]] virtual bool get(BoolSetting setting) const {
@@ -50,7 +50,7 @@ class DefaultConfig {
  * This class is mostly meant for testing such that we can lock in on one
  * specific file.
  */
-class FileConfig : public DefaultConfig {
+class FileConfig : public Config {
  public:
   ~FileConfig() override = default;
   FileConfig(const FileConfig&) = delete;

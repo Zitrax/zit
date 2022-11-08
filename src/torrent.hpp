@@ -5,11 +5,10 @@
 #include <utility>
 #include <vector>
 
+#include "global_config.hpp"
 #include "peer.hpp"
 #include "sha1.hpp"
-
-// Needed for spdlog to handle operator<<
-#include "spdlog/fmt/ostr.h"
+#include "spdlog/fmt/ostr.h"  // Needed for spdlog to handle operator<<
 #include "types.hpp"
 
 namespace zit {
@@ -39,8 +38,10 @@ class Torrent {
    * @param file path to .torrent file to read
    * @param data_dir path to the directory with the downloaded result
    */
-  explicit Torrent(const std::filesystem::path& file,
-                   std::filesystem::path data_dir = "");
+  explicit Torrent(
+      const std::filesystem::path& file,
+      std::filesystem::path data_dir = "",
+      const Config& config = SingletonDirectoryFileConfig::getInstance());
 
   /** The tracker URL */
   [[nodiscard]] auto announce() const { return m_announce; }
@@ -343,6 +344,7 @@ class Torrent {
   ConnectionPort m_connection_port{20000};
   std::vector<std::shared_ptr<Peer>> m_peers{};
   std::string m_peer_id{};
+  const Config& m_config;
 
   // Piece housekeeping
   mutable std::mutex m_mutex{};
