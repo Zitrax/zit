@@ -90,6 +90,8 @@ class SingletonDirectoryFileConfig : public FileConfig {
   }
 
  private:
+  // Can't delete it, we have an implementation
+  // NOLINTNEXTLINE(modernize-use-equals-delete,hicpp-use-equals-delete)
   SingletonDirectoryFileConfig();
 };
 
