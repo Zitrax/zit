@@ -32,6 +32,15 @@ using namespace std::chrono_literals;
 using namespace std::string_literals;
 namespace fs = std::filesystem;
 
+class TestConfig : public zit::Config {
+ public:
+  TestConfig() : zit::Config() {
+    // As long as we use Transmission and test with all processes on localhost
+    // we need to make sure we initiate the connections.
+    m_bool_settings[zit::BoolSetting::INITIATE_PEER_CONNECTIONS] = true;
+  }
+};
+
 /**
  * Launch background process which is stopped/killed by the destructor.
  */
@@ -232,7 +241,8 @@ TEST_P(IntegrateF, DISABLED_download) {
   const uint8_t max = GetParam();
 
   const auto download_dir = tmp_dir();
-  zit::Torrent torrent(torrent_file, download_dir);
+  TestConfig test_config;
+  zit::Torrent torrent(torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
   auto target = download(data_dir, torrent_file, torrent, max);
 
@@ -272,7 +282,8 @@ TEST_P(IntegrateF, DISABLED_download_part) {
   content.at(byte_to_change) = 0;
   zit::write_file(fn, content);
 
-  zit::Torrent torrent(torrent_file, download_dir);
+  TestConfig test_config;
+  zit::Torrent torrent(torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
   auto target = download(data_dir, torrent_file, torrent, 1);
 
@@ -294,7 +305,7 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
   const auto torrent_file = data_dir / "multi.torrent";
   const auto download_dir = tmp_dir();
 
-  // Copy ready files to download_dir and mofify one
+  // Copy ready files to download_dir and modify one
   // such that it will be retranfered.
   fs::copy(data_dir / "multi", download_dir / "multi");
   zit::write_file(download_dir / "multi" += zit::Torrent::tmpfileExtension(),
@@ -306,7 +317,8 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
   content.at(byte_to_change) = 0;
   zit::write_file(fn, content);
 
-  zit::Torrent torrent(torrent_file, download_dir);
+  TestConfig test_config;
+  zit::Torrent torrent(torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
   auto target = download(data_dir, torrent_file, torrent, 1);
 
@@ -318,7 +330,7 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
     auto source_sha1 = zit::Sha1::calculateFile(source).hex();
     auto target_sha1 = zit::Sha1::calculateFile(dst).hex();
     EXPECT_EQ(source_sha1, target_sha1) << fi.path();
-    // Delete downloaded file
+    // Delete the downloaded file
     fs::remove(dst);
   }
   fs::remove(name);
@@ -336,7 +348,8 @@ TEST_F(Integrate, DISABLED_download_multi) {
   // const uint8_t max = GetParam();
 
   const auto download_dir = tmp_dir();
-  zit::Torrent torrent(torrent_file, download_dir);
+  TestConfig test_config;
+  zit::Torrent torrent(torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
   auto target = download(data_dir, torrent_file, torrent, 1);
 
@@ -365,7 +378,8 @@ TEST_F(Integrate, DISABLED_upload) {
   const auto torrent_file = data_dir / "1MiB.torrent";
 
   // Launch zit with existing file to seed it
-  zit::Torrent torrent(torrent_file, data_dir);
+  TestConfig test_config;
+  zit::Torrent torrent(torrent_file, data_dir, test_config);
   ASSERT_TRUE(torrent.done());
 
   // Start a leecher that we will upload to
@@ -405,7 +419,8 @@ TEST_F(Integrate, DISABLED_multi_upload) {
   const auto torrent_file = data_dir / "multi.torrent";
 
   // Launch zit with existing file to seed it
-  zit::Torrent torrent(torrent_file, data_dir);
+  TestConfig test_config;
+  zit::Torrent torrent(torrent_file, data_dir, test_config);
   ASSERT_TRUE(torrent.done());
 
   // Start a leecher that we will upload to

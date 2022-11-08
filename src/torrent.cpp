@@ -2,6 +2,7 @@
 #include "torrent.hpp"
 #include "bencode.hpp"
 #include "file_utils.hpp"
+#include "global_config.hpp"
 #include "peer.hpp"
 #include "sha1.hpp"
 #include "string_utils.hpp"
@@ -74,8 +75,12 @@ auto random_string(std::size_t len) -> std::string {
 
 // Could possibly be grouped in a struct
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-Torrent::Torrent(const filesystem::path& file, std::filesystem::path data_dir)
-    : m_data_dir(std::move(data_dir)), m_peer_id(random_string(20)) {
+Torrent::Torrent(const filesystem::path& file,
+                 std::filesystem::path data_dir,
+                 const Config& config)
+    : m_data_dir(std::move(data_dir)),
+      m_peer_id(random_string(20)),
+      m_config(config) {
   m_logger = spdlog::get("console");
   auto root = bencode::decode(read_file(file));
 
@@ -400,6 +405,11 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
 
   // We only care about decoding the peer list for certain events
   if (event == TrackerEvent::UNSPECIFIED || event == TrackerEvent::STARTED) {
+    if (!m_config.get(BoolSetting::INITIATE_PEER_CONNECTIONS) && done()) {
+      m_logger->debug("Skipping peer list since the torrent is completed.");
+      return {};
+    }
+
     ElmPtr reply;
     try {
       reply = decode(body);
