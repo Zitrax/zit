@@ -23,6 +23,18 @@ enum class BoolSetting {
   INITIATE_PEER_CONNECTIONS
 };
 
+enum class IntSetting {
+  /**
+   * Port on which the Zit client is listening to incoming peer connections.
+   */
+  LISTENING_PORT,
+
+  /**
+   * Port on which the Zit client is making outgoing peer connections.
+   */
+  CONNECTION_PORT
+};
+
 /**
  * Provides a config interface along with default values for all settings
  */
@@ -35,10 +47,19 @@ class Config {
     return m_bool_settings.at(setting);
   }
 
+  /** Get the value of an int setting */
+  [[nodiscard]] virtual int get(IntSetting setting) const {
+    return m_int_settings.at(setting);
+  }
+
  protected:
   // Default values for all settings
   std::map<BoolSetting, bool> m_bool_settings{
       {BoolSetting::INITIATE_PEER_CONNECTIONS, true}};
+
+  std::map<IntSetting, int> m_int_settings{
+      {IntSetting::LISTENING_PORT, 20001},
+      {IntSetting::CONNECTION_PORT, 20000}};
 };
 
 /**

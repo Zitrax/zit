@@ -77,9 +77,15 @@ auto random_string(std::size_t len) -> std::string {
 Torrent::Torrent(const filesystem::path& file,
                  std::filesystem::path data_dir,
                  const Config& config)
-    : m_data_dir(std::move(data_dir)),
+    : m_config(config),
+      m_data_dir(std::move(data_dir)),
       m_peer_id(random_string(20)),
-      m_config(config) {
+      m_listening_port(
+          numeric_cast<unsigned short>(config.get(IntSetting::LISTENING_PORT),
+                                       "listening port out of range")),
+      m_connection_port(
+          numeric_cast<unsigned short>(config.get(IntSetting::CONNECTION_PORT),
+                                       "connection port out of range")) {
   m_logger = spdlog::get("console");
   auto root = bencode::decode(read_file(file));
 

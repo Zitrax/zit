@@ -320,6 +320,7 @@ class Torrent {
    */
   void verify_existing_file();
 
+  const Config& m_config;
   std::string m_announce{};
   std::vector<std::vector<std::string>> m_announce_list{};
   int64_t m_creation_date = 0;
@@ -339,12 +340,10 @@ class Torrent {
   std::filesystem::path m_data_dir{};
   PieceCallback m_piece_callback{};
   DisconnectCallback m_disconnect_callback{};
-  // FIXME: Configurable ports
-  ListeningPort m_listening_port{20001};
-  ConnectionPort m_connection_port{20000};
-  std::vector<std::shared_ptr<Peer>> m_peers{};
   std::string m_peer_id{};
-  const Config& m_config;
+  ListeningPort m_listening_port;
+  ConnectionPort m_connection_port;
+  std::vector<std::shared_ptr<Peer>> m_peers{};
 
   // Piece housekeeping
   mutable std::mutex m_mutex{};
