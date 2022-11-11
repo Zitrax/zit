@@ -4,8 +4,10 @@
 #include "arg_parser.hpp"
 #include "bencode.hpp"
 #include "file_writer.hpp"
+#include "global_config.hpp"
 #include "net.hpp"
 #include "torrent.hpp"
+#include "types.hpp"
 
 #include <csignal>
 
@@ -47,12 +49,15 @@ int main(int argc, const char* argv[]) noexcept {
 
     zit::ArgParser parser("Zit - torrent client");
     std::string torrent_file;
+    int listening_port{0};
     std::string log_level;
     bool help = false;
     bool dump = false;
     parser.add_help_option("--help,-h", "Print help", help);
     parser.add_option("--torrent", {}, "Torrent file to download", torrent_file,
                       true);
+    parser.add_option("--listening-port,-p", {},
+                      "Port listening on incoming connections", listening_port);
     parser.add_option<std::string>(
         "--log-level", ""s,
         "Log level (trace, debug, info, warning, error, critical, off)",
@@ -77,7 +82,25 @@ int main(int argc, const char* argv[]) noexcept {
       spdlog::stdout_color_mt("file_writer")->set_level(lvl);
     }
 
-    zit::Torrent torrent(torrent_file);
+    class CommandLineArgs : public zit::Config {
+     public:
+      explicit CommandLineArgs(const int& listening_port)
+          : m_listening_port(listening_port) {}
+
+      [[nodiscard]] int get(zit::IntSetting setting) const override {
+        if (setting == zit::IntSetting::LISTENING_PORT && m_listening_port) {
+          return m_listening_port;
+        }
+        return zit::SingletonDirectoryFileConfig::getInstance().get(setting);
+      }
+
+     private:
+      const int& m_listening_port;
+    };
+
+    CommandLineArgs args{listening_port};
+
+    zit::Torrent torrent(torrent_file, "", args);
     if (dump) {
       std::cout << torrent << std::endl;
       return 0;
@@ -100,7 +123,7 @@ int main(int argc, const char* argv[]) noexcept {
     sigemptyset(&sigIntHandler.sa_mask);
     sigIntHandler.sa_flags = 0;
     sigaction(SIGINT, &sigIntHandler, nullptr);
-#endif // !WIN32
+#endif  // !WIN32
 
     torrent.start();
     torrent.run();

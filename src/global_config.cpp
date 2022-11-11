@@ -88,6 +88,11 @@ template <>
 const std::map<std::string, BoolSetting> settings_map<BoolSetting>{
     {"initiate_peer_connections", BoolSetting::INITIATE_PEER_CONNECTIONS}};
 
+template <>
+const std::map<std::string, IntSetting> settings_map<IntSetting>{
+    {"listening_port", IntSetting::LISTENING_PORT},
+    {"connection_port", IntSetting::CONNECTION_PORT}};
+
 }  // namespace
 
 FileConfig::FileConfig(std::filesystem::path config_file)
@@ -122,12 +127,26 @@ bool FileConfig::try_file(const std::filesystem::path& config_file) {
 void FileConfig::update_value(const std::string& key,
                               const std::string& value) {
   if (settings_map<BoolSetting>.contains(key)) {
-    auto parsed = parse_bool(value);
+    const auto parsed = parse_bool(value);
     if (!parsed) {
       m_logger->warn("{} = {} could not parsed as a boolean", key, value);
     } else {
       m_logger->debug("{} set to {}", key, *parsed);
       m_bool_settings[settings_map<BoolSetting>.at(key)] = *parsed;
+    }
+  } else if (settings_map<IntSetting>.contains(key)) {
+    const auto parsed = [&value]() -> std::optional<int> {
+      try {
+        return {std::stoi(value)};
+      } catch (...) {
+        return {};
+      }
+    }();
+    if (!parsed) {
+      m_logger->warn("{} = {} could not parsed as an integer", key, value);
+    } else {
+      m_logger->debug("{} set to {}", key, *parsed);
+      m_int_settings[settings_map<IntSetting>.at(key)] = *parsed;
     }
   } else {
     m_logger->warn("Unknown key '{}' in config file ignored", key);
