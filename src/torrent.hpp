@@ -174,8 +174,8 @@ class Torrent {
   /**
    * Callback that will be called whenever a piece has finished downloading.
    */
-  void set_piece_callback(PieceCallback piece_callback) {
-    m_piece_callback = std::move(piece_callback);
+  void add_piece_callback(PieceCallback piece_callback) {
+    m_piece_callbacks.emplace_back(std::move(piece_callback));
   }
 
   /**
@@ -338,7 +338,7 @@ class Torrent {
   std::shared_ptr<spdlog::logger> m_logger{};
   std::filesystem::path m_tmpfile{};
   std::filesystem::path m_data_dir{};
-  PieceCallback m_piece_callback{};
+  std::vector<PieceCallback> m_piece_callbacks{};
   DisconnectCallback m_disconnect_callback{};
   std::string m_peer_id{};
   ListeningPort m_listening_port;

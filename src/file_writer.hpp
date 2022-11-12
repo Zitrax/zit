@@ -110,7 +110,7 @@ class FileWriterThread {
     m_file_writer.set_callback(std::move(cb));
     using std::placeholders::_1;
     using std::placeholders::_2;
-    torrent.set_piece_callback(
+    torrent.add_piece_callback(
         [&](Torrent* t, const std::shared_ptr<Piece>& piece) {
           m_file_writer.add(t, piece);
         });

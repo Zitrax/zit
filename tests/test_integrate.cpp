@@ -285,6 +285,11 @@ TEST_P(IntegrateF, DISABLED_download_part) {
   TestConfig test_config;
   zit::Torrent torrent(torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
+
+  unsigned pieces_downloaded = 0;
+  torrent.add_piece_callback(
+      [&pieces_downloaded](auto, auto) { pieces_downloaded++; });
+
   auto target = download(data_dir, torrent_file, torrent, 1);
 
   // Transfer done - Verify content
@@ -292,6 +297,10 @@ TEST_P(IntegrateF, DISABLED_download_part) {
   auto source_sha1 = zit::Sha1::calculateFile(source).hex();
   auto target_sha1 = zit::Sha1::calculateFile(target).hex();
   EXPECT_EQ(source_sha1, target_sha1);
+
+  // Since we only changed one piece we should only have to get one piece again
+  EXPECT_GT(torrent.pieces().size(), 1);
+  EXPECT_EQ(pieces_downloaded, 1);
 }
 
 #ifdef INTEGRATION_TESTS
@@ -320,6 +329,11 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
   TestConfig test_config;
   zit::Torrent torrent(torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
+
+  unsigned pieces_downloaded = 0;
+  torrent.add_piece_callback(
+      [&pieces_downloaded](auto, auto) { pieces_downloaded++; });
+
   auto target = download(data_dir, torrent_file, torrent, 1);
 
   // Transfer done - Verify content
@@ -334,6 +348,10 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
     fs::remove(dst);
   }
   fs::remove(name);
+
+  // Since we only changed one piece we should only have to get one piece again
+  EXPECT_GT(torrent.pieces().size(), 1);
+  EXPECT_EQ(pieces_downloaded, 1);
 }
 
 #ifdef INTEGRATION_TESTS
