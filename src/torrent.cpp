@@ -681,7 +681,7 @@ void Torrent::last_piece_written() {
 
 void Torrent::piece_done(std::shared_ptr<Piece>& piece) {
   m_client_pieces[piece->id()] = true;
-  m_piece_callback(this, piece);
+  ranges::for_each(m_piece_callbacks, [&](const auto& cb) { cb(this, piece); });
 }
 
 ostream& operator<<(ostream& os, const zit::FileInfo& file_info) {
