@@ -55,7 +55,7 @@ class Config {
  protected:
   // Default values for all settings
   std::map<BoolSetting, bool> m_bool_settings{
-      {BoolSetting::INITIATE_PEER_CONNECTIONS, true}};
+      {BoolSetting::INITIATE_PEER_CONNECTIONS, false}};
 
   std::map<IntSetting, int> m_int_settings{
       {IntSetting::LISTENING_PORT, 20001},
