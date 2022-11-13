@@ -13,6 +13,9 @@ class logger;
 
 namespace zit {
 
+/**
+ * Boolean settings. In the config file they can be read as true/false or 1/0
+ */
 enum class BoolSetting {
   /**
    * If this is true, Zit will initiate connections to peers from the tracker
@@ -23,6 +26,10 @@ enum class BoolSetting {
   INITIATE_PEER_CONNECTIONS
 };
 
+/**
+ * Settings taking an integer. An invalid integer for the setting is a runtime
+ * error.
+ */
 enum class IntSetting {
   /**
    * Port on which the Zit client is listening to incoming peer connections.
@@ -95,7 +102,13 @@ class FileConfig : public Config {
  *
  * This is the main config for Zit. It will look for the config file
  * zit/.zit in all the default locations based on XDG Base Directory
- * Specification.
+ * Specification and finally fall back on the home directory.
+ *
+ * An example config with all the current default options:
+ *
+ * initiate_peer_connections = false
+ * listening_port = 20001
+ * connection_port = 20000
  */
 class SingletonDirectoryFileConfig : public FileConfig {
  public:
