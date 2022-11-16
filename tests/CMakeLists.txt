@@ -42,6 +42,7 @@ add_executable(zitest
 target_link_libraries(zitest
   asio::asio
   GTest::gtest
+  GTest::gmock
   OpenSSL::SSL
   spdlog::spdlog
   TBB::tbb

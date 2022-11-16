@@ -23,6 +23,12 @@ using PieceCallback =
 using DisconnectCallback = std::function<void(Peer*)>;
 
 /**
+ * Function taking an Url and returning the resulting Headers,Body of the
+ * request. Matching Net::httpGet(const Url&).
+ */
+using HttpGet = std::function<std::tuple<std::string, std::string>(const Url&)>;
+
+/**
  * Represents one torrent. Bookeeps all pieces and block information.
  *
  * @note About locking; implemented as suggested in
@@ -37,11 +43,14 @@ class Torrent {
   /**
    * @param file path to .torrent file to read
    * @param data_dir path to the directory with the downloaded result
+   * @param config a config instance, by default reads config from disk
+   * @param http_get a http request getter function
    */
   explicit Torrent(
       const std::filesystem::path& file,
       std::filesystem::path data_dir = "",
-      const Config& config = SingletonDirectoryFileConfig::getInstance());
+      const Config& config = SingletonDirectoryFileConfig::getInstance(),
+      HttpGet http_get = [](const Url& url) { return Net::httpGet(url); });
 
   /** The tracker URL */
   [[nodiscard]] auto announce() const { return m_announce; }
@@ -344,6 +353,7 @@ class Torrent {
   ListeningPort m_listening_port;
   ConnectionPort m_connection_port;
   std::vector<std::shared_ptr<Peer>> m_peers{};
+  HttpGet m_http_get;
 
   // Piece housekeeping
   mutable std::mutex m_mutex{};

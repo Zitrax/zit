@@ -1,9 +1,17 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include <stdexcept>
+#include "bencode.hpp"
+#include "file_utils.hpp"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "spdlog/fmt/ostr.h"
+#include "test_utils.hpp"
 #include "torrent.hpp"
 
 namespace fs = std::filesystem;
+
+using namespace std::string_literals;
+using namespace bencode;
 
 TEST(torrent, construct_single) {
   const auto data_dir = fs::path(DATA_DIR);
@@ -102,4 +110,86 @@ TEST(torrent, construct_fail) {
                std::invalid_argument);
   EXPECT_THROW(zit::Torrent t(data_dir / "invalid.torrent"),
                std::invalid_argument);
+}
+
+// 127.0.0.1:65535
+const auto FAKE_URL = "\x7F\x00\x00\x01\xFF\xFF"s;
+
+using torrent_with_tmp_dir = TestWithTmpDir;
+
+TEST_F(torrent_with_tmp_dir, tracker_requests_announce) {
+  // Create a torrent file with a known announce config
+  BeDict root;
+  BeDict info;
+  info["piece length"] = Element::build(1);
+  info["pieces"] = Element::build("AAAAAAAAAAAAAAAAAAAA");
+  info["name"] = Element::build("test");
+  info["length"] = Element::build(100);
+
+  root["info"] = Element::build(info);
+  root["announce"] = Element::build("http://tracker-url");
+
+  const auto torrent_file = tmp_dir() / "test.torrent";
+  zit::write_file(torrent_file, encode(root));
+
+  std::vector<std::string> requests;
+
+  zit::Torrent t(
+      torrent_file, tmp_dir(), zit::SingletonDirectoryFileConfig::getInstance(),
+      [&](const zit::Url& url) {
+        requests.push_back(url.host());
+        BeDict peers;
+        peers["peers"] = Element::build(FAKE_URL);  // Fake binary url (6 bytes)
+        return std::make_pair("", encode(peers));
+      });
+
+  t.start();
+
+  EXPECT_THAT(requests, testing::UnorderedElementsAreArray({"tracker-url"}));
+}
+
+TEST_F(torrent_with_tmp_dir, tracker_requests_announce_list) {
+  // Create a torrent file with a known announce config
+  BeDict root;
+  BeDict info;
+  info["piece length"] = Element::build(1);
+  info["pieces"] = Element::build("AAAAAAAAAAAAAAAAAAAA");
+  info["name"] = Element::build("test");
+  info["length"] = Element::build(100);
+
+  root["info"] = Element::build(info);
+  root["announce"] = Element::build("http://tracker-url");
+
+  BeList tier_a;
+  tier_a.emplace_back(Element::build("http://t1_1"));
+  tier_a.emplace_back(Element::build("http://t1_2"));
+  BeList tier_b;
+  tier_b.emplace_back(Element::build("http://t2_1"));
+  BeList announce_list;
+  announce_list.push_back(Element::build(tier_a));
+  announce_list.push_back(Element::build(tier_b));
+
+  root["announce-list"] = Element::build(announce_list);
+
+  const auto torrent_file = tmp_dir() / "test.torrent";
+  zit::write_file(torrent_file, encode(root));
+
+  std::vector<std::string> requests;
+
+  zit::Torrent t(torrent_file, tmp_dir(),
+                 zit::SingletonDirectoryFileConfig::getInstance(),
+                 // Keep track of the requests and make only the last one pass
+                 [&, call = 0](const zit::Url& url) mutable {
+                   requests.push_back(url.host());
+                   BeDict peers;
+                   peers["peers"] = Element::build(
+                       call == 2 ? FAKE_URL : "");  // Fake binary url (6 bytes)
+                   call++;
+                   return std::make_pair("", encode(peers));
+                 });
+
+  t.start();
+
+  EXPECT_THAT(requests,
+              testing::UnorderedElementsAreArray({"t1_1", "t1_2", "t2_1"}));
 }
