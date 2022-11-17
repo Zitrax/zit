@@ -3,7 +3,11 @@
 
 #include <filesystem>
 
+#include <regex>
+#include <stdexcept>
+#include <string>
 #include "gtest/gtest.h"
+#include "spdlog/fmt/fmt.h"
 
 class TestWithTmpDir : public ::testing::Test {
  public:
@@ -16,7 +20,12 @@ class TestWithTmpDir : public ::testing::Test {
 
   ~TestWithTmpDir() override {
     if (m_created) {
-      std::filesystem::remove_all(m_dirname.data());
+      try {
+        std::filesystem::remove_all(m_dirname.data());
+      } catch (const std::exception& ex) {
+        std::cerr << "WARN: Could not cleanup " << m_dirname.data() << ": "
+                  << ex.what() << "\n";
+      }
     }
   }
 
@@ -32,3 +41,120 @@ class TestWithTmpDir : public ::testing::Test {
   std::array<char, 16> m_dirname{'/', 't', 'm', 'p', '/', 'z', 'i', 't',
                                  '_', 'X', 'X', 'X', 'X', 'X', 'X', '\0'};
 };
+
+#ifdef __linux__
+
+#include <stdio.h>
+
+/**
+ * Helper for running a command and capturing the output.
+ * Modified version of https://stackoverflow.com/a/52165057/11722
+ */
+inline std::string exec(const std::string& cmd) {
+  const auto pipe = popen(cmd.c_str(), "r");
+  if (!pipe) {
+    throw std::runtime_error("popen() failed!");
+  }
+
+  std::array<char, 128> buffer;
+  std::string result;
+  while (!feof(pipe)) {
+    if (fgets(buffer.data(), 128, pipe) != nullptr) {
+      result += buffer.data();
+    }
+  }
+
+  const auto rc = pclose(pipe);
+
+  if (rc != EXIT_SUCCESS) {
+    throw std::runtime_error(
+        fmt::format("Command '{}' failed with exit status {}", cmd, rc));
+  }
+  return result;
+}
+
+/**
+ * Creates a file backed filesystem with a specific size intially aimed at
+ * testing OOD situations.
+ *
+ * Note for ext4 systems with everything default you seem to need at least
+ * around 250KB for the filesystem to be created without errors. To avoid
+ * warnings about journaling not working you need at least around 9MB - but no
+ * journal is not an error.
+ *
+ * For now this implementation is linux specific and use std::system to run
+ * commands.
+ */
+template <size_t FS_SIZE_IN_BYTES>
+class TestWithFilesystem : public TestWithTmpDir {
+ public:
+  TestWithFilesystem() : TestWithTmpDir() {
+    std::filesystem::path fs_path{tmp_dir() / "file.fs"};
+
+    // Create empty file
+    {
+      std::ofstream tmpfile(fs_path, std::ios::binary | std::ios::out);
+      tmpfile.exceptions(std::ofstream::failbit | std::ofstream::badbit);
+    }
+
+    // Resize it to the target size
+    std::filesystem::resize_file(fs_path, FS_SIZE_IN_BYTES);
+
+    // Format as ext4
+    exec("mkfs.ext4 " + fs_path.string());
+
+    // Create a loop device
+    const auto loop_out = exec(fmt::format(
+        "udisksctl loop-setup -f {} --no-user-interaction", fs_path.string()));
+    std::regex re_loop("^.* (.+)\\.\n$");
+    std::smatch smatch;
+    if (std::regex_match(loop_out, smatch, re_loop)) {
+      m_loop_device = smatch[1].str();
+    } else {
+      throw std::runtime_error("Could not parse loop device");
+    }
+
+    // Mount it
+    const auto mount_out =
+        exec(fmt::format("udisksctl mount -b {}", m_loop_device));
+    std::regex re_mount(".* at (.*)\n");
+    if (std::regex_match(mount_out, smatch, re_mount)) {
+      m_mount_dir = smatch[1].str();
+    } else {
+      throw std::runtime_error("Could not parse mount dir");
+    }
+  }
+
+  ~TestWithFilesystem() override {
+    if (!m_loop_device.empty()) {
+      try {
+        exec(fmt::format("udisksctl unmount -b {} --no-user-interaction",
+                         m_loop_device));
+      } catch (const std::exception& ex) {
+        std::cerr << "WARNING: Could not unmount loop device : " << ex.what()
+                  << "\n";
+      }
+      try {
+        exec(fmt::format("udisksctl loop-delete -b {} --no-user-interaction",
+                         m_loop_device));
+      } catch (const std::exception& ex) {
+        std::cerr << "WARNING: Could not delete loop device : " << ex.what()
+                  << "\n";
+      }
+    }
+  }
+
+  /** The directory with the mounted filesystem */
+  [[nodiscard]] auto mount_dir() const { return m_mount_dir; }
+
+  /** How many bytes remaining of the created filesystem */
+  [[nodiscard]] auto available() const {
+    return std::filesystem::space(m_mount_dir).available;
+  }
+
+ private:
+  std::filesystem::path m_mount_dir;
+  std::string m_loop_device;
+};
+
+#endif  // __linux__
