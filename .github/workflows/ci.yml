@@ -142,9 +142,12 @@ jobs:
         # clang-tidy is currently disabled since it for some reason results in:
         #   undefined symbol: _ZTIN5clang12ModuleLoaderE
         #
+        # LTO disabled due to failing on mac with:
+        #   Unknown attribute kind (77) (Producer: 'LLVM14.0.0' Reader: 'LLVM APPLE_1_1300.0.29.30_0')', using libLTO version 'LLVM version 13.0.0, (clang-1300.0.29.30)'
+        #
       - name: Configure CMake
         run: |
-          cmake -S . -B ./build -G "${{matrix.generator}}" -DCMAKE_BUILD_TYPE:STRING=${{matrix.build_type}} -DOPT_ENABLE_COVERAGE:BOOL=${{ matrix.build_type == 'Debug' }} -DGIT_SHA:STRING=${{ github.sha }} -DUSE_CLANG_TIDY=OFF
+          cmake -S . -B ./build -G "${{matrix.generator}}" -DCMAKE_BUILD_TYPE:STRING=${{matrix.build_type}} -DOPT_ENABLE_COVERAGE:BOOL=${{ matrix.build_type == 'Debug' }} -DGIT_SHA:STRING=${{ github.sha }} -DUSE_CLANG_TIDY=OFF -DDISABLE_LTO=ON
 
       - name: Build
         # Execute the build.  You can specify a specific target with "--target <NAME>"
@@ -164,7 +167,7 @@ jobs:
         if: runner.os == 'Windows'
         working-directory: ./build
         run: |
-          OpenCppCoverage.exe --export_type cobertura:coverage.xml --cover_children -- ctest -C ${{matrix.build_type}}
+          OpenCppCoverage.exe --export_type cobertura:coverage.xml --cover_children -- ctest --output-on-failure --no-tests=error -C ${{matrix.build_type}}
 
 #      - name: CPack
 #        if: matrix.package_generator != ''
