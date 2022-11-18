@@ -124,8 +124,8 @@ jobs:
         run: |
           conan profile update settings.compiler.libcxx=libstdc++11 default
 
-      - name: Update non-linux profiles
-        if: runner.os != 'Linux'
+      - name: Update Windows profile
+        if: runner.os == 'Windows'
         run: |
           conan profile remove settings.compiler.libcxx default
 
