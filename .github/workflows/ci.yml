@@ -74,6 +74,7 @@ jobs:
 
     env:
       CXX: ${{ matrix.compiler.bin }}-${{ matrix.compiler.ver }}
+      CC: ${{ matrix.compiler.conan }}-${{ matrix.compiler.ver }}
 
     steps:
       - name: Check for llvm version mismatches
