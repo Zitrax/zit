@@ -118,11 +118,11 @@ jobs:
 
       - name: Update profile
         run: |
-          conan profile update settings.compiler=${{ matrix.compiler.conan }} default
+          conan profile update settings.compiler="${{ matrix.compiler.conan }}" default
           conan profile update settings.compiler.version=${{ matrix.compiler.ver }} default
 
-      - name: Update Linux profile
-        if: runner.os == 'Linux'
+      - name: Update clang profile
+        if: matrix.compiler.conan == 'clang'
         run: |
           conan profile update settings.compiler.libcxx=libstdc++11 default
 
