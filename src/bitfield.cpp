@@ -140,7 +140,7 @@ std::optional<bytes::size_type> Bitfield::next(bool val,
     auto offset =
         numeric_cast<bytes::size_type>(std::distance(m_bytes.begin(), it) * 8);
     for (unsigned short i = 0; i < 8; ++i) {
-      if (operator[](offset + i) == val) {
+      if (get(offset + i) == val) {
         return offset + i;
       }
     }

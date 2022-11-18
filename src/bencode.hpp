@@ -45,6 +45,7 @@ using BeList = std::vector<ElmPtr>;
 
 // Constants
 constexpr auto MAX_LINE_WIDTH = 72;
+constexpr auto MAX_STRING_LENGTH = 100'000'000;
 constexpr auto MAX_INVALID_STRING_LENGTH = 128;
 constexpr auto ASCII_LAST_CTRL_CHAR = 31;
 constexpr auto RECURSION_LIMIT = 200;
@@ -292,7 +293,7 @@ template <>
   if (iss.get() != ':') {
     throw std::invalid_argument("No string length end marker");
   }
-  if (strlen > 100'000'000) {
+  if (strlen > MAX_STRING_LENGTH) {
     throw std::invalid_argument("String length " + std::to_string(strlen) +
                                 " larger than max size");
   }

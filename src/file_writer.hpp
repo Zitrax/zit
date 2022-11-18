@@ -108,8 +108,6 @@ class FileWriterThread {
         m_file_writer(FileWriter::getInstance()),
         m_file_writer_thread([this]() { m_file_writer.run(); }) {
     m_file_writer.set_callback(std::move(cb));
-    using std::placeholders::_1;
-    using std::placeholders::_2;
     torrent.add_piece_callback(
         [&](Torrent* t, const std::shared_ptr<Piece>& piece) {
           m_file_writer.add(t, piece);

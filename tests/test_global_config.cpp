@@ -13,6 +13,8 @@ TEST(FileConfigSingleton, SingletonDirectoryFileConfigConstruct) {
       SingletonDirectoryFileConfig::getInstance();
 }
 
+#ifdef __linux__
+
 using FileConfigTest = TestWithTmpDir;
 
 TEST_F(FileConfigTest, EmptyFile) {
@@ -41,3 +43,5 @@ TEST_F(FileConfigTest, CorrectFile) {
   EXPECT_EQ(config.get(IntSetting::LISTENING_PORT), 123);
   EXPECT_EQ(config.get(IntSetting::CONNECTION_PORT), 321);
 }
+
+#endif // __linux__
