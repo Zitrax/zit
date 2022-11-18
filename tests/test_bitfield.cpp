@@ -414,7 +414,7 @@ TEST(Bitfield, count) {
   EXPECT_EQ(bf.count(), 7);
 }
 
-TEST(Bitfield, const) {
+TEST(Bitfield, const_bitfield) {
   Bitfield bf;
   bf[7] = true;
   EXPECT_TRUE(bf[7]);

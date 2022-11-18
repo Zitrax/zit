@@ -46,11 +46,13 @@ auto beDictToFileInfo(const Element& element) {
   if (dict.find("md5sum") != dict.end()) {
     md5 = dict.at("md5sum")->template to<TypedElement<string>>()->val();
   }
-  auto path_list = dict.at("path")->template to<TypedElement<BeList>>()->val();
-  filesystem::path path;
-  for (const auto& elm : path_list) {
-    path /= elm->template to<TypedElement<string>>()->val();
-  }
+  const auto path_list =
+      dict.at("path")->template to<TypedElement<BeList>>()->val();
+  const filesystem::path path = std::accumulate(
+      path_list.begin(), path_list.end(), filesystem::path{},
+      [](const auto& a, const auto& b) {
+        return a / b->template to<TypedElement<string>>()->val();
+      });
   return FileInfo(
       dict.at("length")->template to<TypedElement<int64_t>>()->val(), path,
       md5);
@@ -390,7 +392,8 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
     TrackerEvent event) {
   // Folllowing multi-tracker spec:
   // https://github.com/rakshasa/libtorrent/blob/master/doc/multitracker-spec.txt
-  auto announce_list = [this]() -> std::vector<std::vector<std::string>> {
+  const auto local_announce_list =
+      [this]() -> std::vector<std::vector<std::string>> {
     if (!m_announce_list.empty()) {
       return m_announce_list;
     }
@@ -463,15 +466,15 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
   // we shuffle the announce list.
 
   std::optional<std::exception> thrown;
-  std::vector<std::shared_ptr<Peer>> peers;
+  std::vector<std::shared_ptr<Peer>> peers_from_tracker;
 
   std::random_device rd;
   std::mt19937 g(rd());
-  for (auto tier : announce_list) {
+  for (auto tier : local_announce_list) {
     shuffle(tier.begin(), tier.end(), g);
     for (const auto& announce_url : tier) {
       try {
-        peers = do_tracker_request(announce_url);
+        peers_from_tracker = do_tracker_request(announce_url);
         thrown.reset();
         break;
       } catch (const std::exception& ex) {
@@ -479,7 +482,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
         thrown = ex;
       }
     }
-    if (!peers.empty()) {
+    if (!peers_from_tracker.empty()) {
       break;
     }
   }
@@ -488,7 +491,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
     throw_with_nested(*thrown);
   }
 
-  return peers;
+  return peers_from_tracker;
 }
 
 void Torrent::start() {
