@@ -41,9 +41,6 @@ jobs:
         build_type:
           - Release
           #- Debug
-        developer_mode:
-          - ON
-          - OFF
 
         exclude:
           # mingw is determined by this author to be too buggy to support
@@ -60,32 +57,17 @@ jobs:
 
           # Set up preferred package generators, for given build configurations
           - build_type: Release
-            developer_mode: OFF
             package_generator: TBZ2
 
           #- os: windows-2022
           #  compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 17}
           #  generator: "Visual Studio 17 2022"
           #  build_type: Debug
-          #  developer_mode: On
-
-          #- os: windows-2022
-          #  compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 17}
-          #  generator: "Visual Studio 17 2022"
-          #  build_type: Release
-          #  developer_mode: On
-
-          #- os: windows-2022
-          #  compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 17}
-          #  generator: "Visual Studio 17 2022"
-          #  build_type: Debug
-          #  developer_mode: OFF
 
           - os: windows-2022
             compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 17}
             generator: "Visual Studio 17 2022"
             build_type: Release
-            developer_mode: OFF
             package_generator: ZIP
 
 
@@ -104,7 +86,6 @@ jobs:
         with:
           compiler: ${{ matrix.compiler.name }}
           build_type: ${{ matrix.build_type }}
-          developer_mode: ${{ matrix.developer_mode }}
           generator: ${{ matrix.generator }}
 
       - name: Setup Cpp
@@ -150,7 +131,7 @@ jobs:
         #
       - name: Configure CMake
         run: |
-          cmake -S . -B ./build -G "${{matrix.generator}}" -DCMAKE_BUILD_TYPE:STRING=${{matrix.build_type}} -DENABLE_DEVELOPER_MODE:BOOL=${{matrix.developer_mode}} -DOPT_ENABLE_COVERAGE:BOOL=${{ matrix.build_type == 'Debug' && matrix.developer_mode == 'OFF' }} -DGIT_SHA:STRING=${{ github.sha }} -DUSE_CLANG_TIDY=OFF
+          cmake -S . -B ./build -G "${{matrix.generator}}" -DCMAKE_BUILD_TYPE:STRING=${{matrix.build_type}} -DOPT_ENABLE_COVERAGE:BOOL=${{ matrix.build_type == 'Debug' }} -DGIT_SHA:STRING=${{ github.sha }} -DUSE_CLANG_TIDY=OFF
 
       - name: Build
         # Execute the build.  You can specify a specific target with "--target <NAME>"
