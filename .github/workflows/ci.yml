@@ -34,9 +34,8 @@ jobs:
           - ubuntu-22.04
           - macos-11
         compiler:
-          # you can specify the version after `-` like "llvm-14.0.0".
-          - llvm-14.0.0
-          - gcc-11
+          - {name: llvm-14.0.0, conan: clang, bin: clang++, ver: 14}
+          - {name: gcc-11, conan: gcc, bin: g++, ver: 11}
         generator:
           - "Ninja Multi-Config"
         build_type:
@@ -49,16 +48,16 @@ jobs:
         exclude:
           # mingw is determined by this author to be too buggy to support
           - os: macos-11
-            compiler: gcc-11
+            compiler: {name: gcc-11, conan: gcc, bin: g++, ver: 11}
           - os: ubuntu-22.04
-            compiler: llvm-14.0.0
+            compiler: {name: llvm-14.0.0, conan: clang, bin: clang++, ver: 14}
 
         include:
           # Add appropriate variables for gcov version required. This will intentionally break
           # if you try to use a compiler that does not have gcov set
-          - compiler: gcc-11
+          - compiler: {name: gcc-11, conan: gcc, bin: g++, ver: 11}
             gcov_executable: gcov
-          - compiler: llvm-14.0.0
+          - compiler: {name: llvm-14.0.0, conan: clang, bin: clang++, ver: 14}
             gcov_executable: "llvm-cov gcov"
 
           # Set up preferred package generators, for given build configurations
@@ -67,25 +66,25 @@ jobs:
             package_generator: TBZ2
 
           - os: windows-2022
-            compiler: msvc
+            compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 17}
             generator: "Visual Studio 17 2022"
             build_type: Debug
             developer_mode: On
 
           - os: windows-2022
-            compiler: msvc
+            compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 17}
             generator: "Visual Studio 17 2022"
             build_type: Release
             developer_mode: On
 
           - os: windows-2022
-            compiler: msvc
+            compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 17}
             generator: "Visual Studio 17 2022"
             build_type: Debug
             developer_mode: OFF
 
           - os: windows-2022
-            compiler: msvc
+            compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 17}
             generator: "Visual Studio 17 2022"
             build_type: Release
             developer_mode: OFF
@@ -94,7 +93,7 @@ jobs:
 
     steps:
       - name: Check for llvm version mismatches
-        if: ${{ contains(matrix.compiler, 'llvm') && !contains(matrix.compiler, env.CLANG_TIDY_VERSION) }}
+        if: ${{ contains(matrix.compiler.name, 'llvm') && !contains(matrix.compiler.name, env.CLANG_TIDY_VERSION) }}
         uses: actions/github-script@v3
         with:
           script: |
@@ -105,7 +104,7 @@ jobs:
       - name: Setup Cache
         uses: ./.github/actions/setup_cache
         with:
-          compiler: ${{ matrix.compiler }}
+          compiler: ${{ matrix.compiler.name }}
           build_type: ${{ matrix.build_type }}
           developer_mode: ${{ matrix.developer_mode }}
           generator: ${{ matrix.generator }}
@@ -113,7 +112,7 @@ jobs:
       - name: Setup Cpp
         uses: aminya/setup-cpp@v1
         with:
-          compiler: ${{ matrix.compiler }}
+          compiler: ${{ matrix.compiler.name }}
           vcvarsall: ${{ contains(matrix.os, 'windows' )}}
 
           cmake: true
@@ -136,22 +135,23 @@ jobs:
       - name: Create default profile
         run: conan profile new default --detect && conan profile show default
 
-#      - name: Update Linux profile
-#        run: |
-#          conan profile update settings.os=${{ runner.os }} default
-#          conan profile update settings.arch=x86_64 default
-#          conan profile update settings.compiler=${{ matrix.compiler}} default
-#          conan profile update settings.compiler.version=${{ matrix.compiler.ver }} default
-#          conan profile update settings.compiler.libcxx=libstdc++11 default
+      - name: Update Linux profile
+        run: |
+          conan profile update settings.compiler=${{ matrix.compiler.conan }} default
+          conan profile update settings.compiler.version=${{ matrix.compiler.ver }} default
 
       - name: Install dependencies
         run: conan install . -s build_type=${{matrix.build_type}} --install-folder=${{github.workspace}}/build --build missing
 
         # make sure coverage is only enabled for Debug builds, since it sets -O0 to make sure coverage
         # has meaningful results
+        #
+        # clang-tidy is currently disabled since it for some reason results in:
+        #   undefined symbol: _ZTIN5clang12ModuleLoaderE
+        #
       - name: Configure CMake
         run: |
-          cmake -S . -B ./build -G "${{matrix.generator}}" -DCMAKE_BUILD_TYPE:STRING=${{matrix.build_type}} -DENABLE_DEVELOPER_MODE:BOOL=${{matrix.developer_mode}} -DOPT_ENABLE_COVERAGE:BOOL=${{ matrix.build_type == 'Debug' && matrix.developer_mode == 'OFF' }} -DGIT_SHA:STRING=${{ github.sha }}
+          cmake -S . -B ./build -G "${{matrix.generator}}" -DCMAKE_BUILD_TYPE:STRING=${{matrix.build_type}} -DENABLE_DEVELOPER_MODE:BOOL=${{matrix.developer_mode}} -DOPT_ENABLE_COVERAGE:BOOL=${{ matrix.build_type == 'Debug' && matrix.developer_mode == 'OFF' }} -DGIT_SHA:STRING=${{ github.sha }} -DUSE_CLANG_TIDY=OFF
 
       - name: Build
         # Execute the build.  You can specify a specific target with "--target <NAME>"
