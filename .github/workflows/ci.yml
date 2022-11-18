@@ -59,13 +59,15 @@ jobs:
           - build_type: Release
             package_generator: TBZ2
 
+          # FIXME: VS ver 17
+
           #- os: windows-2022
-          #  compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 17}
+          #  compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 16}
           #  generator: "Visual Studio 17 2022"
           #  build_type: Debug
 
           - os: windows-2022
-            compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 17}
+            compiler: {name: msvc, conan: "Visual Studio", bin: cl.exe, ver: 16}
             generator: "Visual Studio 17 2022"
             build_type: Release
             package_generator: ZIP
@@ -112,7 +114,7 @@ jobs:
           conan remove -f '*/system'
 
       - name: Create default profile
-        run: conan profile new default --detect && conan profile show default
+        run: conan profile new default --detect --force && conan profile show default
 
       - name: Update profile
         run: |
