@@ -94,6 +94,9 @@ if(UNIX)
   endif()
 endif()
 
+# Enable parallel building on windows for "cmake --build"
+add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
+
 add_subdirectory(src)
 enable_testing()
 add_subdirectory(tests)

@@ -1,10 +1,14 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
+#ifdef __linux__
+
 #include <filesystem>
 
+#include <array>
 #include <regex>
 #include <stdexcept>
+#include <stdio.h>
 #include <string>
 #include "gtest/gtest.h"
 #include "spdlog/fmt/fmt.h"
@@ -41,10 +45,6 @@ class TestWithTmpDir : public ::testing::Test {
   std::array<char, 16> m_dirname{'/', 't', 'm', 'p', '/', 'z', 'i', 't',
                                  '_', 'X', 'X', 'X', 'X', 'X', 'X', '\0'};
 };
-
-#ifdef __linux__
-
-#include <stdio.h>
 
 /**
  * Helper for running a command and capturing the output.

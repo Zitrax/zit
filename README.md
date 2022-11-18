@@ -6,9 +6,9 @@
 
 * `mkdir build`
 * `cd build`
-* `conan install .. --build --profile <profile>`
-* `cmake -GNinja ..`
-* `cmake --build .`
+* `conan install .. --build=missing -s build_type=Release --profile <profile>`
+* `cmake -GNinja .. -DCMAKE_BUILD_TYPE=Release`
+* `cmake --build . --config Release`
 
 ### Notes:
 
