@@ -149,9 +149,8 @@ jobs:
 
       - name: Build
         # Execute the build.  You can specify a specific target with "--target <NAME>"
-        # FIXME: CPATH seem to be wrong for gcc
         run: |
-          CPATH= cmake --build ./build --config ${{matrix.build_type}}
+          cmake --build ./build --config ${{matrix.build_type}}
 
       - name: Unix - Test and coverage
         if: runner.os != 'Windows'
