@@ -32,7 +32,6 @@ jobs:
       matrix:
         os:
           - ubuntu-22.04
-          - macos-11
         compiler:
           - {name: llvm-14.0.0, conan: clang, bin: clang++, ver: 14}
           - {name: gcc-11, conan: gcc, bin: g++, ver: 11}
@@ -41,11 +40,6 @@ jobs:
         build_type:
           - Release
           #- Debug
-
-        exclude:
-          # mingw is determined by this author to be too buggy to support
-          - os: macos-11
-            compiler: {name: gcc-11, conan: gcc, bin: g++, ver: 11}
 
         include:
           # Add appropriate variables for gcov version required. This will intentionally break
@@ -58,6 +52,10 @@ jobs:
           # Set up preferred package generators, for given build configurations
           - build_type: Release
             package_generator: TBZ2
+
+          - os: macos-11
+            compiler: {name: llvm-14.0.0, conan: apple-clang, bin: N/A, ver: 14}
+            build_type: Release
 
           # FIXME: VS ver 17
 
