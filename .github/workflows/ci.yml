@@ -134,7 +134,7 @@ jobs:
           conan remove -f '*/system'
 
       - name: Create default profile
-        run: conan profile new default && conan profile show default
+        run: conan profile new default --detect && conan profile show default
 
 #      - name: Update Linux profile
 #        run: |
