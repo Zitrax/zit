@@ -134,15 +134,15 @@ jobs:
           conan remove -f '*/system'
 
       - name: Create default profile
-        run: conan profile new default
+        run: conan profile new default && conan profile show default
 
-      - name: Update Linux profile
-        run: |
-          conan profile update settings.os=${{ runner.os }} default
-          conan profile update settings.arch=x86_64 default
-          conan profile update settings.compiler=${{ matrix.compiler.type}} default
-          conan profile update settings.compiler.version=${{ matrix.compiler.ver }} default
-          conan profile update settings.compiler.libcxx=libstdc++11 default
+#      - name: Update Linux profile
+#        run: |
+#          conan profile update settings.os=${{ runner.os }} default
+#          conan profile update settings.arch=x86_64 default
+#          conan profile update settings.compiler=${{ matrix.compiler}} default
+#          conan profile update settings.compiler.version=${{ matrix.compiler.ver }} default
+#          conan profile update settings.compiler.libcxx=libstdc++11 default
 
       - name: Install dependencies
         run: conan install . -s build_type=${{matrix.build_type}} --install-folder=${{github.workspace}}/build --build missing
