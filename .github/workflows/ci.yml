@@ -106,7 +106,7 @@ jobs:
           ccache: true
           clangtidy: ${{ env.CLANG_TIDY_VERSION }}
           cppcheck: true
-          gcovr: true
+          gcovr: ${{ contains(matrix.os, 'ubuntu' )}}
           opencppcoverage: true
 
       - name: Cleanup Conan system packages (they are not properly cached)
