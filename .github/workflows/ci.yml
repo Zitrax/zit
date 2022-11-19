@@ -75,7 +75,7 @@ jobs:
       CXX: ${{ matrix.compiler.bin }}-${{ matrix.compiler.ver }}
       CC: ${{ matrix.compiler.conan }}-${{ matrix.compiler.ver }}
 
-    #steps:
+    steps:
     #  - name: Check for llvm version mismatches
     #    if: ${{ contains(matrix.compiler.name, 'llvm') && !contains(matrix.compiler.name, env.CLANG_TIDY_VERSION) }}
     #    uses: actions/github-script@v3
