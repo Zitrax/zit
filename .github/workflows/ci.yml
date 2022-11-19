@@ -120,7 +120,7 @@ jobs:
           conan profile update settings.compiler.version=${{ matrix.compiler.ver }} default
 
       - name: Update clang profile
-        if: matrix.compiler.conan == 'clang' && os.runner == 'Linux'
+        if: matrix.compiler.conan == 'clang' && runner.os == 'Linux'
         run: |
           conan profile update settings.compiler.libcxx=libstdc++11 default
 
