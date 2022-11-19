@@ -103,7 +103,7 @@ jobs:
           gcovr: ${{ contains(matrix.os, 'ubuntu' )}}
           opencppcoverage: true
 
-      -name: Update env
+      - name: Update env
         env:
           CXX: ${{ matrix.compiler.bin }}-${{ matrix.compiler.ver }}
           CC: ${{ matrix.compiler.conan }}-${{ matrix.compiler.ver }}
