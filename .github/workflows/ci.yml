@@ -75,13 +75,13 @@ jobs:
       CXX: ${{ matrix.compiler.bin }}-${{ matrix.compiler.ver }}
       CC: ${{ matrix.compiler.conan }}-${{ matrix.compiler.ver }}
 
-    steps:
-      - name: Check for llvm version mismatches
-        if: ${{ contains(matrix.compiler.name, 'llvm') && !contains(matrix.compiler.name, env.CLANG_TIDY_VERSION) }}
-        uses: actions/github-script@v3
-        with:
-          script: |
-            core.setFailed('There is a mismatch between configured llvm compiler and clang-tidy version chosen')
+    #steps:
+    #  - name: Check for llvm version mismatches
+    #    if: ${{ contains(matrix.compiler.name, 'llvm') && !contains(matrix.compiler.name, env.CLANG_TIDY_VERSION) }}
+    #    uses: actions/github-script@v3
+    #    with:
+    #      script: |
+    #        core.setFailed('There is a mismatch between configured llvm compiler and clang-tidy version chosen')
 
       - uses: actions/checkout@v2
 
@@ -119,8 +119,8 @@ jobs:
           conan profile update settings.compiler="${{ matrix.compiler.conan }}" default
           conan profile update settings.compiler.version=${{ matrix.compiler.ver }} default
 
-      - name: Update clang profile
-        if: matrix.compiler.conan == 'clang' && runner.os == 'Linux'
+      - name: Update Linux profile
+        if: runner.os == 'Linux'
         run: |
           conan profile update settings.compiler.libcxx=libstdc++11 default
 
