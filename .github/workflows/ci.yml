@@ -56,6 +56,7 @@ jobs:
           - os: macos-11
             compiler: {name: llvm-13.0.0, conan: apple-clang, bin: N/A, ver: 13}
             build_type: Release
+            generator: Ninja
 
           # FIXME: VS ver 17
 
