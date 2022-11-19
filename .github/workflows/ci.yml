@@ -71,11 +71,6 @@ jobs:
             build_type: Release
             package_generator: ZIP
 
-    # Needed or are setup-cpp setting it?
-    env:
-      CXX: ${{ matrix.compiler.bin }}-${{ matrix.compiler.ver }}
-      CC: ${{ matrix.compiler.conan }}-${{ matrix.compiler.ver }}
-
     steps:
     #  - name: Check for llvm version mismatches
     #    if: ${{ contains(matrix.compiler.name, 'llvm') && !contains(matrix.compiler.name, env.CLANG_TIDY_VERSION) }}
@@ -107,6 +102,11 @@ jobs:
           cppcheck: true
           gcovr: ${{ contains(matrix.os, 'ubuntu' )}}
           opencppcoverage: true
+
+      -name: Update env
+        env:
+          CXX: ${{ matrix.compiler.bin }}-${{ matrix.compiler.ver }}
+          CC: ${{ matrix.compiler.conan }}-${{ matrix.compiler.ver }}
 
       - name: Cleanup Conan system packages (they are not properly cached)
         run: |
