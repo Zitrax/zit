@@ -54,7 +54,7 @@ jobs:
             package_generator: TBZ2
 
           - os: macos-11
-            compiler: {name: llvm-14.0.0, conan: apple-clang, bin: N/A, ver: 14}
+            compiler: {name: llvm-13.0.0, conan: apple-clang, bin: N/A, ver: 13}
             build_type: Release
 
           # FIXME: VS ver 17
@@ -120,9 +120,14 @@ jobs:
           conan profile update settings.compiler.version=${{ matrix.compiler.ver }} default
 
       - name: Update clang profile
-        if: matrix.compiler.conan == 'clang'
+        if: matrix.compiler.conan == 'clang' && os.runner == 'Linux'
         run: |
           conan profile update settings.compiler.libcxx=libstdc++11 default
+
+      - name: Update Macos profile
+        if: matrix.compiler.conan == 'apple-clang'
+        run: |
+          conan profile update settings.compiler.libcxx=libc++ default
 
       - name: Update Windows profile
         if: runner.os == 'Windows'
