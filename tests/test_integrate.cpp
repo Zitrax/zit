@@ -25,6 +25,7 @@
 #include <torrent.hpp>
 
 #include "gtest/gtest.h"
+#include "test_main.hpp"
 #include "test_utils.hpp"
 
 using namespace std;
@@ -197,10 +198,10 @@ void start(zit::Torrent& torrent) {
 auto download(const fs::path& data_dir,
               const fs::path& torrent_file,
               zit::Torrent& torrent,
-              uint8_t max) {
-  spdlog::get("console")->info("Starting {} seeders...", max);
+              uint8_t number_of_seeders) {
+  spdlog::get("console")->info("Starting {} seeders...", number_of_seeders);
   vector<Process> seeders;
-  for (int i = 0; i < max; ++i) {
+  for (int i = 0; i < number_of_seeders; ++i) {
     seeders.emplace_back(start_seeder(data_dir, torrent_file));
   }
 
@@ -238,13 +239,13 @@ TEST_P(IntegrateF, DISABLED_download) {
 
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = data_dir / "1MiB.torrent";
-  const uint8_t max = GetParam();
+  const uint8_t number_of_seeders = GetParam();
 
   const auto download_dir = tmp_dir();
   TestConfig test_config;
   zit::Torrent torrent(torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
-  auto target = download(data_dir, torrent_file, torrent, max);
+  auto target = download(data_dir, torrent_file, torrent, number_of_seeders);
 
   // Transfer done - Verify content
   auto source = data_dir / "1MiB.dat";
@@ -256,6 +257,45 @@ TEST_P(IntegrateF, DISABLED_download) {
 INSTANTIATE_TEST_SUITE_P(SeedCount,
                          IntegrateF,
                          ::testing::Values<uint8_t>(1, 2, 5, 10));
+
+class IntegrateOodF : public TestWithFilesystem<1'500'000>,
+                      public ::testing::WithParamInterface<uint8_t> {};
+
+#ifdef INTEGRATION_TESTS
+TEST_F(IntegrateOodF, download_ood) {
+#else
+TEST_F(IntegrateOodF, DISABLED_download_ood) {
+#endif  // INTEGRATION_TESTS
+  auto tracker = start_tracker();
+
+  const auto data_dir = fs::path(DATA_DIR);
+  const auto torrent_file = data_dir / "1MiB.torrent";
+  constexpr uint8_t number_of_seeders = 1;
+
+  const auto download_dir = mount_dir();
+  TestConfig test_config;
+  zit::Torrent torrent(torrent_file, download_dir, test_config);
+
+  sigint_function = [&](int /*s*/) {
+    spdlog::get("console")->warn("CTRL-C pressed. Stopping torrent...");
+    torrent.stop();
+  };
+
+  // Test the case where we can store the file once
+  spdlog::get("console")->info("Available: {}, Torrent length: {}", available(),
+                               torrent.length());
+  ASSERT_GT(available(), torrent.length());
+  ASSERT_LT(available(), 2 * torrent.length());
+
+  ASSERT_FALSE(torrent.done());
+  auto target = download(data_dir, torrent_file, torrent, number_of_seeders);
+
+  // Transfer done - Verify content
+  auto source = data_dir / "1MiB.dat";
+  auto source_sha1 = zit::Sha1::calculateFile(source).hex();
+  auto target_sha1 = zit::Sha1::calculateFile(target).hex();
+  EXPECT_EQ(source_sha1, target_sha1);
+}
 
 using Integrate = TestWithTmpDir;
 

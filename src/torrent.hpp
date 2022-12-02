@@ -13,7 +13,6 @@
 
 namespace zit {
 
-class FileInfo;
 class Peer;
 class Torrent;
 
@@ -27,6 +26,41 @@ using DisconnectCallback = std::function<void(Peer*)>;
  * request. Matching Net::httpGet(const Url&).
  */
 using HttpGet = std::function<std::tuple<std::string, std::string>(const Url&)>;
+
+/**
+ * Information object for each file in the torrent.
+ */
+class FileInfo {
+ public:
+  FileInfo(int64_t length, std::filesystem::path path, std::string md5sum = "")
+      : m_length(length),
+        m_path(std::move(path)),
+        m_md5sum(std::move(md5sum)) {}
+
+  /**
+   * Length of the file in bytes.
+   */
+  [[nodiscard]] auto length() const { return m_length; }
+
+  /**
+   * The path to the file.
+   */
+  [[nodiscard]] auto path() const { return m_path; }
+
+  /**
+   * A 32-character hexadecimal string corresponding to the MD5 sum of the
+   * file. This is not used by BitTorrent at all, but it is included by some
+   * programs for greater compatibility.
+   */
+  [[nodiscard]] auto md5sum() const { return m_md5sum; }
+
+ private:
+  int64_t m_length;
+  std::filesystem::path m_path;
+  std::string m_md5sum;
+};
+
+std::ostream& operator<<(std::ostream& os, const zit::FileInfo& file_info);
 
 /**
  * Represents one torrent. Bookeeps all pieces and block information.
@@ -362,40 +396,6 @@ class Torrent {
   std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces{};
 };
 
-/**
- * Information object for each file in the torrent.
- */
-class FileInfo {
- public:
-  FileInfo(int64_t length, std::filesystem::path path, std::string md5sum = "")
-      : m_length(length),
-        m_path(std::move(path)),
-        m_md5sum(std::move(md5sum)) {}
-
-  /**
-   * Length of the file in bytes.
-   */
-  [[nodiscard]] auto length() const { return m_length; }
-
-  /**
-   * The path to the file.
-   */
-  [[nodiscard]] auto path() const { return m_path; }
-
-  /**
-   * A 32-character hexadecimal string corresponding to the MD5 sum of the
-   * file. This is not used by BitTorrent at all, but it is included by some
-   * programs for greater compatibility.
-   */
-  [[nodiscard]] auto md5sum() const { return m_md5sum; }
-
- private:
-  int64_t m_length;
-  std::filesystem::path m_path;
-  std::string m_md5sum;
-};
-
-std::ostream& operator<<(std::ostream& os, const zit::FileInfo& file_info);
 std::ostream& operator<<(std::ostream& os, const zit::Torrent& torrent);
 
 }  // namespace zit
