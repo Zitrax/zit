@@ -227,6 +227,14 @@ void PeerConnection::stop() {
 void Peer::request(uint32_t index, uint32_t begin, uint32_t length) {
   m_logger->trace("Peer::request(index={}, begin={}, length={})", index, begin,
                   length);
+  if (m_am_choking) {
+    m_logger->debug("{}: Choking peer, not sending blocks", str());
+    return;
+  }
+  if (!m_interested) {
+    m_logger->debug("{}: Peer not interested, not sending blocks", str());
+    return;
+  }
   auto piece = m_torrent.active_piece(index);
   if (!piece) {
     m_logger->warn("Requested non existing piece {}", index);
@@ -251,6 +259,24 @@ void Peer::request(uint32_t index, uint32_t begin, uint32_t length) {
 }
 
 void Peer::set_am_choking(bool am_choking) {
+  if (!m_am_choking && am_choking) {
+    // Send UNCHOKE
+    m_logger->debug("Sending CHOKE");
+    string choke = {0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::CHOKE)};
+    stringstream hs;
+    hs.write(choke.c_str(), numeric_cast<std::streamsize>(choke.length()));
+    m_connection->write(hs.str());
+  }
+
+  if (m_am_choking && !am_choking) {
+    // Send UNCHOKE
+    m_logger->debug("Sending UNCHOKE");
+    string unchoke = {0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::UNCHOKE)};
+    stringstream hs;
+    hs.write(unchoke.c_str(), numeric_cast<std::streamsize>(unchoke.length()));
+    m_connection->write(hs.str());
+  }
+
   m_am_choking = am_choking;
 }
 
@@ -287,7 +313,7 @@ void Peer::set_am_interested(bool am_interested) {
 std::size_t Peer::request_next_block(unsigned short count) {
   size_t requests = 0;
   if (!m_am_interested) {
-    m_logger->trace(
+    m_logger->debug(
         "{}: Peer not interested (no handshake), not requesting blocks", str());
     return requests;
   }
@@ -360,10 +386,7 @@ void Peer::set_choking(bool choking) {
 void Peer::set_interested(bool interested) {
   if (!m_interested && interested) {
     m_logger->info("Peer is Interested - sending unchoke");
-    string unchoke = {0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::UNCHOKE)};
-    stringstream hs;
-    hs.write(unchoke.c_str(), numeric_cast<std::streamsize>(unchoke.length()));
-    m_connection->write(hs.str());
+    set_am_choking(false);
   }
   if (m_interested && !interested) {
     m_logger->info("Peer is Not interested");

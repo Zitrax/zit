@@ -440,6 +440,11 @@ TEST_F(Integrate, DISABLED_upload) {
   zit::Torrent torrent(torrent_file, data_dir, test_config);
   ASSERT_TRUE(torrent.done());
 
+  sigint_function = [&](int /*s*/) {
+    spdlog::get("console")->warn("CTRL-C pressed. Stopping torrent...");
+    torrent.stop();
+  };
+
   // Start a leecher that we will upload to
   auto target = tmp_dir() / "upload_test";
   auto leecher = start_leecher(target, torrent_file);
