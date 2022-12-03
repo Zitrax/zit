@@ -55,7 +55,7 @@ in pkgs.stdenv.mkDerivation rec {
     mark_as_advanced(TBB_LIBRARIES)' > FindTBB.cmake
 
     rm -vf CMakeCache.txt
-    cmake . -GNinja -DCMAKE_BUILD_TYPE=Release -DCMAKE_MODULE_PATH="$PWD" -DCMAKE_INSTALL_PREFIX="$out"
+    cmake . -GNinja -DCMAKE_BUILD_TYPE=Release -DUSE_CLANG_TIDY=NO -DCMAKE_MODULE_PATH="$PWD" -DCMAKE_INSTALL_PREFIX="$out"
   '';
 
   buildPhase = ''

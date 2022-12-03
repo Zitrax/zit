@@ -71,7 +71,7 @@ class TorrentDestination {
  public:
   explicit TorrentDestination(Torrent* torrent,
                               shared_ptr<spdlog::logger> logger)
-      : m_torrent(torrent), m_logger(move(logger)) {}
+      : m_torrent(torrent), m_logger(std::move(logger)) {}
   virtual ~TorrentDestination() = default;
 
   // Special member functions (hicpp-special-member-functions)
@@ -107,7 +107,7 @@ class TorrentDestination {
 class SingleTorrentDestination : public TorrentDestination {
  public:
   SingleTorrentDestination(Torrent* torrent, shared_ptr<spdlog::logger> logger)
-      : TorrentDestination(torrent, move(logger)) {}
+      : TorrentDestination(torrent, std::move(logger)) {}
 
   void allocate() override {
     const auto tmpfile_name = torrent()->tmpfile();
@@ -156,7 +156,7 @@ class SingleTorrentDestination : public TorrentDestination {
 class MultiTorrentDestination : public TorrentDestination {
  public:
   MultiTorrentDestination(Torrent* torrent, shared_ptr<spdlog::logger> logger)
-      : TorrentDestination(torrent, move(logger)) {}
+      : TorrentDestination(torrent, std::move(logger)) {}
 
   void allocate() override {
     // TODO: Rename all files instead?
@@ -233,9 +233,9 @@ shared_ptr<TorrentDestination> TorrentDestination::create(
     Torrent* torrent,
     shared_ptr<spdlog::logger> logger) {
   if (torrent->is_single_file()) {
-    return make_shared<SingleTorrentDestination>(torrent, move(logger));
+    return make_shared<SingleTorrentDestination>(torrent, std::move(logger));
   }
-  return make_shared<MultiTorrentDestination>(torrent, move(logger));
+  return make_shared<MultiTorrentDestination>(torrent, std::move(logger));
 }
 
 void FileWriter::write_next_piece() {
