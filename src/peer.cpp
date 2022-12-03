@@ -54,7 +54,7 @@ void PeerConnection::listen() {
           auto ip = new_socket.remote_endpoint().address().to_string();
           auto port = new_socket.remote_endpoint().port();
           m_logger->warn("Accepted new connection from {}:{}", ip, port);
-          socket_ = move(new_socket);
+          socket_ = std::move(new_socket);
           m_connected = true;
           asio::async_read(
               socket_, response_, asio::transfer_at_least(1),
@@ -373,7 +373,7 @@ void Peer::set_interested(bool interested) {
 }
 
 void Peer::set_remote_pieces(Bitfield bf) {
-  m_remote_pieces = move(bf);
+  m_remote_pieces = std::move(bf);
   m_torrent.init_client_pieces(m_remote_pieces.size());
 }
 

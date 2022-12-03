@@ -94,10 +94,10 @@ class HandshakeMsg {
                string peer_id,
                size_t consumed,
                Bitfield bf = {})
-      : m_reserved(move(reserved)),
+      : m_reserved(std::move(reserved)),
         m_info_hash(info_hash),
-        m_peer_id(move(peer_id)),
-        m_bitfield(move(bf)),
+        m_peer_id(std::move(peer_id)),
+        m_bitfield(std::move(bf)),
         m_consumed(consumed) {}
 
   [[nodiscard]] auto getReserved() const { return m_reserved; }

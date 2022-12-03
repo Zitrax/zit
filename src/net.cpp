@@ -36,9 +36,7 @@ class MatchMarkers {
 
   template <typename Iterator>
   std::pair<Iterator, bool> operator()(Iterator begin, Iterator end) const {
-    int i = 0;
     for (const auto& marker : m_markers) {
-      i++;
       auto m = std::search(begin, end, std::begin(marker), std::end(marker));
       if (m != end) {
         return std::make_pair(next(m, numeric_cast<long>(marker.size())), true);

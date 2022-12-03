@@ -27,6 +27,9 @@ if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
   if(CMAKE_CXX_COMPILER_VERSION VERSION_LESS "8")
     message(FATAL_ERROR "g++ 8 or higher is required")
   endif()
+  if(USE_CLANG_TIDY)
+    message(FATAL_ERROR "Can't use gcc with clang-tidy at the moment due to incompatible compile warning flags")
+  endif()
   # Support for clang seemed to go far back, so not bothering to check that atm.
 endif()
 
@@ -90,6 +93,10 @@ if(UNIX)
       -Wno-undefined-func-template        # does not seem very important
       -Wno-zero-as-null-pointer-constant  # fails clang-10 on travis but not locally?
       -Wno-disabled-macro-expansion       # Does not work when interfacing with csignal
+    )
+  elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_compile_options(
+      -Wno-restrict                       # gcc 12 gets problems with including spdlog
     )
   endif()
 endif()
