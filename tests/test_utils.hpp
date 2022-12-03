@@ -5,13 +5,14 @@
 
 #include <filesystem>
 
+#include <stdio.h>
 #include <array>
 #include <regex>
 #include <stdexcept>
-#include <stdio.h>
 #include <string>
 #include "gtest/gtest.h"
 #include "spdlog/fmt/fmt.h"
+#include "spdlog/spdlog.h"
 
 class TestWithTmpDir : public ::testing::Test {
  public:
@@ -51,6 +52,7 @@ class TestWithTmpDir : public ::testing::Test {
  * Modified version of https://stackoverflow.com/a/52165057/11722
  */
 inline std::string exec(const std::string& cmd) {
+  spdlog::get("console")->debug("Running: {}", cmd);
   const auto pipe = popen(cmd.c_str(), "r");
   if (!pipe) {
     throw std::runtime_error("popen() failed!");
@@ -65,6 +67,7 @@ inline std::string exec(const std::string& cmd) {
   }
 
   const auto rc = pclose(pipe);
+  spdlog::get("console")->debug("RC = {} for {} ", rc, cmd);
 
   if (rc != EXIT_SUCCESS) {
     throw std::runtime_error(
@@ -100,8 +103,18 @@ class TestWithFilesystem : public TestWithTmpDir {
     // Resize it to the target size
     std::filesystem::resize_file(fs_path, FS_SIZE_IN_BYTES);
 
+    // By default a mounted loop device is owned by root and can't be written by
+    // a normal user. However there is the option -d to mkfs.ext4 that takes a
+    // root directory to pre-populate the new filesystem with. When that is used
+    // it will also use the permissions of that directory. This might be ext4
+    // specific and would need a different solution for other file systems.
+    //
+    // Solution comes from: https://unix.stackexchange.com/q/727131/456
+    std::filesystem::create_directories(tmp_dir() / "root-dir" / "mount");
+
     // Format as ext4
-    exec("mkfs.ext4 " + fs_path.string());
+    exec(fmt::format("mkfs.ext4 -d {} {}", tmp_dir() / "root-dir",
+                     fs_path.string()));
 
     // Create a loop device
     const auto loop_out = exec(fmt::format(
@@ -116,7 +129,7 @@ class TestWithFilesystem : public TestWithTmpDir {
 
     // Mount it
     const auto mount_out =
-        exec(fmt::format("udisksctl mount -b {}", m_loop_device));
+        exec(fmt::format("udisksctl mount --options rw -b {}", m_loop_device));
     std::regex re_mount(".* at (.*)\n");
     if (std::regex_match(mount_out, smatch, re_mount)) {
       m_mount_dir = smatch[1].str();
@@ -145,7 +158,7 @@ class TestWithFilesystem : public TestWithTmpDir {
   }
 
   /** The directory with the mounted filesystem */
-  [[nodiscard]] auto mount_dir() const { return m_mount_dir; }
+  [[nodiscard]] auto mount_dir() const { return m_mount_dir / "mount"; }
 
   /** How many bytes remaining of the created filesystem */
   [[nodiscard]] auto available() const {
@@ -153,8 +166,8 @@ class TestWithFilesystem : public TestWithTmpDir {
   }
 
  private:
-  std::filesystem::path m_mount_dir;
-  std::string m_loop_device;
+  std::filesystem::path m_mount_dir{};
+  std::string m_loop_device{};
 };
 
 #endif  // __linux__
