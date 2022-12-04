@@ -67,6 +67,8 @@ class Config {
   std::map<IntSetting, int> m_int_settings{
       {IntSetting::LISTENING_PORT, 20001},
       {IntSetting::CONNECTION_PORT, 20000}};
+
+  friend std::ostream& operator<<(std::ostream& os, const Config& config);
 };
 
 /**

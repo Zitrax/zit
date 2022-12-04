@@ -1,5 +1,6 @@
 #include <filesystem>
 #include <iostream>
+#include <spdlog/common.h>
 #include <vector>
 #include "arg_parser.hpp"
 #include "bencode.hpp"
@@ -52,7 +53,8 @@ int main(int argc, const char* argv[]) noexcept {
     int listening_port{0};
     std::string log_level;
     bool help = false;
-    bool dump = false;
+    bool dump_torrent = false;
+    bool dump_config = false;
     parser.add_help_option("--help,-h", "Print help", help);
     parser.add_option("--torrent", {}, "Torrent file to download", torrent_file,
                       true);
@@ -62,8 +64,11 @@ int main(int argc, const char* argv[]) noexcept {
         "--log-level", ""s,
         "Log level (trace, debug, info, warning, error, critical, off)",
         log_level);
-    parser.add_option("--dump", {},
-                      "Dump info about specified .torrent file and exit", dump);
+    parser.add_option("--dump-torrent", {},
+                      "Dump info about specified .torrent file and exit",
+                      dump_torrent);
+    parser.add_option("--dump-config", {}, "Dump config to console",
+                      dump_config);
     parser.parse(argc, argv);
 
     if (help) {
@@ -101,10 +106,15 @@ int main(int argc, const char* argv[]) noexcept {
     CommandLineArgs args{listening_port};
 
     zit::Torrent torrent(torrent_file, "", args);
-    if (dump) {
+    if (dump_torrent) {
       std::cout << torrent << std::endl;
       return 0;
     }
+    if (dump_config) {
+      std::cout << torrent.config();
+      return 0;
+    }
+
     zit::FileWriterThread file_writer(torrent, [&console](zit::Torrent& /*t*/) {
       console->info(
           "Download completed. Continuing to seed. Press ctrl-c to stop.");
