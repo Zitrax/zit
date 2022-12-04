@@ -95,6 +95,23 @@ const std::map<std::string, IntSetting> settings_map<IntSetting>{
 
 }  // namespace
 
+std::ostream& operator<<(std::ostream& os, const Config& config) {
+  const auto dump = [&](const auto& settings) {
+    for (const auto& [key, val] : settings) {
+      // Note - important to remove const to match the variable template type
+      using key_type = std::remove_cv_t<decltype(key)>;
+      const auto res = std::ranges::find_if(
+          settings_map<key_type>,
+          [k = key](const auto& kv) { return kv.second == k; });
+      os << res->first << "=" << val << "\n";
+    }
+  };
+
+  dump(config.m_bool_settings);
+  dump(config.m_int_settings);
+  return os;
+}
+
 FileConfig::FileConfig(std::filesystem::path config_file)
     : m_logger(spdlog::get("console")), m_config_file(std::move(config_file)) {
   if (!m_config_file.empty() && !try_file(m_config_file)) {

@@ -325,6 +325,11 @@ class Torrent {
   [[nodiscard]] auto peer_id() const { return m_peer_id; }
 
   /**
+   * Read only configuration for this torrent.
+   */
+  [[nodiscard]] const auto& config() const { return m_config; }
+
+  /**
    * Find the file at a specific position in the torrent.
    * @param pos The offset into the torrent file
    * @return A tuple with (FileInfo, int64_t offset_in_file, int64_t tail)
