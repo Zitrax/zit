@@ -5,3 +5,4 @@ doc
 *.vscode
 .cache
 
+CMakeUserPresets.json
