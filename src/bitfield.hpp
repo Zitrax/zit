@@ -124,4 +124,7 @@ class Bitfield {
 
 std::ostream& operator<<(std::ostream& os, const Bitfield& bf);
 
+/** For fmt */
+std::string format_as(const Bitfield& bf);
+
 }  // namespace zit

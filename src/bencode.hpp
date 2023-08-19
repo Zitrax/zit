@@ -415,4 +415,11 @@ inline std::ostream& operator<<(std::ostream& os, const ElmPtr& elmPtr) {
   return elmPtr->print(os);
 }
 
+/** For fmt */
+inline std::string format_as(const ElmPtr& elmPtr) {
+  std::stringstream ss;
+  ss << elmPtr;
+  return ss.str();
+}
+
 }  // namespace bencode

@@ -84,6 +84,12 @@ static std::ostream& operator<<(std::ostream& os, const peer_wire_id& id) {
   return os;
 }
 
+static auto format_as(const peer_wire_id& id) {
+  std::stringstream ss;
+  ss << id;
+  return ss.str();
+}
+
 /**
  * BitTorrent handshake message.
  */

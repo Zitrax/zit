@@ -353,7 +353,9 @@ class Torrent {
 
   friend std::ostream& operator<<(std::ostream& os, const TrackerEvent& te);
 
-  /**
+  friend std::string format_as(const Torrent::TrackerEvent& te);
+
+    /**
    * Request a list of peers from the tracker.
    */
   std::vector<std::shared_ptr<Peer>> tracker_request(TrackerEvent event);
@@ -402,5 +404,8 @@ class Torrent {
 };
 
 std::ostream& operator<<(std::ostream& os, const zit::Torrent& torrent);
+
+/** For fmt */
+std::string format_as(const Torrent& torrent);
 
 }  // namespace zit

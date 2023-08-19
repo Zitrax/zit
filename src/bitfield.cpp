@@ -5,6 +5,7 @@
 #include <array>
 #include <iostream>
 #include <numeric>
+#include <sstream>
 
 namespace zit {
 
@@ -166,6 +167,12 @@ std::ostream& operator<<(std::ostream& os, const Bitfield& bf) {
   }
   os << "\n----------\n";
   return os;
+}
+
+std::string format_as(const Bitfield& bf) {
+  std::stringstream ss;
+  ss << bf;
+  return ss.str();
 }
 
 }  // namespace zit
