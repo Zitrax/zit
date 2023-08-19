@@ -2,18 +2,14 @@
 
 # Build instructions
 
-## Conan
+## CMake + vcpkg
 
 * `mkdir build`
 * `cd build`
-* `conan install .. --build=missing -s build_type=Release --profile <profile>`
-* `cmake -GNinja .. -DCMAKE_BUILD_TYPE=Release`
+* `cmake -GNinja .. --preset zit-clang -DCMAKE_BUILD_TYPE=Release`
 * `cmake --build . --config Release`
 
-### Notes:
-
-When doing the conan install and running cmake it's important to set CXX/CC to
-the expected compiler versions that matches the conan profile.
+Or with --preset zit-gcc.
 
 ## [Nix](https://nixos.org)
 
