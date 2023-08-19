@@ -2,49 +2,32 @@
 #include "messages.hpp"
 
 #include <algorithm>
+#include <cassert>
+#include <cstdint>
 #include <cstring>
 #include <iomanip>
 #include <ios>
 #include <optional>
+#include <ostream>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <utility>
 
+#include "bitfield.hpp"
+#include "peer.hpp"
+#include "sha1.hpp"
 #include "spdlog/spdlog.h"
 #include "string_utils.hpp"
 #include "torrent.hpp"
+#include "types.hpp"
 
 using namespace std;
 
 namespace zit {
 
-template <typename T>
-static peer_wire_id to_peer_wire_id(const T& t) {
-  auto val = numeric_cast<pwid_t>(t);
-  switch (val) {
-    case static_cast<pwid_t>(peer_wire_id::CHOKE):
-      return peer_wire_id::CHOKE;
-    case static_cast<pwid_t>(peer_wire_id::UNCHOKE):
-      return peer_wire_id::UNCHOKE;
-    case static_cast<pwid_t>(peer_wire_id::INTERESTED):
-      return peer_wire_id::INTERESTED;
-    case static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED):
-      return peer_wire_id::NOT_INTERESTED;
-    case static_cast<pwid_t>(peer_wire_id::HAVE):
-      return peer_wire_id::HAVE;
-    case static_cast<pwid_t>(peer_wire_id::BITFIELD):
-      return peer_wire_id::BITFIELD;
-    case static_cast<pwid_t>(peer_wire_id::REQUEST):
-      return peer_wire_id::REQUEST;
-    case static_cast<pwid_t>(peer_wire_id::PIECE):
-      return peer_wire_id::PIECE;
-    case static_cast<pwid_t>(peer_wire_id::CANCEL):
-      return peer_wire_id::CANCEL;
-    case static_cast<pwid_t>(peer_wire_id::PORT):
-      return peer_wire_id::PORT;
-    default:
-      spdlog::get("console")->error("Unknown id = {}", val);
-      return peer_wire_id::UNKNOWN;
-  }
-}
-
+// Need to be in zit for fmt
+// NOLINTNEXTLINE(misc-use-anonymous-namespace)
 static std::ostream& operator<<(std::ostream& os, const peer_wire_id& id) {
   switch (id) {
     case peer_wire_id::CHOKE:
@@ -84,11 +67,56 @@ static std::ostream& operator<<(std::ostream& os, const peer_wire_id& id) {
   return os;
 }
 
-static auto format_as(const peer_wire_id& id) {
+std::string format_as(const peer_wire_id& id) {
   std::stringstream ss;
   ss << id;
   return ss.str();
 }
+
+namespace {
+
+template <typename T>
+peer_wire_id to_peer_wire_id(const T& t) {
+  auto val = numeric_cast<pwid_t>(t);
+  switch (val) {
+    case static_cast<pwid_t>(peer_wire_id::CHOKE):
+      return peer_wire_id::CHOKE;
+    case static_cast<pwid_t>(peer_wire_id::UNCHOKE):
+      return peer_wire_id::UNCHOKE;
+    case static_cast<pwid_t>(peer_wire_id::INTERESTED):
+      return peer_wire_id::INTERESTED;
+    case static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED):
+      return peer_wire_id::NOT_INTERESTED;
+    case static_cast<pwid_t>(peer_wire_id::HAVE):
+      return peer_wire_id::HAVE;
+    case static_cast<pwid_t>(peer_wire_id::BITFIELD):
+      return peer_wire_id::BITFIELD;
+    case static_cast<pwid_t>(peer_wire_id::REQUEST):
+      return peer_wire_id::REQUEST;
+    case static_cast<pwid_t>(peer_wire_id::PIECE):
+      return peer_wire_id::PIECE;
+    case static_cast<pwid_t>(peer_wire_id::CANCEL):
+      return peer_wire_id::CANCEL;
+    case static_cast<pwid_t>(peer_wire_id::PORT):
+      return peer_wire_id::PORT;
+    default:
+      spdlog::get("console")->error("Unknown id = {}", val);
+      return peer_wire_id::UNKNOWN;
+  }
+}
+
+// Print start of buffer in hex format
+string debugMsg(const bytes& msg, size_t len = 100) {
+  stringstream ss;
+  ss.fill('0');
+  ss << hex;
+  for (decltype(len) i = 0; i < min(msg.size(), len); ++i) {
+    ss << setw(2) << int(msg[i]) << " ";
+  }
+  return ss.str();
+}
+
+}  // namespace
 
 /**
  * BitTorrent handshake message.
@@ -166,17 +194,6 @@ class HandshakeMsg {
   Bitfield m_bitfield;
   size_t m_consumed;
 };
-
-// Print start of buffer in hex format
-static string debugMsg(const bytes& msg, size_t len = 100) {
-  stringstream ss;
-  ss.fill('0');
-  ss << hex;
-  for (decltype(len) i = 0; i < min(msg.size(), len); ++i) {
-    ss << setw(2) << int(msg[i]) << " ";
-  }
-  return ss.str();
-}
 
 size_t Message::parse(PeerConnection& connection) {
   auto handshake = HandshakeMsg::parse(m_msg);

@@ -27,8 +27,8 @@ using ConnectionPort = StrongType<unsigned short, struct ConnectionPortTag>;
 // ) by user Matt Whitlock - functions renamed.
 
 template <typename I, typename J>
-static constexpr typename std::
-    enable_if<std::is_signed<I>::value && std::is_signed<J>::value, I>::type
+static constexpr
+    typename std::enable_if_t<std::is_signed_v<I> && std::is_signed_v<J>, I>
     numeric_cast(J value, const char* msg = nullptr) {
   if (value < static_cast<J>(std::numeric_limits<I>::min()) ||
       value > static_cast<J>(std::numeric_limits<I>::max())) {
@@ -38,10 +38,10 @@ static constexpr typename std::
 }
 
 template <typename I, typename J>
-static constexpr typename std::
-    enable_if<std::is_signed<I>::value && std::is_unsigned<J>::value, I>::type
+static constexpr
+    typename std::enable_if_t<std::is_signed_v<I> && std::is_unsigned_v<J>, I>
     numeric_cast(J value, const char* msg = nullptr) {
-  if (value > static_cast<typename std::make_unsigned<I>::type>(
+  if (value > static_cast<typename std::make_unsigned_t<I>>(
                   std::numeric_limits<I>::max())) {
     throw std::out_of_range(msg ? msg : "out of range");
   }
@@ -49,10 +49,10 @@ static constexpr typename std::
 }
 
 template <typename I, typename J>
-static constexpr typename std::
-    enable_if<std::is_unsigned<I>::value && std::is_signed<J>::value, I>::type
+static constexpr
+    typename std::enable_if_t<std::is_unsigned_v<I> && std::is_signed_v<J>, I>
     numeric_cast(J value, const char* msg = nullptr) {
-  if (value < 0 || static_cast<typename std::make_unsigned<J>::type>(value) >
+  if (value < 0 || static_cast<typename std::make_unsigned_t<J>>(value) >
                        std::numeric_limits<I>::max()) {
     throw std::out_of_range(msg ? msg : "out of range");
   }
@@ -60,8 +60,8 @@ static constexpr typename std::
 }
 
 template <typename I, typename J>
-static constexpr typename std::
-    enable_if<std::is_unsigned<I>::value && std::is_unsigned<J>::value, I>::type
+static constexpr
+    typename std::enable_if_t<std::is_unsigned_v<I> && std::is_unsigned_v<J>, I>
     numeric_cast(J value, const char* msg = nullptr) {
   if (value > std::numeric_limits<I>::max()) {
     throw std::out_of_range(msg ? msg : "out of range");
@@ -80,7 +80,7 @@ static constexpr I numeric_cast(const std::byte& value) {
 /**
  * Convenience for literal byte values.
  */
-static constexpr std::byte operator"" _b(unsigned long long arg) {
+static constexpr std::byte operator""_b(unsigned long long arg) {
   // std::byte is not an arithmetic type so we can't check min and max of it.
   // Still we want to ensure that the input fits in one byte, so using uint8_t
   // instead for the check.
@@ -94,7 +94,7 @@ static constexpr std::byte operator"" _b(unsigned long long arg) {
 /**
  * Convenience for literal byte values.
  */
-static constexpr std::byte operator"" _b(char arg) noexcept {
+static constexpr std::byte operator""_b(char arg) noexcept {
   return static_cast<std::byte>(arg);
 }
 

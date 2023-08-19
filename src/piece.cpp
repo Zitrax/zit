@@ -1,16 +1,29 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "piece.hpp"
 
-#include "spdlog/spdlog.h"
-
+#include "bitfield.hpp"
 #include "file_writer.hpp"
+#include "types.hpp"
+
+#include <bits/basic_string.h>
+#if __clang__
+#include <bits/chrono.h>
+#endif  // __clang__
+#include <algorithm>
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <mutex>
+#include <optional>
+#include <stdexcept>
+#include <string>
 
 using namespace std;
 
 namespace zit {
 
 optional<uint32_t> Piece::next_offset(bool mark) {
-  lock_guard<mutex> lock(m_mutex);
+  const lock_guard<mutex> lock(m_mutex);
   const auto req_or_done = m_blocks_requested + m_blocks_done;
   auto next = req_or_done.next(false);
   if (!next) {
@@ -31,7 +44,7 @@ optional<uint32_t> Piece::next_offset(bool mark) {
 }
 
 bytes Piece::data() const {
-  lock_guard<mutex> lock(m_mutex);
+  const lock_guard<mutex> lock(m_mutex);
   if (m_data.empty()) {
     m_logger->warn("Retrieved empty data from piece {}", m_id);
   }
@@ -50,7 +63,7 @@ bool Piece::set_block(uint32_t offset, bytes_span data) {
   }
   auto block_id = offset / m_block_size;
 
-  lock_guard<mutex> lock(m_mutex);
+  const lock_guard<mutex> lock(m_mutex);
   if (m_blocks_done[block_id]) {
     m_logger->warn("Already got block {} for piece {}", block_id, m_id);
   } else {
@@ -78,7 +91,7 @@ bytes Piece::get_block(uint32_t offset,
   }
   auto block_id = offset / m_block_size;
 
-  lock_guard<mutex> lock(m_mutex);
+  const lock_guard<mutex> lock(m_mutex);
   if (!m_blocks_done[block_id]) {
     m_logger->warn("Block {} in piece {} not done", block_id, m_id);
     return {};
@@ -101,7 +114,7 @@ bytes Piece::get_block(uint32_t offset,
 
 void Piece::set_piece_written(bool written) {
   m_piece_written = written;
-  lock_guard<mutex> lock(m_mutex);
+  const lock_guard<mutex> lock(m_mutex);
   for (uint32_t i = 0; i < block_count(); ++i) {
     m_blocks_done[i] = true;
   }
@@ -126,7 +139,7 @@ std::size_t Piece::retry_blocks() {
     m_logger->warn(
         "Piece {} inactive for {} seconds. Marking for retry.", m_id,
         std::chrono::duration_cast<std::chrono::seconds>(inactive).count());
-    lock_guard<mutex> lock(m_mutex);
+    const lock_guard<mutex> lock(m_mutex);
     const auto retry = (m_blocks_requested - m_blocks_done).count();
 
     // TODO: Should we really request the whole piece again?

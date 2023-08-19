@@ -92,10 +92,11 @@ class Url {
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
-  const auto port = url.port() ? std::to_string(*url.port()) : "<not set>";
+  const auto& port = url.port();
+  const auto port_str = port.has_value() ? std::to_string(port.value()) : "<not set>";
   os << "Scheme:        " << url.scheme() << "\n";
   os << "Host:          " << url.host() << "\n";
-  os << "Port:          " << port << "\n";
+  os << "Port:          " << port_str << "\n";
   os << "Path:          " << url.path() << "\n";
   if (!url.params().empty()) {
     os << "Params:\n";

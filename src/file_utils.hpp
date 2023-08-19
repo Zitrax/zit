@@ -21,7 +21,7 @@ inline auto read_file(const std::filesystem::path& file_name) {
     std::ifstream file_stream{file_name,
                               std::ios_base::in | std::ios_base::binary};
     file_stream.exceptions(std::ifstream::failbit);
-    std::ostringstream str_stream{};
+    const std::ostringstream str_stream{};
     if (file_stream.peek() == std::ifstream::traits_type::eof()) {
       return str_stream.str();
     }
@@ -51,6 +51,7 @@ inline void write_file(const std::filesystem::path& file_name,
 
 }  // namespace zit
 
+// NOLINTNEXTLINE(cert-dcl58-cpp)
 namespace std::filesystem {
 inline auto format_as(const path& p) {
   return p.string();

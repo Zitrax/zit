@@ -2,25 +2,31 @@
 #include "bitfield.hpp"
 #include "types.hpp"
 
+#include <algorithm>
 #include <array>
+#include <cstddef>
+#include <cstdint>
 #include <iostream>
+#include <iterator>
 #include <numeric>
+#include <optional>
 #include <sstream>
+#include <string>
 
 namespace zit {
 
 namespace {
-  uint8_t bit_mask(bytes::size_type i) {
-    return static_cast<uint8_t>(1 << (7 - (i % 8)));
-  }
+uint8_t bit_mask(bytes::size_type i) {
+  return static_cast<uint8_t>(1 << (7 - (i % 8)));
 }
+}  // namespace
 
 // --- bitfield::proxy ---
 
 Bitfield::Proxy::Proxy(Bitfield& bf, bytes::size_type i)
     : m_bitfield(bf), m_i(i) {}
 
-// NOLINTNEXTLINE(performance-noexcept-move-constructor)
+// NOLINTNEXTLINE(performance-noexcept-move-constructor,cppcoreguidelines-noexcept-move-operations)
 Bitfield::Proxy& Bitfield::Proxy::operator=(Bitfield::Proxy&& rhs) {
   operator=(static_cast<bool>(rhs));
   return *this;
@@ -56,7 +62,7 @@ Bitfield::Bitfield(bytes::size_type count) {
   m_bytes.resize(count / 8 + (count % 8 != 0));
 }
 
-bool Bitfield::get(bytes::size_type i) const{
+bool Bitfield::get(bytes::size_type i) const {
   const auto byte = static_cast<uint8_t>(m_bytes.at(i / 8));
   return byte & bit_mask(i);
 }

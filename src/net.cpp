@@ -1,17 +1,50 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "net.hpp"
 
-#include <asio.hpp>
-#include <asio/buffers_iterator.hpp>
-#include <asio/error_code.hpp>
-#include <asio/ssl.hpp>
-
+#include <fmt/core.h>
+#include <openssl/tls1.h>
+#include <openssl/x509.h>
+#include <openssl/x509_vfy.h>
 #include <spdlog/spdlog.h>
+#include <asio/buffers_iterator.hpp>
+#include <asio/completion_condition.hpp>
+#include <asio/connect.hpp>
+#include <asio/detail/socket_ops.hpp>
+#include <asio/error.hpp>
+#include <asio/error_code.hpp>
+#include <asio/io_context.hpp>
+#include <asio/io_service.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/read_until.hpp>
+#include <asio/ssl/context.hpp>
+#include <asio/ssl/rfc2818_verification.hpp>
+#include <asio/ssl/stream.hpp>
+#include <asio/ssl/verify_context.hpp>
+#include <asio/ssl/verify_mode.hpp>
+#include <asio/streambuf.hpp>
+#include <asio/system_error.hpp>
+
+#include <bits/basic_string.h>
+#include <algorithm>
+#include <array>
+#include <cctype>
+#include <cstddef>
+#include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
+#include <optional>
 #include <regex>
+#include <sstream>
 #include <stdexcept>
+#include <string>
+#include <system_error>
+#include <tuple>
+#include <type_traits>
+#include <utility>
+#include <vector>
 
 #include "string_utils.hpp"
 #include "types.hpp"
@@ -61,9 +94,10 @@ Url& Url::add_param(const std::string& param) {
   return *this;
 }
 
+namespace {
+
 template <typename Sock>
-static std::tuple<std::string, std::string> request(Sock& sock,
-                                                    const Url& url) {
+std::tuple<std::string, std::string> request(Sock& sock, const Url& url) {
   // Form the request. We specify the "Connection: close" header so that the
   // server will close the socket after transmitting the response. This will
   // allow us to treat all data up until the EOF as the content.
@@ -130,7 +164,7 @@ static std::tuple<std::string, std::string> request(Sock& sock,
     const auto lheader = to_lower(header);
     constexpr auto location = "location: ";
     if (lheader.starts_with(location)) {
-      Url loc(rtrim_copy(header.substr(strlen(location), string::npos)));
+      const Url loc(rtrim_copy(header.substr(strlen(location), string::npos)));
       logger->debug("Redirecting to {}", loc.str());
       return Net::httpGet(loc);
     }
@@ -213,7 +247,7 @@ static std::tuple<std::string, std::string> request(Sock& sock,
 
 // Based on example at
 // https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/overview/ssl.html
-static std::tuple<std::string, std::string> httpsGet(const Url& url) {
+std::tuple<std::string, std::string> httpsGet(const Url& url) {
   using ssl_socket = ssl::stream<tcp::socket>;
   // Create a context that uses the default paths for
   // finding CA certificates.
@@ -230,7 +264,7 @@ static std::tuple<std::string, std::string> httpsGet(const Url& url) {
   asio::io_context io_context;
   ssl_socket sock(io_context, ctx);
   tcp::resolver resolver(io_context);
-  tcp::resolver::query query(url.host(), url.service());
+  const tcp::resolver::query query(url.host(), url.service());
   asio::connect(sock.lowest_layer(), resolver.resolve(query));
   sock.lowest_layer().set_option(tcp::no_delay(true));
 
@@ -263,13 +297,15 @@ static std::tuple<std::string, std::string> httpsGet(const Url& url) {
               dir);
         }
 
-        ssl::rfc2818_verification rfc2818(url.host());
+        const ssl::rfc2818_verification rfc2818(url.host());
         return rfc2818(preverified, ctx_);
       });
   sock.handshake(ssl_socket::client);
 
   return request(sock, url);
-}  // namespace zit
+}
+
+}  // namespace
 
 //
 // Implementation based on the example at:
@@ -323,7 +359,7 @@ string Net::urlEncode(const string& value) {
 
 Url::Url(const string& url, bool binary) {
   if (!binary) {
-    regex ur("^(https?)://([^:/]*)(?::(\\d+))?(.*?)$");
+    const regex ur("^(https?)://([^:/]*)(?::(\\d+))?(.*?)$");
     smatch match;
     if (!regex_match(url, match, ur) || match.size() != 5) {
       throw runtime_error("Invalid URL: '" + url + "'");

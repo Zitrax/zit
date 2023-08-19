@@ -45,8 +45,7 @@ class ArgParser {
   /**
    * Parse arguments for options provided by add_option.
    */
-  // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
-  void parse(int argc, const char* argv[]);
+  void parse(const std::vector<std::string>& argv);
 
   /**
    * Get help info string for all available options.
@@ -99,6 +98,7 @@ class ArgParser {
     void set_dst(T t) { m_dst = std::move(t); }
 
    private:
+   // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
     T& m_dst{};
   };
 

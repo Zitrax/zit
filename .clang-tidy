@@ -1,62 +1,66 @@
 ---
 
 # Magic number check is a bit noisy, so off by default
-# hicpp-signed-bitwise seemed to give false positives
-# -cppcoreguidelines-pro-bounds-array-to-pointer-decay for use of __PRETTY_FUNCTION__.
-# -hicpp-no-array-decay (same)
-# -readability-inconsistent-declaration-parameter-name (prefer different names on templates)
-# -readability-misleading-indentation (can't handle constexpr if)
-# -readability-braces-around-statements (can't handle constexpr if)
-# -hicpp-braces-around-statements (can't handle constexpr if)
-# -modernize-avoid-c-arrays (covered by cppcore)
-# -modernize-use-trailing-return-type (prefer old style for now)
-# -hicpp-avoid-c-arrays (covered by cppcore)
+# -altera-struct-pack-align (too specific performance issue)
+# -cert-err58-cpp statics might throw. Allowing this for now.
 # -clang-analyzer-cplusplus.NewDelete (temporary due to https://github.com/boostorg/asio/issues/341)
+# -cppcoreguidelines-avoid-const-or-ref-data-members (TODO: Recheck later)
+# -cppcoreguidelines-non-private-member-variables-in-classes ( --"-- )
+# -cppcoreguidelines-pro-bounds-array-to-pointer-decay for use of __PRETTY_FUNCTION__.
+# -cppcoreguidelines-special-member-functions (TODO: Fix this)
+# -hicpp-avoid-c-arrays (covered by cppcore)
+# -hicpp-braces-around-statements (can't handle constexpr if)
+# -hicpp-named-parameter (fine to leave it out when unused)
+# -hicpp-no-array-decay (same)
+# -hicpp-signed-bitwise seemed to give false positives
+# -hicpp-special-member-functions(same as cppcoreguidelines-special-member-functions)
 # -llvmlibc-callee-namespace (llvm specific)
 # -misc-no-recursion (recursion is ok)
-# -altera-struct-pack-align (too specific performance issue)
-# -readability-function-cognitive-complexity (no hard limit on this)
-# -hicpp-named-parameter (fine to leave it out when unused)
-# -cppcoreguidelines-special-member-functions (TODO: Fix this)
-# -hicpp-special-member-functions(same as cppcoreguidelines-special-member-functions)
 # -misc-non-private-member-variables-in-classes (optimally I would like to allow protected but not private)
-# -cppcoreguidelines-non-private-member-variables-in-classes ( --"-- )
+# -modernize-avoid-c-arrays (covered by cppcore)
+# -modernize-use-trailing-return-type (prefer old style for now)
+# -readability-braces-around-statements (can't handle constexpr if)
+# -readability-function-cognitive-complexity (no hard limit on this)
+# -readability-inconsistent-declaration-parameter-name (prefer different names on templates)
+# -readability-misleading-indentation (can't handle constexpr if)
 
 
 Checks:          '*,
                  -abseil-*,
                  -altera-*,
+                 -altera-struct-pack-align,
+                 -cert-err58-cpp,
+                 -clang-analyzer-cplusplus.NewDelete,
+                 -cppcoreguidelines-avoid-const-or-ref-data-members,
                  -cppcoreguidelines-avoid-magic-numbers,
+                 -cppcoreguidelines-non-private-member-variables-in-classes,
                  -cppcoreguidelines-pro-bounds-array-to-pointer-decay,
                  -cppcoreguidelines-pro-type-reinterpret-cast,
+                 -cppcoreguidelines-special-member-functions,
                  -fuchsia-*,
                  -google-*,
                  -hicpp-avoid-c-arrays,
                  -hicpp-braces-around-statements,
+                 -hicpp-named-parameter,
                  -hicpp-no-array-decay,
                  -hicpp-noexcept-move,
                  -hicpp-signed-bitwise,
+                 -hicpp-special-member-functions,
                  -llvm*,
+                 -llvmlibc-callee-namespace,
+                 -misc-no-recursion,
+                 -misc-non-private-member-variables-in-classes,
                  -modernize-avoid-c-arrays,
                  -modernize-use-trailing-return-type,
                  -objc-*,
                  -readability-braces-around-statements,
+                 -readability-function-cognitive-complexity,
                  -readability-identifier-length,
                  -readability-implicit-bool-conversion,
                  -readability-inconsistent-declaration-parameter-name,
                  -readability-magic-numbers,
                  -readability-misleading-indentation,
                  -readability-named-parameter,
-                 -clang-analyzer-cplusplus.NewDelete,
-                 -llvmlibc-callee-namespace,
-                 -misc-no-recursion,
-                 -altera-struct-pack-align,
-                 -readability-function-cognitive-complexity,
-                 -hicpp-named-parameter,
-                 -cppcoreguidelines-special-member-functions,
-                 -hicpp-special-member-functions,
-                 -misc-non-private-member-variables-in-classes,
-                 -cppcoreguidelines-non-private-member-variables-in-classes,
                  '
 WarningsAsErrors: '*'
 HeaderFilterRegex: '(src|tests)/*.h$'

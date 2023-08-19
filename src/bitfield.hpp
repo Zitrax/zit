@@ -53,7 +53,7 @@ class Bitfield {
 
     // Should not need noexcept since the moved object is the proxy
     // not the underlying object.
-    // NOLINTNEXTLINE(performance-noexcept-move-constructor)
+    // NOLINTNEXTLINE(performance-noexcept-move-constructor,cppcoreguidelines-noexcept-move-operations)
     Proxy& operator=(Proxy&& rhs);
     Proxy& operator=(bool b);
 
@@ -62,6 +62,7 @@ class Bitfield {
     operator bool() const;
 
    private:
+    // NOLINTNEXTLINE(cppcoreguidelines-avoid-const-or-ref-data-members)
     Bitfield& m_bitfield;
     bytes::size_type m_i;
   };

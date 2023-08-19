@@ -1,9 +1,20 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "arg_parser.hpp"
 
-#include "spdlog/fmt/fmt.h"
 #include "string_utils.hpp"
 #include "types.hpp"
+
+#include <bits/basic_string.h>
+#include <fmt/core.h>
+#include <algorithm>
+#include <cerrno>
+#include <cstddef>
+#include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <string_view>
+#include <vector>
 
 using namespace std;
 
@@ -95,12 +106,12 @@ template void ArgParser::add_option<string>(const string&,
                                             bool);
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
-void ArgParser::parse(int argc, const char* argv[]) {
+void ArgParser::parse(const std::vector<std::string>& argv) {
   if (m_parsed) {
     throw runtime_error("Options already parsed");
   }
   m_parsed = true;
-  for (int i = 1; i < argc; i++) {
+  for (size_t i = 1; i < argv.size(); i++) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     std::string_view name = argv[i];
     auto m = ranges::find_if(
@@ -114,15 +125,15 @@ void ArgParser::parse(int argc, const char* argv[]) {
       as<bool>(arg).set_dst(true);
     } else {
       // Read next arg
-      if (i == argc - 1) {
+      if (i == argv.size() - 1) {
         throw runtime_error(fmt::format("Missing value for {}", name));
       }
       // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-      const char* val = argv[i++ + 1];
+      const auto& val = argv[i++ + 1];
 
       switch (arg->type()) {
         case Type::FLOAT: {
-          float fval = std::strtof(val, nullptr);
+          const float fval = std::stof(val, nullptr);
           if (errno == ERANGE) {
             throw std::out_of_range(fmt::format(
                 "Value for argument '{}' is out of range for type", name));
@@ -132,7 +143,7 @@ void ArgParser::parse(int argc, const char* argv[]) {
         case Type::INT:
           try {
             as<int>(arg).set_dst(
-                numeric_cast<int>(std::strtol(val, nullptr, 10)));
+                numeric_cast<int>(std::stol(val, nullptr, 10)));
           } catch (const std::out_of_range&) {
             throw std::out_of_range(fmt::format(
                 "Value for argument '{}' is out of range for type", name));
@@ -141,7 +152,7 @@ void ArgParser::parse(int argc, const char* argv[]) {
         case Type::UINT:
           try {
             as<unsigned>(arg).set_dst(
-                numeric_cast<unsigned>(std::strtol(val, nullptr, 10)));
+                numeric_cast<unsigned>(std::stol(val, nullptr, 10)));
           } catch (const std::out_of_range&) {
             throw std::out_of_range(fmt::format(
                 "Value for argument '{}' is out of range for type", name));
