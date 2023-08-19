@@ -19,10 +19,18 @@
 #include <iostream>
 #include <numeric>
 #include <random>
+#include <sstream>
 #include <stdexcept>
 
 using namespace bencode;
 using namespace std;
+
+namespace std {
+template <typename T>
+std::string format_as(const atomic<T>& t) {
+  return std::to_string(t.load());
+}
+}  // namespace std
 
 namespace zit {
 
@@ -346,6 +354,12 @@ std::ostream& operator<<(std::ostream& os, const Torrent::TrackerEvent& te) {
       break;
   }
   return os;
+}
+
+std::string format_as(const Torrent::TrackerEvent& te) {
+  std::stringstream ss;
+  ss << te;
+  return ss.str();
 }
 
 namespace {
@@ -785,6 +799,12 @@ ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
   }
   os << "----------------------------------------\n";
   return os;
+}
+
+std::string format_as(const Torrent& torrent) {
+  std::stringstream ss;
+  ss << torrent;
+  return ss.str();
 }
 
 }  // namespace zit

@@ -16,13 +16,6 @@
 
 namespace fs = std::filesystem;
 
-// NOLINTNEXTLINE(cert-dcl58-cpp)
-namespace std::filesystem {
-static std::ostream& operator<<(std::ostream& os, const path& p) {
-  return os << p.string();
-}
-}  // namespace std::filesystem
-
 namespace zit {
 
 namespace {

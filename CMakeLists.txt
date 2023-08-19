@@ -2,9 +2,6 @@ cmake_minimum_required (VERSION 3.13)
 set(CMAKE_CXX_STANDARD 20)
 project(zit CXX)
 
-# Read conan path info if existing
-include(${CMAKE_BINARY_DIR}/conan_paths.cmake OPTIONAL)
-
 option(USE_CLANG_TIDY "Use clang-tidy when building" ON)
 
 find_package(asio)
@@ -13,13 +10,6 @@ find_package(spdlog)
 find_package(TBB)
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
-if(EXISTS ${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-  include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
-  set(CONAN_SYSTEM_INCLUDES ON)
-  conan_basic_setup(TARGETS)
-  message(STATUS "Conan libs: ${CONAN_LIBS}")
-endif()
 
 set(SANITIZED_LIBCXX "" CACHE PATH "Path to custom sanitized libc++ install directory")
 

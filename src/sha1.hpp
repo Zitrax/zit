@@ -52,4 +52,7 @@ class Sha1 : public std::array<char, SHA_LENGTH> {
 
 std::ostream& operator<<(std::ostream& os, const Sha1& sha1);
 
+/** For fmt */
+std::string format_as(const Sha1& sha1);
+
 }  // namespace zit

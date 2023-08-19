@@ -50,3 +50,9 @@ inline void write_file(const std::filesystem::path& file_name,
 }
 
 }  // namespace zit
+
+namespace std::filesystem {
+inline auto format_as(const path& p) {
+  return p.string();
+}
+}  // namespace std::filesystem

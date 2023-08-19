@@ -106,6 +106,12 @@ std::ostream& operator<<(std::ostream& os, const Sha1& sha1) {
   return os;
 }
 
+std::string format_as(const Sha1& sha1) {
+  std::stringstream ss;
+  ss << sha1;
+  return ss.str();
+}
+
 // To keep the implementation in the .cpp file
 template Sha1 Sha1::fromBuffer<string>(const string& buffer,
                                        string::size_type offset);

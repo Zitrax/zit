@@ -107,6 +107,12 @@ inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
   return os;
 }
 
+inline std::string format_as(const Url& url) {
+  std::stringstream ss;
+  ss << url;
+  return ss.str();
+}
+
 /**
  * Class for handling network requests.
  */
