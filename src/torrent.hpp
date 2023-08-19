@@ -253,7 +253,7 @@ class Torrent {
    * m_client_pieces is also accessed by the file_writer, thus we need to lock.
    */
   void init_client_pieces(bytes::size_type count) {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    const std::lock_guard<std::mutex> lock(m_mutex);
     if (!m_client_pieces.size()) {
       m_client_pieces = Bitfield(count);
     }
@@ -263,7 +263,7 @@ class Torrent {
    * The pieces that we have (on disk).
    */
   [[nodiscard]] Bitfield client_pieces() const {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    const std::lock_guard<std::mutex> lock(m_mutex);
     return m_client_pieces;
   }
 
@@ -271,7 +271,7 @@ class Torrent {
    * Number of pieces on disk and in total.
    */
   [[nodiscard]] auto piece_status() const {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    const std::lock_guard<std::mutex> lock(m_mutex);
     return std::make_pair(m_client_pieces.count(), m_pieces.size());
   }
 
@@ -279,7 +279,7 @@ class Torrent {
    * Information about what pieces we don't have that a remote has.
    */
   [[nodiscard]] Bitfield relevant_pieces(const Bitfield& remote_pieces) const {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    const std::lock_guard<std::mutex> lock(m_mutex);
     return remote_pieces - m_client_pieces;
   }
 

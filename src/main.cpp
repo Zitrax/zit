@@ -1,28 +1,32 @@
-#include <filesystem>
-#include <iostream>
 #include <spdlog/common.h>
+#include <exception>
+#include <functional>
+#include <iostream>
+#include <iterator>
+#include <stdexcept>
+#include <string>
 #include <vector>
+
 #include "arg_parser.hpp"
-#include "bencode.hpp"
 #include "file_writer.hpp"
 #include "global_config.hpp"
-#include "net.hpp"
 #include "torrent.hpp"
-#include "types.hpp"
-
-#include <csignal>
 
 #include <spdlog/cfg/env.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
+#ifndef WIN32
+#include <csignal>
+#endif  // !WIN32
+
 using namespace std;
-using namespace bencode;
+
+namespace {
 
 // prints the explanatory string of an exception. If the exception is nested,
 // recurses to print the explanatory of the exception it holds
-static void print_exception(const exception& e,
-                            string::size_type level = 0) noexcept {
+void print_exception(const exception& e, string::size_type level = 0) noexcept {
   try {
     spdlog::get("console")->error("{}exception: {}", string(level, ' '),
                                   e.what());
@@ -36,15 +40,21 @@ static void print_exception(const exception& e,
   }
 }
 
-namespace {
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::function<void(int)> sigint_function;
 void sigint_handler(int s) {
   sigint_function(s);
 }
+
 }  // namespace
 
+// False positives
+// NOLINTBEGIN(misc-const-correctness)
+
+//#pragma clang diagnostic push
+//#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
 int main(int argc, const char* argv[]) noexcept {
+  //#pragma clang diagnostic pop
   try {
     auto console = spdlog::stdout_color_mt("console");
 
@@ -61,7 +71,7 @@ int main(int argc, const char* argv[]) noexcept {
     parser.add_option("--listening-port,-p", {},
                       "Port listening on incoming connections", listening_port);
     parser.add_option<std::string>(
-        "--log-level", ""s,
+        "--log-level", "",
         "Log level (trace, debug, info, warning, error, critical, off)",
         log_level);
     parser.add_option("--dump-torrent", {},
@@ -69,7 +79,9 @@ int main(int argc, const char* argv[]) noexcept {
                       dump_torrent);
     parser.add_option("--dump-config", {}, "Dump config to console",
                       dump_config);
-    parser.parse(argc, argv);
+    const auto args =
+        std::vector<std::string>{std::next(argv, 1), std::next(argv, argc)};
+    parser.parse(args);
 
     if (help) {
       std::cout << parser.usage();
@@ -103,11 +115,11 @@ int main(int argc, const char* argv[]) noexcept {
       const int& m_listening_port;
     };
 
-    CommandLineArgs args{listening_port};
+    CommandLineArgs clargs{listening_port};
 
-    zit::Torrent torrent(torrent_file, "", args);
+    zit::Torrent torrent(torrent_file, "", clargs);
     if (dump_torrent) {
-      std::cout << torrent << std::endl;
+      std::cout << torrent << "\n";
       return 0;
     }
     if (dump_config) {
@@ -127,12 +139,13 @@ int main(int argc, const char* argv[]) noexcept {
     };
 
 #ifndef WIN32
+    // NOLINTBEGIN(cppcoreguidelines-pro-type-union-access,misc-include-cleaner)
     struct sigaction sigIntHandler {};
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-type-union-access)
     sigIntHandler.sa_handler = sigint_handler;
     sigemptyset(&sigIntHandler.sa_mask);
     sigIntHandler.sa_flags = 0;
     sigaction(SIGINT, &sigIntHandler, nullptr);
+    // NOLINTEND(cppcoreguidelines-pro-type-union-access,misc-include-cleaner)
 #endif  // !WIN32
 
     torrent.start();
@@ -143,3 +156,5 @@ int main(int argc, const char* argv[]) noexcept {
   }
   return 0;
 }
+
+// NOLINTEND(misc-const-correctness)

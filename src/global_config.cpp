@@ -3,15 +3,23 @@
 #include "file_utils.hpp"
 #include "string_utils.hpp"
 
-#include "spdlog/fmt/ostr.h"  // Needed due to use of operator<<
-#include "spdlog/spdlog.h"
-
+#include <fmt/core.h>
 #include <spdlog/common.h>
+#include <spdlog/fmt/ostr.h>  // NOLINT(misc-include-cleaner) Needed due to use of operator<<
 #include <spdlog/logger.h>
+#include <spdlog/spdlog.h>
+
+#include <bits/basic_string.h>
+#include <algorithm>
 #include <cstdlib>
-#include <cstring>
+#include <filesystem>
+#include <map>
 #include <optional>
+#include <ostream>
 #include <stdexcept>
+#include <string>
+#include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace fs = std::filesystem;

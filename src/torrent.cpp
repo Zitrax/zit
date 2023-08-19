@@ -3,30 +3,56 @@
 #include "bencode.hpp"
 #include "file_utils.hpp"
 #include "global_config.hpp"
+#include "net.hpp"
 #include "peer.hpp"
+#include "piece.hpp"
 #include "sha1.hpp"
 #include "string_utils.hpp"
 #include "timer.hpp"
+#include "types.hpp"
 
-#include "spdlog/spdlog.h"
+#include <fmt/core.h>
+#include <spdlog/common.h>
+#include <spdlog/spdlog.h>
 
+#if __clang__
+#include <bits/chrono.h>
+#endif  // __clang__
 #include <algorithm>
+#include <atomic>
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <ctime>
 #include <exception>
 #include <execution>
 #include <filesystem>
+#include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <iterator>
+#include <memory>
+#include <mutex>
 #include <numeric>
+#include <optional>
 #include <random>
 #include <sstream>
 #include <stdexcept>
+#include <string>
+#include <tuple>
+#include <utility>
+#include <vector>
+
+#ifndef WIN32
+#include <unistd.h>
+#endif  // !WIN32
 
 using namespace bencode;
 using namespace std;
 
 namespace std {
 template <typename T>
+// NOLINTNEXTLINE(cert-dcl58-cpp)
 std::string format_as(const atomic<T>& t) {
   return std::to_string(t.load());
 }
@@ -34,15 +60,15 @@ std::string format_as(const atomic<T>& t) {
 
 namespace zit {
 
+namespace {
+
 /**
  * To make transform calls more readable
  */
 template <class In, class Out, class Op>
-static auto transform_all(const In& in, Out& out, Op func) {
+auto transform_all(const In& in, Out& out, Op func) {
   return transform(begin(in), end(in), back_inserter(out), func);
 }
-
-namespace {
 
 /**
  * Convenience function for converting a known BeDict element for the multi
@@ -214,7 +240,7 @@ void Torrent::verify_existing_file() {
     std::mutex mutex;
     if (is_single_file()) {
       m_logger->info("Verifying existing file: {}", m_tmpfile);
-      Timer timer("verifying existing file");
+      const Timer timer("verifying existing file");
       const auto file_length = filesystem::file_size(m_tmpfile);
       // Verify each piece in parallel to speed it up
       std::for_each(
@@ -237,7 +263,7 @@ void Torrent::verify_existing_file() {
             if (sha1 == fsha1) {
               // Lock when updating num_pieces, inserting into
               // std::map is likely not thread safe.
-              std::lock_guard<std::mutex> lock(mutex);
+              const std::lock_guard<std::mutex> lock(mutex);
               m_client_pieces[id] = true;
               m_active_pieces.emplace(
                   id,
@@ -289,7 +315,7 @@ void Torrent::verify_existing_file() {
             if (sha1 == fsha1) {
               // Lock when updating num_pieces, inserting into std::map is
               // likely not thread safe.
-              std::lock_guard<std::mutex> lock(mutex);
+              const std::lock_guard<std::mutex> lock(mutex);
               m_client_pieces[id] = true;
               m_active_pieces.emplace(
                   id,
@@ -363,6 +389,10 @@ std::string format_as(const Torrent::TrackerEvent& te) {
 }
 
 namespace {
+
+auto now() {
+  return std::chrono::system_clock::now();
+}
 
 bool is_local(const auto& purl, auto port) {
   return purl.host() == "127.0.0.1" && purl.port() == port.get();
@@ -563,10 +593,6 @@ void Torrent::stop() {
   tracker_request(TrackerEvent::STOPPED);
 }
 
-static auto now() {
-  return std::chrono::system_clock::now();
-}
-
 void Torrent::retry_pieces() {
   // Do not need to call this too frequently so rate limit it
   static std::chrono::system_clock::time_point last_call{now() + 1min};
@@ -673,7 +699,7 @@ void Torrent::retry_peers() {
 // TODO: Yes, should group these in one type
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 bool Torrent::set_block(uint32_t piece_id, uint32_t offset, bytes_span data) {
-  std::lock_guard<std::mutex> lock(m_mutex);
+  const std::lock_guard<std::mutex> lock(m_mutex);
   // Look up relevant piece object among active pieces
   if (m_active_pieces.find(piece_id) != m_active_pieces.end()) {
     auto piece = m_active_pieces[piece_id];
@@ -688,22 +714,22 @@ bool Torrent::set_block(uint32_t piece_id, uint32_t offset, bytes_span data) {
 }
 
 std::shared_ptr<Piece> Torrent::active_piece(uint32_t id, bool create) {
-  std::lock_guard<std::mutex> lock(m_mutex);
+  const std::lock_guard<std::mutex> lock(m_mutex);
   auto piece = m_active_pieces.find(id);
   if (piece == m_active_pieces.end()) {
     if (!create) {
       return nullptr;
     }
     const auto active_piece_length = piece_length(id);
-    auto it = m_active_pieces.emplace(make_pair(
-        id, make_shared<Piece>(PieceId(id), PieceSize(active_piece_length))));
+    auto it = m_active_pieces.emplace(
+        id, make_shared<Piece>(PieceId(id), PieceSize(active_piece_length)));
     return it.first->second;
   }
   return m_active_pieces.at(id);
 }
 
 bool Torrent::done() const {
-  std::lock_guard<std::mutex> lock(m_mutex);
+  const std::lock_guard<std::mutex> lock(m_mutex);
 
   // If we haven't started on all pieces we are not done
   if (m_active_pieces.size() != m_pieces.size()) {

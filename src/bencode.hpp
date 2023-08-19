@@ -212,7 +212,7 @@ class TypedElement : public Element {
       os << "]";
     } else if constexpr (std::is_same<T, std::string>()) {
       std::stringstream console_safe;
-      for (char c : m_data.substr(0, MAX_LINE_WIDTH)) {
+      for (const char c : m_data.substr(0, MAX_LINE_WIDTH)) {
         console_safe << (c > ASCII_LAST_CTRL_CHAR ? c : '?');
       }
       os << console_safe.str();
@@ -234,7 +234,7 @@ class TypedElement : public Element {
   }
 
  private:
-  const T m_data;
+  T m_data;
 };
 
 // Template specializations

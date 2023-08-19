@@ -2,13 +2,22 @@
 #include "sha1.hpp"
 
 #include <algorithm>
+#include <array>
+#include <cstddef>
+#include <filesystem>
 #include <fstream>
+#include <ios>
 #include <iterator>
+#include <ostream>
+#include <sstream>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 #include <openssl/sha.h>
 
 #include "string_utils.hpp"
+#include "types.hpp"
 
 using namespace std;
 
@@ -16,10 +25,12 @@ namespace zit {
 
 static_assert(SHA_DIGEST_LENGTH == SHA_LENGTH);
 
+namespace {
 template <typename T>
-static void fill(Sha1& dst, T* src) {
+void fill(zit::Sha1& dst, T* src) {
   copy_n(src, SHA_DIGEST_LENGTH, ::begin(dst));
 }
+}  // namespace
 
 Sha1::Sha1(const std::string& val) : array() {
   if (val.size() != SHA_DIGEST_LENGTH) {
@@ -70,6 +81,8 @@ Sha1 Sha1::calculateFile(const std::filesystem::path& file) {
   file_stream.exceptions(ifstream::badbit);
 
   if (!file_stream) {
+    // For some reason it complains - <string> should get it.
+    // NOLINTNEXTLINE(misc-include-cleaner)
     throw invalid_argument("No such file: "s + file.string());
   }
 

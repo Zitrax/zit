@@ -1,14 +1,43 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "peer.hpp"
 
-#include "string_utils.hpp"
+#include <asio/buffer.hpp>
+#include <asio/completion_condition.hpp>
+#include <asio/error.hpp>
+#include <asio/error_code.hpp>
+#include <asio/io_service.hpp>
+#include <asio/ip/tcp.hpp>
+#include <asio/read.hpp>
+#include <asio/socket_base.hpp>
+#include <asio/system_error.hpp>
+#include <asio/write.hpp>
 
+#include <bits/basic_string.h>
+#if __clang__
+#include <bits/chrono.h>
+#endif  // __clang__
+#include <chrono>
+#include <cstddef>
+#include <cstdint>
+#include <exception>
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <sstream>
+#include <stdexcept>
+#include <string>
+#include <system_error>
+#include <utility>
+
+#include "bitfield.hpp"
 #include "messages.hpp"
+#include "net.hpp"
+#include "piece.hpp"
+#include "sha1.hpp"
 #include "spdlog/spdlog.h"
+#include "string_utils.hpp"
 #include "torrent.hpp"
+#include "types.hpp"
 
 using asio::ip::tcp;
 using namespace std;
@@ -43,7 +72,7 @@ PeerConnection::PeerConnection(Peer& peer,
 void PeerConnection::listen() {
   m_logger->info("{} port={}", PRETTY_FUNCTION, m_listening_port.get());
   // if (!acceptor_.is_open()) {
-  asio::socket_base::reuse_address option(true);
+  const asio::socket_base::reuse_address option(true);
   acceptor_.set_option(option);
   acceptor_.bind(tcp::endpoint(tcp::v4(), m_listening_port.get()));
   //}
@@ -109,10 +138,10 @@ void PeerConnection::handle_resolve(const asio::error_code& err,
   if (!err) {
     // Attempt a connection to the first endpoint in the list. Each endpoint
     // will be tried until we successfully establish a connection.
-    tcp::endpoint endpoint = *endpoint_iterator;
+    const tcp::endpoint endpoint = *endpoint_iterator;
     // FIXME: Should set this after connection ok instead
     endpoint_ = endpoint_iterator;
-    asio::socket_base::reuse_address option(true);
+    const asio::socket_base::reuse_address option(true);
     socket_.set_option(option);
     socket_.bind(tcp::endpoint(tcp::v4(), m_connection_port.get()));
     socket_.async_connect(endpoint, [this, it = ++endpoint_iterator](
@@ -128,7 +157,7 @@ void PeerConnection::send(bool start_read) {
   }
   if (!m_sending) {
     m_sending = true;
-    string msg(m_msg);
+    const string msg(m_msg);
     m_msg.clear();
     asio::async_write(
         socket_, asio::buffer(msg.c_str(), msg.size()),
@@ -172,7 +201,7 @@ void PeerConnection::handle_connect(const asio::error_code& err,
     m_logger->debug("Trying next endpoint");
     // The connection failed. Try the next endpoint in the list.
     socket_.close();
-    tcp::endpoint endpoint = *endpoint_iterator;
+    const tcp::endpoint endpoint = *endpoint_iterator;
     // FIXME: Should set this after connection ok instead
     endpoint_ = endpoint_iterator;
     socket_.async_connect(endpoint,
@@ -196,7 +225,7 @@ void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
       bytes response(response_.size());
       buffer_copy(asio::buffer(response), response_.data());
       Message msg(response);
-      size_t consumed = msg.parse(*this);
+      const size_t consumed = msg.parse(*this);
       cout.flush();
       m_logger->debug("Consuming {}/{}", consumed, response.size());
       response_.consume(consumed);
@@ -262,7 +291,7 @@ void Peer::set_am_choking(bool am_choking) {
   if (!m_am_choking && am_choking) {
     // Send UNCHOKE
     m_logger->debug("Sending CHOKE");
-    string choke = {0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::CHOKE)};
+    const string choke = {0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::CHOKE)};
     stringstream hs;
     hs.write(choke.c_str(), numeric_cast<std::streamsize>(choke.length()));
     m_connection->write(hs.str());
@@ -271,7 +300,8 @@ void Peer::set_am_choking(bool am_choking) {
   if (m_am_choking && !am_choking) {
     // Send UNCHOKE
     m_logger->debug("Sending UNCHOKE");
-    string unchoke = {0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::UNCHOKE)};
+    const string unchoke = {0, 0, 0, 1,
+                            static_cast<pwid_t>(peer_wire_id::UNCHOKE)};
     stringstream hs;
     hs.write(unchoke.c_str(), numeric_cast<std::streamsize>(unchoke.length()));
     m_connection->write(hs.str());
@@ -288,8 +318,8 @@ void Peer::set_am_interested(bool am_interested) {
     }
     // Send INTERESTED
     m_logger->debug("Sending INTERESTED");
-    string interested_msg = {0, 0, 0, 1,
-                             static_cast<pwid_t>(peer_wire_id::INTERESTED)};
+    const string interested_msg = {
+        0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::INTERESTED)};
     stringstream hs;
     hs.write(interested_msg.c_str(),
              numeric_cast<std::streamsize>(interested_msg.length()));
@@ -299,8 +329,8 @@ void Peer::set_am_interested(bool am_interested) {
   if (m_am_interested && !am_interested) {
     // Send NOT_INTERESTED
     m_logger->debug("Sending NOT_INTERESTED");
-    string interested_msg = {0, 0, 0, 1,
-                             static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED)};
+    const string interested_msg = {
+        0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED)};
     stringstream hs;
     hs.write(interested_msg.c_str(),
              numeric_cast<std::streamsize>(interested_msg.length()));
@@ -503,7 +533,7 @@ void Peer::init_io_service() {
 
 optional<shared_ptr<Piece>> Peer::next_piece(bool non_requested) {
   // Pieces the remote has minus the pieces we already got
-  Bitfield relevant_pieces = m_torrent.relevant_pieces(m_remote_pieces);
+  const Bitfield relevant_pieces = m_torrent.relevant_pieces(m_remote_pieces);
 
   // Is there a piece to get
   std::optional<std::size_t> next_id{0};
@@ -514,7 +544,7 @@ optional<shared_ptr<Piece>> Peer::next_piece(bool non_requested) {
     }
 
     const auto id = numeric_cast<uint32_t>(*next_id);
-    const auto piece = m_torrent.active_piece(id);
+    auto piece = m_torrent.active_piece(id);
     if (!non_requested || (piece && piece->next_offset(false))) {
       return piece;
     }

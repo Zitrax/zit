@@ -112,7 +112,7 @@ inline std::vector<std::string>
 split(  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
     const std::string& str,
     const std::string& regex_str) {
-  std::regex regexz(regex_str);
+  const std::regex regexz(regex_str);
   return {std::sregex_token_iterator(str.begin(), str.end(), regexz, -1),
           std::sregex_token_iterator()};
 }
@@ -123,11 +123,11 @@ split(  // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
  * @param bytes Number of bytes to convert
  */
 inline std::string bytesToHumanReadable(int64_t bytes) {
-  std::vector<std::tuple<int64_t, std::string>> limits{{1LL << 40, "TiB"},
-                                                       {1LL << 30, "GiB"},
-                                                       {1LL << 20, "MiB"},
-                                                       {1LL << 10, "KiB"},
-                                                       {0, "B"}};
+  const std::vector<std::tuple<int64_t, std::string>> limits{{1LL << 40, "TiB"},
+                                                             {1LL << 30, "GiB"},
+                                                             {1LL << 20, "MiB"},
+                                                             {1LL << 10, "KiB"},
+                                                             {0, "B"}};
   const auto abytes = std::abs(bytes);
   const auto* sign = (bytes < 0 ? "-" : "");
   for (const auto& [limit, unit] : limits) {

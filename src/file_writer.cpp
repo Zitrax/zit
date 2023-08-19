@@ -1,14 +1,27 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "file_writer.hpp"
 
-#include "file_utils.hpp"
-#include "sha1.hpp"
-#include "string_utils.hpp"
-
-#include <cstdio>
+#include <spdlog/logger.h>
+#include <algorithm>
+#include <cassert>
+#include <cstdint>
+#include <exception>
 #include <filesystem>
 #include <fstream>
+#include <ios>
+#include <iterator>
+#include <memory>
+#include <mutex>
+#include <stdexcept>
+#include <string>
+#include <tuple>
 #include <utility>
+
+#include "file_utils.hpp"  // NOLINT(misc-include-cleaner) - Needed for fmt
+#include "piece.hpp"
+#include "sha1.hpp"
+#include "torrent.hpp"
+#include "types.hpp"
 
 namespace zit {
 
@@ -16,9 +29,9 @@ using namespace std;
 namespace fs = filesystem;
 
 void FileWriter::add(Torrent* torrent, const shared_ptr<Piece>& piece) {
-  lock_guard<mutex> lock(m_queue_mutex);
+  const lock_guard<mutex> lock(m_queue_mutex);
   logger()->debug("Piece {} added to queue", piece->id());
-  m_queue.push(make_tuple(torrent, piece));
+  m_queue.emplace(torrent, piece);
   m_condition.notify_one();
 }
 
@@ -37,7 +50,7 @@ bytes FileWriter::read_block(uint32_t offset,
                              const Torrent& torrent) {
   logger()->debug("read_block(offset={}, length={}, filename={})", offset,
                   length, torrent.tmpfile());
-  unique_lock<mutex> lock(m_file_mutex);
+  const unique_lock<mutex> lock(m_file_mutex);
 
   auto remaining = numeric_cast<int64_t>(length);
   bytes data;
@@ -54,8 +67,8 @@ bytes FileWriter::read_block(uint32_t offset,
     ifstream is(path, ios::binary);
     is.exceptions(fstream::failbit | fstream::badbit);
     is.seekg(off);
-    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    is.read(reinterpret_cast<char*>(data.data() + dpos), len);
+    // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic,performance-no-int-to-ptr)
+    is.read(reinterpret_cast<char*>(data[dpos]), len);
     cpos += len;
     remaining -= len;
     dpos += len;
@@ -252,7 +265,7 @@ void FileWriter::write_next_piece() {
     m_queue.pop();
   }
 
-  unique_lock<mutex> lock(m_file_mutex);
+  const unique_lock<mutex> lock(m_file_mutex);
   auto [torrent, piece] = t_piece;
   try {
     auto sha = Sha1::calculateData(piece->data());
