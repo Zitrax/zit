@@ -12,6 +12,8 @@ jobs:
       CXX: ${{ matrix.compiler.bin }}-${{ matrix.compiler.ver }}
     steps:
     - uses: actions/checkout@v3
+      with:
+        submodules: 'true'
 
     - name: Add LLVM apt repository
       run: |
