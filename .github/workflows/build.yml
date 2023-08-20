@@ -4,24 +4,32 @@ jobs:
   build_and_test:
     strategy:
       matrix:
-        compiler: [ {type: clang, bin: clang++, ver: 17}, {type: gcc, bin: g++, ver: 12} ]
+        compiler:
+          - { os: ubuntu-22.04, bin: clang++-17 }
+          - { os: ubuntu-22.04, bin: g++-12 }
+          - { os: windows-2022, bin: cl.exe }
 
-    runs-on: ubuntu-22.04
+    runs-on: ${{ matrix.compiler.os }}
     env:
       BUILD_TYPE: Release
-      CXX: ${{ matrix.compiler.bin }}-${{ matrix.compiler.ver }}
+      CXX: ${{ matrix.compiler.bin }}
+      SPDLOG_LEVEL: DEBUG
     steps:
     - uses: actions/checkout@v3
       with:
         submodules: 'true'
         fetch-depth: '0'
 
+    - uses: ilammy/msvc-dev-cmd@v1
+
     - name: Add LLVM apt repository
+      if: runner.os == 'Linux'
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
         sudo add-apt-repository -y -S deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
 
     - name: Apt install
+      if: runner.os == 'Linux'
       run: sudo apt install -y ninja-build clang-17 g++-12
 
     - name: Configure CMake
@@ -32,4 +40,4 @@ jobs:
     
     - name: Tests
       working-directory: ${{github.workspace}}/build
-      run: SPDLOG_LEVEL=DEBUG ctest --output-on-failure --no-tests=error
+      run: ctest --output-on-failure --no-tests=error

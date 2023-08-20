@@ -303,7 +303,8 @@ void Torrent::verify_existing_file() {
               is.exceptions(ifstream::failbit | ifstream::badbit);
               is.seekg(offset);
               const auto len = std::min(left, remaining);
-              is.read(reinterpret_cast<char*>(std::next(data.data(), ppos)),
+              is.read(reinterpret_cast<char*>(std::next(
+                          data.data(), numeric_cast<std::ptrdiff_t>(ppos))),
                       len);
               gpos += len;
               ppos += len;

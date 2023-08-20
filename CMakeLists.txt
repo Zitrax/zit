@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.13)
+cmake_minimum_required (VERSION 3.24)
 set(CMAKE_CXX_STANDARD 20)
 project(zit CXX)
 
@@ -47,17 +47,13 @@ if(SANITIZED_LIBCXX)
 endif()
 
 if(WIN32)
-  find_path(ASIO_INCLUDE_DIR asio.hpp HINTS $ENV{USERPROFILE}/Source/asio-1.12.2/include)
-  if(NOT ASIO_INCLUDE_DIR)
-    messge(FATAL_ERROR "Need ASIO include directory")
-  else()
-    message(STATUS "asio.hpp found in ${ASIO_INCLUDE_DIR}")
-    # Many warnings from asio regarding this using msvc
-    add_compile_options(-D_SILENCE_CXX17_ALLOCATOR_VOID_DEPRECATION_WARNING)
-    add_compile_options(-D_WIN32_WINNT=0x0501)
-  endif()
-  add_compile_options(-DASIO_STANDALONE)
-  include_directories(${ASIO_INCLUDE_DIR})
+  add_compile_options(
+    -D_WIN32_WINNT=0x0601
+    /WX /W4
+  )
+  add_compile_definitions(
+    _CRT_SECURE_NO_WARNINGS # Avoid warning about getenv for now
+  )
 
   # Use default installation folder if existing
   find_path(WIN_OPENSSL_DIR sha.h HINTS $ENV{ProgramW6432}/OpenSSL-Win64/include/openssl)

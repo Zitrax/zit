@@ -4,7 +4,9 @@
 #include "string_utils.hpp"
 #include "types.hpp"
 
+#ifndef _MSC_VER
 #include <bits/basic_string.h>
+#endif  // !_MSC_VER
 #include <fmt/core.h>
 #include <algorithm>
 #include <cerrno>

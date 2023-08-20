@@ -22,7 +22,6 @@
       ],
       "generator": "Ninja",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "vcpkg/scripts/buildsystems/vcpkg.cmake",
         "CMAKE_CXX_COMPILER": "clang++"
       }
     },
@@ -35,9 +34,20 @@
       ],
       "generator": "Ninja",
       "cacheVariables": {
-        "CMAKE_TOOLCHAIN_FILE": "vcpkg/scripts/buildsystems/vcpkg.cmake",
         "CMAKE_CXX_COMPILER": "g++",
         "USE_CLANG_TIDY": "OFF"
+      }
+    },
+    {
+      "name": "zit-msvc",
+      "displayName": "Msvc",
+      "description": "Default windows compiler",
+      "inherits": [
+        "common"
+      ],
+      "generator": "Ninja",
+      "cacheVariables": {
+        "CMAKE_CXX_COMPILER": "cl.exe"
       }
     }
   ]
