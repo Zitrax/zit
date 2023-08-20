@@ -56,7 +56,8 @@ if(NOT WIN32)
     target_link_libraries(zitest stdc++fs)
   endif()
 endif()
-add_test(NAME zitest COMMAND zitest)
+
+gtest_discover_tests(zitest)
 
 if(INTEGRATION_TESTS)
   target_compile_definitions(zitest PUBLIC INTEGRATION_TESTS)
