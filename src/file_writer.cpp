@@ -4,6 +4,7 @@
 #include <spdlog/logger.h>
 #include <algorithm>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <exception>
 #include <filesystem>
