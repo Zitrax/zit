@@ -219,7 +219,8 @@ class MultiTorrentDestination : public TorrentDestination {
       tmpfile.seekp(offset);
       auto data = piece.data();
       assert(numeric_cast<uint64_t>(done) < data.size());
-      tmpfile.write(reinterpret_cast<char*>(next(data.data(), done)),
+      tmpfile.write(reinterpret_cast<char*>(
+                        next(data.data(), numeric_cast<std::ptrdiff_t>(done))),
                     numeric_cast<streamsize>(len));
       remaining -= len;
     }

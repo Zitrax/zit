@@ -9,7 +9,9 @@
 #include <spdlog/logger.h>
 #include <spdlog/spdlog.h>
 
+#ifndef _MSC_VER
 #include <bits/basic_string.h>
+#endif  // !_MSC_VER
 #include <algorithm>
 #include <cstdlib>
 #include <filesystem>

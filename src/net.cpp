@@ -24,7 +24,9 @@
 #include <asio/streambuf.hpp>
 #include <asio/system_error.hpp>
 
+#ifndef _MSC_VER
 #include <bits/basic_string.h>
+#endif  // !_MSC_VER
 #include <algorithm>
 #include <array>
 #include <cctype>

@@ -26,7 +26,8 @@
  *
  * Decode:
  * @code {.cpp}
- *   auto v = decode("l4:spam3:egge")->to<TypedElement<vector<ElmPtr>>>()->val();
+ *   auto v =
+ * decode("l4:spam3:egge")->to<TypedElement<vector<ElmPtr>>>()->val();
  *   *v[0]->to<TypedElement<string>>(); // Returns: "spam"
  *   *v[1]->to<TypedElement<string>>(); // Returns: "egg"
  * @endcode
@@ -297,7 +298,7 @@ template <>
     throw std::invalid_argument("String length " + std::to_string(strlen) +
                                 " larger than max size");
   }
-  std::string str(strlen, '\0');
+  std::string str(zit::numeric_cast<std::string::size_type>(strlen), '\0');
   iss.read(str.data(), zit::numeric_cast<std::streamsize>(strlen));
   if (iss.eof()) {
     throw std::invalid_argument("String not of expected length");

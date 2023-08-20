@@ -5,7 +5,9 @@
 #include "file_writer.hpp"
 #include "types.hpp"
 
+#ifndef _MSC_VER
 #include <bits/basic_string.h>
+#endif  // !_MSC_VER
 #if __clang__
 #include <bits/chrono.h>
 #endif  // __clang__

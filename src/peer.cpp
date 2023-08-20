@@ -12,7 +12,9 @@
 #include <asio/system_error.hpp>
 #include <asio/write.hpp>
 
+#ifndef _MSC_VER
 #include <bits/basic_string.h>
+#endif  // !_MSC_VER
 #if __clang__
 #include <bits/chrono.h>
 #endif  // __clang__
