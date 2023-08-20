@@ -169,14 +169,14 @@ void ArgParser::parse(const std::vector<std::string>& argv) {
   }
 
   // Check if all options got values
-  auto nop = ranges::find_if(
+  auto missing_required_arg = ranges::find_if(
       m_options, [](const auto& o) { return !o->provided() && o->required(); });
-  if (nop != m_options.end()) {
-    if (!ranges::any_of(m_options, [](const auto& o) {
+  if (missing_required_arg != m_options.end()) {
+    if (ranges::none_of(m_options, [](const auto& o) {
           return o->help_arg() && o->provided();
         })) {
-      throw runtime_error(
-          fmt::format("Required option '{}' not provided", (*nop)->option()));
+      throw runtime_error(fmt::format("Required option '{}' not provided",
+                                      (*missing_required_arg)->option()));
     }
   }
 }

@@ -278,3 +278,35 @@ TEST(arg_parser, alias_help) {
     EXPECT_FALSE(val);
   }
 }
+
+TEST(arg_parser, help_plus_required) {
+  bool help{false};
+  auto getParser = [&] {
+    ArgParser parser("desc");
+    parser.add_help_option("--help,-h", "test help", help);
+    bool required;
+    parser.add_option("--test", {"t"}, "test help", required, true);
+    return parser;
+  };
+
+  {
+    getParser().parse({"cmd", "--help"});
+    EXPECT_TRUE(help);
+  }
+
+  {
+    getParser().parse({"cmd", "-h"});
+    EXPECT_TRUE(help);
+  }
+
+  {
+    // Missing required arg
+    EXPECT_THROW(getParser().parse({"cmd"}), std::runtime_error);
+  }
+
+  {
+    getParser().parse({"cmd", "-h", "--test"});
+    EXPECT_TRUE(help);
+  }
+
+}

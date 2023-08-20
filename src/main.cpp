@@ -51,10 +51,7 @@ void sigint_handler(int s) {
 // False positives
 // NOLINTBEGIN(misc-const-correctness)
 
-//#pragma clang diagnostic push
-//#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
 int main(int argc, const char* argv[]) noexcept {
-  //#pragma clang diagnostic pop
   try {
     auto console = spdlog::stdout_color_mt("console");
 
@@ -79,8 +76,7 @@ int main(int argc, const char* argv[]) noexcept {
                       dump_torrent);
     parser.add_option("--dump-config", {}, "Dump config to console",
                       dump_config);
-    const auto args =
-        std::vector<std::string>{std::next(argv, 1), std::next(argv, argc)};
+    const auto args = std::vector<std::string>{argv, std::next(argv, argc)};
     parser.parse(args);
 
     if (help) {
