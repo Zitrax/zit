@@ -47,6 +47,7 @@ target_link_libraries(zitest
   spdlog::spdlog
   TBB::tbb
   Threads::Threads
+  $<$<PLATFORM_ID:Windows>:Crypt32.lib>
 )
 
 if(NOT WIN32)

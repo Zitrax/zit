@@ -46,6 +46,7 @@ target_link_libraries(zitlib
     OpenSSL::SSL
     spdlog::spdlog
     TBB::tbb
+    $<$<PLATFORM_ID:Windows>:Crypt32.lib>
 )
 
 add_executable(zit main.cpp)

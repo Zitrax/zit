@@ -247,6 +247,45 @@ std::tuple<std::string, std::string> request(Sock& sock, const Url& url) {
   return {headers.str(), resp.str()};
 }
 
+#ifdef _WIN32
+
+#include <wincrypt.h>
+
+/**
+ * On Windows we do not seem to have a ready certificate directory as on Linux.
+ * However we can read the certificates from the windows store and add them to
+ * the openssl store.
+ */
+void addWindowsCertificates(const SSL_CTX* ctx) {
+  auto hStore = CertOpenSystemStoreW(NULL, L"ROOT");
+  if (!hStore) {
+    spdlog::get("console")->warn("Could not open certificate store");
+    return;
+  }
+
+  X509_STORE* store = SSL_CTX_get_cert_store(ctx);
+  PCCERT_CONTEXT pContext = nullptr;
+
+  while (true) {
+    pContext = CertEnumCertificatesInStore(hStore, pContext);
+    if (!pContext) {
+      break;
+    }
+    auto* x509 = d2i_X509(
+        nullptr, const_cast<const unsigned char**>(&pContext->pbCertEncoded),
+        pContext->cbCertEncoded);
+    if (x509) {
+      if (X509_STORE_add_cert(store, x509) != 1) {
+        spdlog::get("console")->warn("Could not add certificate");
+      }
+      X509_free(x509);
+    }
+  }
+  CertCloseStore(hStore, 0);
+}
+
+#endif  // _WIN32
+
 // Based on example at
 // https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/overview/ssl.html
 std::tuple<std::string, std::string> httpsGet(const Url& url) {
@@ -254,6 +293,10 @@ std::tuple<std::string, std::string> httpsGet(const Url& url) {
   // Create a context that uses the default paths for
   // finding CA certificates.
   ssl::context ctx(ssl::context::tlsv12);
+
+#ifdef _WIN32
+  addWindowsCertificates(ctx.native_handle());
+#endif  // _WIN32
 
   ctx.set_default_verify_paths();
   // In my case the default path is not aligned with the systems on Ubuntu
