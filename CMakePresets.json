@@ -21,7 +21,6 @@
         "common"
       ],
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/default",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "vcpkg/scripts/buildsystems/vcpkg.cmake",
         "CMAKE_CXX_COMPILER": "clang++"
@@ -35,7 +34,6 @@
         "common"
       ],
       "generator": "Ninja",
-      "binaryDir": "${sourceDir}/build/default",
       "cacheVariables": {
         "CMAKE_TOOLCHAIN_FILE": "vcpkg/scripts/buildsystems/vcpkg.cmake",
         "CMAKE_CXX_COMPILER": "g++",
