@@ -7,6 +7,7 @@
 #include <cstring>
 #include <iomanip>
 #include <ios>
+#include <iterator>
 #include <optional>
 #include <ostream>
 #include <sstream>
@@ -176,11 +177,11 @@ class HandshakeMsg {
         console->debug("Wait for more handshake data...");
         return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, 0);
       }
-      Bitfield bf(bytes(&msg[73], &msg[73 + len - 1]));
+      Bitfield bf(
+          bytes(std::next(msg.begin(), 73), std::next(msg.begin(), end)));
       console->debug("Handshake: {}", bf);
       // Consume the parsed part, the caller have to deal with the rest
-      return make_optional<HandshakeMsg>(reserved, info_hash, peer_id,
-                                         73 + len - 1, bf);
+      return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, end, bf);
     }
 
     return make_optional<HandshakeMsg>(reserved, info_hash, peer_id,
@@ -277,8 +278,8 @@ size_t Message::parse(PeerConnection& connection) {
           return 9;
         }
         case peer_wire_id::BITFIELD: {
-          auto start = m_msg.begin() + 5;
-          auto end = start + len - 1;
+          auto start = std::next(m_msg.begin(), 5);
+          auto end = std::next(start, len - 1);
           auto bf = Bitfield(bytes(start, end));
           peer.set_remote_pieces(bf);
           m_logger->debug("{}: {}", peer.str(), bf);
