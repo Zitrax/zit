@@ -5,7 +5,6 @@
 #include <openssl/tls1.h>
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>
-#include <spdlog/spdlog.h>
 #include <asio/buffers_iterator.hpp>
 #include <asio/completion_condition.hpp>
 #include <asio/connect.hpp>
@@ -48,6 +47,7 @@
 #include <utility>
 #include <vector>
 
+#include "logger.hpp"
 #include "string_utils.hpp"
 #include "types.hpp"
 
@@ -160,14 +160,13 @@ std::tuple<std::string, std::string> request(Sock& sock, const Url& url) {
   string encoding;
   string header;
   stringstream headers;
-  auto logger = spdlog::get("console");
   while (getline(response_stream, header) && header != "\r" &&
          !header.empty()) {
     const auto lheader = to_lower(header);
     constexpr auto location = "location: ";
     if (lheader.starts_with(location)) {
       const Url loc(rtrim_copy(header.substr(strlen(location), string::npos)));
-      logger->debug("Redirecting to {}", loc.str());
+      logger()->debug("Redirecting to {}", loc.str());
       return Net::httpGet(loc);
     }
     constexpr auto tencoding = "transfer-encoding: ";
@@ -181,7 +180,7 @@ std::tuple<std::string, std::string> request(Sock& sock, const Url& url) {
     headers << header << "\n";
   }
 
-  logger->trace("=====RESPONSE=====\n'{}'\n", headers.str());
+  logger()->trace("=====RESPONSE=====\n'{}'\n", headers.str());
 
   stringstream resp;
   asio::error_code error;
@@ -199,28 +198,28 @@ std::tuple<std::string, std::string> request(Sock& sock, const Url& url) {
   };
 
   if (encoding == "chunked") {
-    logger->debug("chunked transfer encoding");
+    logger()->debug("chunked transfer encoding");
     while (true) {
-      logger->trace("  response.size()={}", response.size());
+      logger()->trace("  response.size()={}", response.size());
       string chunk_str_len;
       if (response.size() == 0) {
-        logger->trace("  Read next line");
+        logger()->trace("  Read next line");
         asio::read_until(sock, response, MatchMarkers({"\r\n\r\n", "\n\n"}));
-        logger->trace("  response.size()={}", response.size());
+        logger()->trace("  response.size()={}", response.size());
       }
       getline(response_stream, chunk_str_len);
       rtrim(chunk_str_len);
-      logger->trace("  chunk_len_str='{}'", chunk_str_len);
+      logger()->trace("  chunk_len_str='{}'", chunk_str_len);
       auto chunk_len =
           numeric_cast<unsigned long>(std::stol(chunk_str_len, nullptr, 16));
-      logger->trace("  chunk len={}", chunk_len);
+      logger()->trace("  chunk len={}", chunk_len);
       if (chunk_len == 0) {
         break;
       }
       chunk_len += 2;  // To include \r\n
       if (response.size() < chunk_len) {
         const auto read_n = chunk_len - response.size();
-        logger->trace("  read_n={}", read_n);
+        logger()->trace("  read_n={}", read_n);
         error.clear();
         asio::read(sock, response, asio::transfer_at_least(read_n), error);
         check_error();
@@ -259,7 +258,7 @@ std::tuple<std::string, std::string> request(Sock& sock, const Url& url) {
 void addWindowsCertificates(const SSL_CTX* ctx) {
   auto hStore = CertOpenSystemStoreW(NULL, L"ROOT");
   if (!hStore) {
-    spdlog::get("console")->warn("Could not open certificate store");
+    logger()->warn("Could not open certificate store");
     return;
   }
 
@@ -276,7 +275,7 @@ void addWindowsCertificates(const SSL_CTX* ctx) {
         pContext->cbCertEncoded);
     if (x509) {
       if (X509_STORE_add_cert(store, x509) != 1) {
-        spdlog::get("console")->warn("Could not add certificate");
+        logger()->warn("Could not add certificate");
       }
       X509_free(x509);
     }
@@ -320,14 +319,14 @@ std::tuple<std::string, std::string> httpsGet(const Url& url) {
   // Without this some servers fail with "handshake: sslv3 alert handshake
   // failure" These servers rely on SNI (Server Name Indication)
   if (!SSL_set_tlsext_host_name(sock.native_handle(), url.host().c_str())) {
-    spdlog::get("console")->warn("Could not set host name for SNI");
+    logger()->warn("Could not set host name for SNI");
   }
 
   sock.set_verify_callback(
       [&url](bool preverified, asio::ssl::verify_context& ctx_) {
         if (!preverified) {
-          spdlog::get("console")->warn(
-              "SSL: {}", X509_verify_cert_error_string(
+          logger()->warn("SSL: {}",
+                         X509_verify_cert_error_string(
                              X509_STORE_CTX_get_error(ctx_.native_handle())));
 
           // According to cppreference std::getenv is thread safe
@@ -336,7 +335,7 @@ std::tuple<std::string, std::string> httpsGet(const Url& url) {
           if (!dir) {
             dir = X509_get_default_cert_dir();
           }
-          spdlog::get("console")->warn(
+          logger()->warn(
               "SSL: Default cert dir: '{}'. If the certificates are elsewhere "
               "you can point SSL_CERT_DIR there.",
               dir);

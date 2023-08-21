@@ -73,7 +73,6 @@ class PeerConnection {
   bool m_sending = false;
   ListeningPort m_listening_port;
   ConnectionPort m_connection_port;
-  std::shared_ptr<spdlog::logger> m_logger;
 };
 
 /**
@@ -84,14 +83,12 @@ class Peer {
   explicit Peer(Url url, Torrent& torrent)
       : m_url(std::move(url)),
         m_torrent(torrent),
-        m_logger(spdlog::get("console")),
         m_last_activity(std::chrono::system_clock::now()) {}
 
   /**
    * A listening host does not need a url when created.
    */
-  explicit Peer(Torrent& torrent)
-      : m_torrent(torrent), m_logger(spdlog::get("console")) {}
+  explicit Peer(Torrent& torrent) : m_torrent(torrent) {}
 
   [[nodiscard]] auto url() const { return m_url; }
 
@@ -226,7 +223,6 @@ class Peer {
   std::unique_ptr<PeerConnection> m_connection{};
 
   Torrent& m_torrent;
-  std::shared_ptr<spdlog::logger> m_logger;
   std::unique_ptr<asio::io_service::work> m_work{};
   std::chrono::system_clock::time_point m_last_activity{};
 };

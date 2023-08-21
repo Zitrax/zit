@@ -1,13 +1,12 @@
 #include "global_config.hpp"
 
 #include "file_utils.hpp"
+#include "logger.hpp"
 #include "string_utils.hpp"
 
 #include <fmt/core.h>
 #include <spdlog/common.h>
 #include <spdlog/fmt/ostr.h>  // NOLINT(misc-include-cleaner) Needed due to use of operator<<
-#include <spdlog/logger.h>
-#include <spdlog/spdlog.h>
 
 #ifndef _MSC_VER
 #include <bits/basic_string.h>
@@ -38,9 +37,9 @@ std::string getenv(const char* env) {
 }
 
 // Return a list of candidate config directories in precedence order
-std::vector<fs::path> config_dirs(spdlog::logger& logger) {
+std::vector<fs::path> config_dirs() {
 #ifndef __linux__
-  logger.warn("Config dirs not yet implemented for non linux");
+  logger()->warn("Config dirs not yet implemented for non linux");
 #endif
 
   std::vector<fs::path> dirs;
@@ -66,9 +65,9 @@ std::vector<fs::path> config_dirs(spdlog::logger& logger) {
     dirs.emplace_back(home_dir);
   }
 
-  logger.debug("Config candidate dirs:");
+  logger()->debug("Config candidate dirs:");
   for (const auto& dir : dirs) {
-    logger.debug("  {}", dir);
+    logger()->debug("  {}", dir);
   }
   return dirs;
 }
@@ -116,7 +115,7 @@ std::ostream& operator<<(std::ostream& os, const Config& config) {
 }
 
 FileConfig::FileConfig(std::filesystem::path config_file)
-    : m_logger(spdlog::get("console")), m_config_file(std::move(config_file)) {
+    : m_config_file(std::move(config_file)) {
   if (!m_config_file.empty() && !try_file(m_config_file)) {
     throw std::runtime_error(
         fmt::format("Could not read/use config file '{}'", m_config_file));
@@ -124,15 +123,15 @@ FileConfig::FileConfig(std::filesystem::path config_file)
 }
 
 bool FileConfig::try_file(const std::filesystem::path& config_file) {
-  m_logger->trace("Trying config file: {}", config_file);
+  logger()->trace("Trying config file: {}", config_file);
   if (fs::exists(config_file)) {
-    m_logger->info("Reading config from: {}", config_file);
+    logger()->info("Reading config from: {}", config_file);
     const auto config_str = read_file(config_file);
     for (const auto& line : split(config_str, "\n")) {
-      m_logger->trace("line: {}", line);
+      logger()->trace("line: {}", line);
       auto kv = split(line, "=");
       if (kv.size() != 2) {
-        m_logger->warn("Ignoring invalid config line: {}", line);
+        logger()->warn("Ignoring invalid config line: {}", line);
       } else {
         trim(kv[0]);
         trim(kv[1]);
@@ -149,9 +148,9 @@ void FileConfig::update_value(const std::string& key,
   if (settings_map<BoolSetting>.contains(key)) {
     const auto parsed = parse_bool(value);
     if (!parsed) {
-      m_logger->warn("{} = {} could not parsed as a boolean", key, value);
+      logger()->warn("{} = {} could not parsed as a boolean", key, value);
     } else {
-      m_logger->debug("{} set to {}", key, *parsed);
+      logger()->debug("{} set to {}", key, *parsed);
       m_bool_settings[settings_map<BoolSetting>.at(key)] = *parsed;
     }
   } else if (settings_map<IntSetting>.contains(key)) {
@@ -163,19 +162,19 @@ void FileConfig::update_value(const std::string& key,
       }
     }();
     if (!parsed) {
-      m_logger->warn("{} = {} could not parsed as an integer", key, value);
+      logger()->warn("{} = {} could not parsed as an integer", key, value);
     } else {
-      m_logger->debug("{} set to {}", key, *parsed);
+      logger()->debug("{} set to {}", key, *parsed);
       m_int_settings[settings_map<IntSetting>.at(key)] = *parsed;
     }
   } else {
-    m_logger->warn("Unknown key '{}' in config file ignored", key);
+    logger()->warn("Unknown key '{}' in config file ignored", key);
   }
 }
 
 SingletonDirectoryFileConfig::SingletonDirectoryFileConfig() : FileConfig("") {
   // Read and apply config from disk
-  for (const auto& config_dir : config_dirs(*m_logger)) {
+  for (const auto& config_dir : config_dirs()) {
     const auto config_file = config_dir / "zit" / ".zit";
     if (try_file(config_file)) {
       break;

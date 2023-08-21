@@ -32,11 +32,11 @@
 #include <utility>
 
 #include "bitfield.hpp"
+#include "logger.hpp"
 #include "messages.hpp"
 #include "net.hpp"
 #include "piece.hpp"
 #include "sha1.hpp"
-#include "spdlog/spdlog.h"
 #include "string_utils.hpp"
 #include "torrent.hpp"
 #include "types.hpp"
@@ -65,14 +65,13 @@ PeerConnection::PeerConnection(Peer& peer,
       acceptor_(io_service, tcp::v4()),
       socket_(io_service, tcp::v4()),
       m_listening_port(listening_port),
-      m_connection_port(connection_port),
-      m_logger(spdlog::get("console")) {
+      m_connection_port(connection_port) {
   // Note use of socket constructor that does not bind such
   // that we can set the options before that.
 }
 
 void PeerConnection::listen() {
-  m_logger->info("{} port={}", PRETTY_FUNCTION, m_listening_port.get());
+  logger()->info("{} port={}", PRETTY_FUNCTION, m_listening_port.get());
   // if (!acceptor_.is_open()) {
   const asio::socket_base::reuse_address option(true);
   acceptor_.set_option(option);
@@ -84,14 +83,14 @@ void PeerConnection::listen() {
         if (!error) {
           auto ip = new_socket.remote_endpoint().address().to_string();
           auto port = new_socket.remote_endpoint().port();
-          m_logger->warn("Accepted new connection from {}:{}", ip, port);
+          logger()->warn("Accepted new connection from {}:{}", ip, port);
           socket_ = std::move(new_socket);
           m_connected = true;
           asio::async_read(
               socket_, response_, asio::transfer_at_least(1),
               [this](const auto& ec, auto s) { handle_response(ec, s); });
         } else {
-          m_logger->error("Listen errored: {}", error.message());
+          logger()->error("Listen errored: {}", error.message());
           listen();
         }
 
@@ -112,7 +111,7 @@ void PeerConnection::write(const std::string& msg) {
 }
 
 void PeerConnection::write(const optional<Url>& url, const std::string& msg) {
-  m_logger->debug(PRETTY_FUNCTION);
+  logger()->debug(PRETTY_FUNCTION);
 
   if (!m_msg.empty()) {
     throw runtime_error("Message not empty");
@@ -136,7 +135,7 @@ void PeerConnection::write(const optional<Url>& url, const std::string& msg) {
 
 void PeerConnection::handle_resolve(const asio::error_code& err,
                                     tcp::resolver::iterator endpoint_iterator) {
-  m_logger->debug(PRETTY_FUNCTION);
+  logger()->debug(PRETTY_FUNCTION);
   if (!err) {
     // Attempt a connection to the first endpoint in the list. Each endpoint
     // will be tried until we successfully establish a connection.
@@ -149,7 +148,7 @@ void PeerConnection::handle_resolve(const asio::error_code& err,
     socket_.async_connect(endpoint, [this, it = ++endpoint_iterator](
                                         auto&& ec) { handle_connect(ec, it); });
   } else {
-    m_logger->error("Resolve failed: {}", err.message());
+    logger()->error("Resolve failed: {}", err.message());
   }
 }
 
@@ -165,9 +164,9 @@ void PeerConnection::send(bool start_read) {
         socket_, asio::buffer(msg.c_str(), msg.size()),
         [this, start_read](auto err, auto len) {
           if (!err) {
-            m_logger->debug("{}: Data of len {} sent", peer_.str(), len);
+            logger()->debug("{}: Data of len {} sent", peer_.str(), len);
           } else {
-            m_logger->error("{}: Write failed: {}", peer_.str(), err.message());
+            logger()->error("{}: Write failed: {}", peer_.str(), err.message());
           }
           m_sending = false;
           if (start_read) {
@@ -180,7 +179,7 @@ void PeerConnection::send(bool start_read) {
           }
         });
   } else {
-    m_logger->debug("{}: Queued message of size {}", peer_.str(), m_msg.size());
+    logger()->debug("{}: Queued message of size {}", peer_.str(), m_msg.size());
     m_send_queue.push_back(m_msg);
     m_msg.clear();
   }
@@ -188,19 +187,19 @@ void PeerConnection::send(bool start_read) {
 
 void PeerConnection::handle_connect(const asio::error_code& err,
                                     tcp::resolver::iterator endpoint_iterator) {
-  m_logger->debug(PRETTY_FUNCTION);
+  logger()->debug(PRETTY_FUNCTION);
   if (!err) {
     // The connection was successful. Send the request.
     if (!m_connected) {
       m_connected = true;
-      m_logger->debug("Connected");
+      logger()->debug("Connected");
       send(true);
     } else {
-      m_logger->trace("Already connected");
+      logger()->trace("Already connected");
       send();
     }
   } else if (endpoint_iterator != tcp::resolver::iterator()) {
-    m_logger->debug("Trying next endpoint");
+    logger()->debug("Trying next endpoint");
     // The connection failed. Try the next endpoint in the list.
     socket_.close();
     const tcp::endpoint endpoint = *endpoint_iterator;
@@ -213,12 +212,12 @@ void PeerConnection::handle_connect(const asio::error_code& err,
   } else {
     endpoint_ = {};
     // No need to spam about this. Quite normal.
-    m_logger->debug("Connect failed: {}", err.message());
+    logger()->debug("Connect failed: {}", err.message());
   }
 }
 
 void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
-  m_logger->trace(PRETTY_FUNCTION);
+  logger()->trace(PRETTY_FUNCTION);
   if (!err) {
     // Loop over buffer since we might have zero, one or more
     // messages waiting.
@@ -229,7 +228,7 @@ void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
       Message msg(response);
       const size_t consumed = msg.parse(*this);
       cout.flush();
-      m_logger->debug("Consuming {}/{}", consumed, response.size());
+      logger()->debug("Consuming {}/{}", consumed, response.size());
       response_.consume(consumed);
       done = consumed == 0;
     }
@@ -242,9 +241,9 @@ void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
         socket_, response_, asio::transfer_at_least(1),
         [this](const auto& ec, auto s) { handle_response(ec, s); });
   } else if (err != asio::error::eof) {
-    m_logger->error("Response failed: {}", err.message());
+    logger()->error("Response failed: {}", err.message());
   } else {
-    m_logger->debug("handle_response EOF");
+    logger()->debug("handle_response EOF");
     peer_.torrent().disconnected(&peer_);
   }
 }
@@ -256,27 +255,27 @@ void PeerConnection::stop() {
 }
 
 void Peer::request(uint32_t index, uint32_t begin, uint32_t length) {
-  m_logger->trace("Peer::request(index={}, begin={}, length={})", index, begin,
+  logger()->trace("Peer::request(index={}, begin={}, length={})", index, begin,
                   length);
   if (m_am_choking) {
-    m_logger->debug("{}: Choking peer, not sending blocks", str());
+    logger()->debug("{}: Choking peer, not sending blocks", str());
     return;
   }
   if (!m_interested) {
-    m_logger->debug("{}: Peer not interested, not sending blocks", str());
+    logger()->debug("{}: Peer not interested, not sending blocks", str());
     return;
   }
   auto piece = m_torrent.active_piece(index);
   if (!piece) {
-    m_logger->warn("Requested non existing piece {}", index);
+    logger()->warn("Requested non existing piece {}", index);
     return;
   }
   auto data = piece->get_block(begin, m_torrent, length);
   if (data.empty()) {
-    m_logger->warn("Empty block data - request failed");
+    logger()->warn("Empty block data - request failed");
     return;
   }
-  m_logger->debug("Sending PIECE {}", piece->id());
+  logger()->debug("Sending PIECE {}", piece->id());
   bytes msg;
   auto len = to_big_endian(numeric_cast<uint32_t>(9 + data.size()));
   auto offset = to_big_endian(begin);
@@ -292,7 +291,7 @@ void Peer::request(uint32_t index, uint32_t begin, uint32_t length) {
 void Peer::set_am_choking(bool am_choking) {
   if (!m_am_choking && am_choking) {
     // Send UNCHOKE
-    m_logger->debug("Sending CHOKE");
+    logger()->debug("Sending CHOKE");
     const string choke = {0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::CHOKE)};
     stringstream hs;
     hs.write(choke.c_str(), numeric_cast<std::streamsize>(choke.length()));
@@ -301,7 +300,7 @@ void Peer::set_am_choking(bool am_choking) {
 
   if (m_am_choking && !am_choking) {
     // Send UNCHOKE
-    m_logger->debug("Sending UNCHOKE");
+    logger()->debug("Sending UNCHOKE");
     const string unchoke = {0, 0, 0, 1,
                             static_cast<pwid_t>(peer_wire_id::UNCHOKE)};
     stringstream hs;
@@ -319,7 +318,7 @@ void Peer::set_am_interested(bool am_interested) {
       return;
     }
     // Send INTERESTED
-    m_logger->debug("Sending INTERESTED");
+    logger()->debug("Sending INTERESTED");
     const string interested_msg = {
         0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::INTERESTED)};
     stringstream hs;
@@ -330,7 +329,7 @@ void Peer::set_am_interested(bool am_interested) {
 
   if (m_am_interested && !am_interested) {
     // Send NOT_INTERESTED
-    m_logger->debug("Sending NOT_INTERESTED");
+    logger()->debug("Sending NOT_INTERESTED");
     const string interested_msg = {
         0, 0, 0, 1, static_cast<pwid_t>(peer_wire_id::NOT_INTERESTED)};
     stringstream hs;
@@ -345,12 +344,12 @@ void Peer::set_am_interested(bool am_interested) {
 std::size_t Peer::request_next_block(unsigned short count) {
   size_t requests = 0;
   if (!m_am_interested) {
-    m_logger->debug(
+    logger()->debug(
         "{}: Peer not interested (no handshake), not requesting blocks", str());
     return requests;
   }
   if (m_choking) {
-    m_logger->debug("{}: Peer choked, not requesting blocks", str());
+    logger()->debug("{}: Peer choked, not requesting blocks", str());
     return requests;
   }
   bytes req;
@@ -358,14 +357,14 @@ std::size_t Peer::request_next_block(unsigned short count) {
     // We can now start requesting pieces
     auto has_piece = next_piece(true);
     if (!has_piece) {
-      m_logger->debug("{}: No pieces left, nothing to do!", str());
+      logger()->debug("{}: No pieces left, nothing to do!", str());
       break;
     }
     auto piece = *has_piece;
 
     auto block_offset = piece->next_offset(true);
     if (!block_offset) {
-      m_logger->debug("{}: No block requests left to do!", str());
+      logger()->debug("{}: No block requests left to do!", str());
       break;
     }
     auto len = to_big_endian(13);
@@ -379,7 +378,7 @@ std::size_t Peer::request_next_block(unsigned short count) {
       // 16 KiB (as recommended)
       return piece->block_size();
     }();
-    m_logger->debug(
+    logger()->debug(
         "{}: Sending block request for piece {} with size {} and offset {}",
         str(), piece->id(), LENGTH, *block_offset);
     auto blength = to_big_endian(LENGTH);
@@ -405,23 +404,23 @@ bool Peer::is_inactive() const {
 void Peer::set_choking(bool choking) {
   if (m_choking && !choking) {
     m_choking = choking;
-    m_logger->info("{}: Unchoked", str());
+    logger()->info("{}: Unchoked", str());
     request_next_block();
   }
 
   if (!m_choking && choking) {
     m_choking = choking;
-    m_logger->info("{}: Choked", str());
+    logger()->info("{}: Choked", str());
   }
 }
 
 void Peer::set_interested(bool interested) {
   if (!m_interested && interested) {
-    m_logger->info("Peer is Interested - sending unchoke");
+    logger()->info("Peer is Interested - sending unchoke");
     set_am_choking(false);
   }
   if (m_interested && !interested) {
-    m_logger->info("Peer is Not interested");
+    logger()->info("Peer is Not interested");
     // TODO: I guess we don't need to choke it since the peer told us
   }
   m_interested = interested;
@@ -443,7 +442,7 @@ void Peer::set_block(uint32_t piece_id, uint32_t offset, bytes_span data) {
 }
 
 void Peer::stop() {
-  m_logger->info("Stopping peer {}", str());
+  logger()->info("Stopping peer {}", str());
   m_connection->stop();
   m_io_service->stop();
 }
@@ -462,15 +461,15 @@ void Peer::report_bitfield() const {
     msg.insert(msg.cend(), len.begin(), len.end());
     msg.push_back(static_cast<byte>(peer_wire_id::BITFIELD));
     msg.insert(msg.cend(), bf.data().begin(), bf.data().end());
-    m_logger->debug("Sending bitfield of size {}", msg.size());
+    logger()->debug("Sending bitfield of size {}", msg.size());
     m_connection->write(msg);
   } else {
-    m_logger->debug("Not sending bitfield - no pieces");
+    logger()->debug("Not sending bitfield - no pieces");
   }
 }
 
 void Peer::handshake() {
-  m_logger->info("Starting handshake with: {}", str());
+  logger()->info("Starting handshake with: {}", str());
 
   // The handshake should contain:
   // <pstrlen><pstr><reserved><info_hash><peer_id>

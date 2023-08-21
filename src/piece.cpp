@@ -3,6 +3,7 @@
 
 #include "bitfield.hpp"
 #include "file_writer.hpp"
+#include "logger.hpp"
 #include "types.hpp"
 
 #ifndef _MSC_VER
@@ -48,7 +49,7 @@ optional<uint32_t> Piece::next_offset(bool mark) {
 bytes Piece::data() const {
   const lock_guard<mutex> lock(m_mutex);
   if (m_data.empty()) {
-    m_logger->warn("Retrieved empty data from piece {}", m_id);
+    logger()->warn("Retrieved empty data from piece {}", m_id);
   }
   return m_data;
 }
@@ -67,14 +68,14 @@ bool Piece::set_block(uint32_t offset, bytes_span data) {
 
   const lock_guard<mutex> lock(m_mutex);
   if (m_blocks_done[block_id]) {
-    m_logger->warn("Already got block {} for piece {}", block_id, m_id);
+    logger()->warn("Already got block {} for piece {}", block_id, m_id);
   } else {
     if (!m_blocks_requested[block_id]) {
-      m_logger->warn("Got data for non requested block?");
+      logger()->warn("Got data for non requested block?");
     }
     ranges::copy(data, m_data.begin() + offset);
     m_blocks_done[block_id] = true;
-    m_logger->debug("Block {}/{} of size {} stored for piece {}", block_id + 1,
+    logger()->debug("Block {}/{} of size {} stored for piece {}", block_id + 1,
                     block_count(), data.size(), m_id);
   }
   m_last_block = std::chrono::system_clock::now();
@@ -95,19 +96,19 @@ bytes Piece::get_block(uint32_t offset,
 
   const lock_guard<mutex> lock(m_mutex);
   if (!m_blocks_done[block_id]) {
-    m_logger->warn("Block {} in piece {} not done", block_id, m_id);
+    logger()->warn("Block {} in piece {} not done", block_id, m_id);
     return {};
   }
   length = length ? length : m_block_size;
   // Is it in memory?
   if (!m_piece_written) {
-    m_logger->debug("Returning block {} in piece {} from memory", block_id,
+    logger()->debug("Returning block {} in piece {} from memory", block_id,
                     m_id);
     auto start = m_data.begin() + offset;
     return {start, start + length};
   }
   // Is it on disk?
-  m_logger->debug("Returning block {} in piece {} from disk", block_id, m_id);
+  logger()->debug("Returning block {} in piece {} from disk", block_id, m_id);
   // Important to use the piece_length from the torrent, since the last
   // piece is often shorter and can't thus be used to get the offset.
   const auto file_offset = torrent.piece_length() * m_id + offset;
@@ -138,7 +139,7 @@ std::size_t Piece::retry_blocks() {
   // False positive
   // NOLINTNEXTLINE(hicpp-use-nullptr,modernize-use-nullptr)
   if (inactive > 30s && m_blocks_requested.next(true).has_value()) {
-    m_logger->warn(
+    logger()->warn(
         "Piece {} inactive for {} seconds. Marking for retry.", m_id,
         std::chrono::duration_cast<std::chrono::seconds>(inactive).count());
     const lock_guard<mutex> lock(m_mutex);

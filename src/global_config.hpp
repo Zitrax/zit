@@ -92,7 +92,6 @@ class FileConfig : public Config {
   bool try_file(const std::filesystem::path& config_file);
   void update_value(const std::string& key, const std::string& value);
 
-  std::shared_ptr<spdlog::logger> m_logger;
   std::filesystem::path m_config_file;
 };
 

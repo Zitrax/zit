@@ -13,8 +13,7 @@ class Timer {
   ~Timer() {
     const std::chrono::duration<double> total =
         std::chrono::system_clock::now() - m_start;
-    spdlog::get("console")->info("{} seconds spent on {}", total.count(),
-                                 m_name);
+    logger()->info("{} seconds spent on {}", total.count(), m_name);
   }
 
  private:
