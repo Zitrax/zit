@@ -24,8 +24,7 @@ class Piece {
       : m_piece_size(piece_size.get()),
         m_blocks_requested(block_count()),
         m_blocks_done(block_count()),
-        m_id(id.get()),
-        m_logger(spdlog::get("console")) {
+        m_id(id.get()) {
     m_data.resize(m_piece_size);
   }
 
@@ -94,7 +93,6 @@ class Piece {
   mutable std::mutex m_mutex{};
   bytes m_data{};
   std::atomic_bool m_piece_written = false;
-  std::shared_ptr<spdlog::logger> m_logger;
   std::chrono::system_clock::time_point m_last_request{};
   std::chrono::system_clock::time_point m_last_block{};
 };

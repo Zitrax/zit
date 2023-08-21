@@ -11,6 +11,7 @@
 #include <stdexcept>
 #include <string>
 #include "gtest/gtest.h"
+#include "logger.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
 
@@ -52,7 +53,7 @@ class TestWithTmpDir : public ::testing::Test {
  * Modified version of https://stackoverflow.com/a/52165057/11722
  */
 inline std::string exec(const std::string& cmd) {
-  spdlog::get("console")->debug("Running: {}", cmd);
+  zit::logger()->debug("Running: {}", cmd);
   const auto pipe = popen(cmd.c_str(), "r");
   if (!pipe) {
     throw std::runtime_error("popen() failed!");
@@ -67,7 +68,7 @@ inline std::string exec(const std::string& cmd) {
   }
 
   const auto rc = pclose(pipe);
-  spdlog::get("console")->debug("RC = {} for {} ", rc, cmd);
+  zit::logger()->debug("RC = {} for {} ", rc, cmd);
 
   if (rc != EXIT_SUCCESS) {
     throw std::runtime_error(

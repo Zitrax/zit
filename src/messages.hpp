@@ -35,8 +35,7 @@ using pwid_t = std::underlying_type_t<peer_wire_id>;
  */
 class Message {
  public:
-  explicit Message(const bytes& msg)
-      : m_msg(msg), m_logger(spdlog::get("console")) {}
+  explicit Message(const bytes& msg) : m_msg(msg) {}
 
   /**
    * Parse the message and return the number of bytes consumed.
@@ -45,7 +44,6 @@ class Message {
 
  private:
   const bytes& m_msg;
-  std::shared_ptr<spdlog::logger> m_logger;
 };
 
 }  // namespace zit

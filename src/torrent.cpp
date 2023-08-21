@@ -3,6 +3,7 @@
 #include "bencode.hpp"
 #include "file_utils.hpp"
 #include "global_config.hpp"
+#include "logger.hpp"
 #include "net.hpp"
 #include "peer.hpp"
 #include "piece.hpp"
@@ -13,7 +14,6 @@
 
 #include <fmt/core.h>
 #include <spdlog/common.h>
-#include <spdlog/spdlog.h>
 
 #if __clang__
 #include <bits/chrono.h>
@@ -124,7 +124,6 @@ Torrent::Torrent(const filesystem::path& file,
           numeric_cast<unsigned short>(config.get(IntSetting::CONNECTION_PORT),
                                        "connection port out of range")),
       m_http_get(std::move(http_get)) {
-  m_logger = spdlog::get("console");
   auto root = bencode::decode(read_file(file));
 
   const auto& root_dict = root->to<TypedElement<BeDict>>()->val();
@@ -136,7 +135,7 @@ Torrent::Torrent(const filesystem::path& file,
   m_name = (m_data_dir / info.at("name")->to<TypedElement<string>>()->val())
                .string();
   m_tmpfile = m_name + Torrent::tmpfileExtension();
-  m_logger->debug("Using tmpfile {} for {}", m_tmpfile, file);
+  logger()->debug("Using tmpfile {} for {}", m_tmpfile, file);
   auto pieces = info.at("pieces")->to<TypedElement<string>>()->val();
   if (pieces.size() % 20) {
     throw runtime_error("Unexpected pieces length");
@@ -239,7 +238,7 @@ void Torrent::verify_existing_file() {
     std::atomic_uint32_t num_pieces = 0;
     std::mutex mutex;
     if (is_single_file()) {
-      m_logger->info("Verifying existing file: {}", m_tmpfile);
+      logger()->info("Verifying existing file: {}", m_tmpfile);
       const Timer timer("verifying existing file");
       const auto file_length = filesystem::file_size(m_tmpfile);
       // Verify each piece in parallel to speed it up
@@ -271,12 +270,12 @@ void Torrent::verify_existing_file() {
               m_active_pieces[id]->set_piece_written(true);
               ++num_pieces;
             } else {
-              m_logger->trace("Piece {} does not match ({}!={})", id, sha1,
+              logger()->trace("Piece {} does not match ({}!={})", id, sha1,
                               fsha1);
             }
           });
     } else {
-      m_logger->info("Verifying existing files in: {}", m_tmpfile);
+      logger()->info("Verifying existing files in: {}", m_tmpfile);
       const auto global_len = length();
       // Verify each piece in parallel to speed it up
       std::for_each(
@@ -324,12 +323,12 @@ void Torrent::verify_existing_file() {
               m_active_pieces[id]->set_piece_written(true);
               ++num_pieces;
             } else {
-              m_logger->trace("Piece {} does not match ({}!={})", id, sha1,
+              logger()->trace("Piece {} does not match ({}!={})", id, sha1,
                               fsha1);
             }
           });
     }
-    m_logger->info("Verification done. {}/{} pieces done.", num_pieces,
+    logger()->info("Verification done. {}/{} pieces done.", num_pieces,
                    m_pieces.size());
     if (full_file && (num_pieces != m_pieces.size())) {
       throw runtime_error("Filename exists but does not match all pieces");
@@ -461,10 +460,10 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
     url.add_param("event=" + fmt::format("{}", event));
     url.add_param("compact=1");
 
-    if (m_logger->should_log(spdlog::level::debug)) {
-      m_logger->debug("Tracker request:\n{}", url);
+    if (logger()->should_log(spdlog::level::debug)) {
+      logger()->debug("Tracker request:\n{}", url);
     } else {
-      m_logger->info("Tracker request: {}", url.str());
+      logger()->info("Tracker request: {}", url.str());
     }
 
     auto [headers, body] = m_http_get(url);
@@ -474,7 +473,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
     // We only care about decoding the peer list for certain events
     if (event == TrackerEvent::UNSPECIFIED || event == TrackerEvent::STARTED) {
       if (!m_config.get(BoolSetting::INITIATE_PEER_CONNECTIONS) && done()) {
-        m_logger->debug("Skipping peer list since the torrent is completed.");
+        logger()->debug("Skipping peer list since the torrent is completed.");
         return {};
       }
 
@@ -485,7 +484,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
         throw_with_nested(runtime_error("Could not decode peer list."));
       }
 
-      m_logger->debug("=====HEADER=====\n{}\n=====BODY=====\n{}", headers,
+      logger()->debug("=====HEADER=====\n{}\n=====BODY=====\n{}", headers,
                       reply);
 
       auto reply_dict = reply->to<TypedElement<BeDict>>()->val();
@@ -496,11 +495,11 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
       // The peers might be in binary or string form
       // First try string form ...
       if (peers_dict->is<TypedElement<BeList>>()) {
-        m_logger->debug("Peer list in string form");
+        logger()->debug("Peer list in string form");
         read_peers_string_list(*this, *peers_dict, peers);
       } else {
         // ... else compact/binary form
-        m_logger->debug("Peer list in binary form");
+        logger()->debug("Peer list in binary form");
         read_peers_binary_form(*this, *peers_dict, peers);
       }
     }
@@ -523,7 +522,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
         thrown.reset();
         break;
       } catch (const std::exception& ex) {
-        m_logger->warn("{}: {}", announce_url, ex.what());
+        logger()->warn("{}: {}", announce_url, ex.what());
         thrown = ex;
       }
     }
@@ -548,25 +547,25 @@ void Torrent::start() {
   m_peers = tracker_request(TrackerEvent::STARTED);
 
   // Handshake with all the remote peers
-  m_logger->info("Starting handshake with {} peers", m_peers.size());
+  logger()->info("Starting handshake with {} peers", m_peers.size());
   for (auto& p : m_peers) {
     p->handshake();
   }
 
   // Add listening peer for incoming connections
-  m_logger->info("Adding listening peer");
+  logger()->info("Adding listening peer");
   try {
     m_peers.emplace_back(make_shared<Peer>(*this))->listen();
   } catch (const std::exception& ex) {
-    m_logger->warn("Could not start listening peer: {}", ex.what());
+    logger()->warn("Could not start listening peer: {}", ex.what());
   }
 }
 
 void Torrent::run() {
-  m_logger->debug("Run loop start");
+  logger()->debug("Run loop start");
   while (!all_of(m_peers.begin(), m_peers.end(),
                  [](auto& p) { return p->io_service().stopped(); })) {
-    // m_logger->debug("Run loop");
+    // logger()->debug("Run loop");
     std::size_t ran = 0;
     for (auto& p : m_peers) {
       ran += p->io_service().poll_one();
@@ -584,7 +583,7 @@ void Torrent::run() {
 #endif  // WIN32
     }
   }
-  m_logger->debug("Run loop done");
+  logger()->debug("Run loop done");
 }
 
 void Torrent::stop() {
@@ -602,16 +601,16 @@ void Torrent::retry_pieces() {
   // NOLINTNEXTLINE(hicpp-use-nullptr,modernize-use-nullptr)
   if (now() - last_call > 30s) {
     last_call = now();
-    m_logger->debug("Checking pieces for retry");
+    logger()->debug("Checking pieces for retry");
     std::size_t retry = 0;
     for (auto& [id, piece] : m_active_pieces) {
       retry += piece->retry_blocks();
     }
-    m_logger->trace("retry count = {}", retry);
+    logger()->trace("retry count = {}", retry);
     if (!retry) {
       return;
     }
-    m_logger->info("Marked {} blocks for retry", retry);
+    logger()->info("Marked {} blocks for retry", retry);
 
     // To hit different peers for each invocation - shuffle the list
     std::random_device rd;
@@ -620,7 +619,7 @@ void Torrent::retry_pieces() {
 
     auto it = m_peers.begin();
     if (it == m_peers.end()) {
-      m_logger->warn("No peers available for retrying");
+      logger()->warn("No peers available for retrying");
       return;
     }
     auto start_count = retry;
@@ -629,7 +628,7 @@ void Torrent::retry_pieces() {
       it++;
       if (it == m_peers.end()) {
         if (retry == start_count) {
-          m_logger->warn("Could not retry all blocks.");
+          logger()->warn("Could not retry all blocks.");
           break;
         }
         start_count = retry;
@@ -648,7 +647,7 @@ void Torrent::retry_peers() {
   }
 
   last_call = now();
-  m_logger->debug("Checking peers for retry");
+  logger()->debug("Checking peers for retry");
 
   // Find and disconnect inactive peers
   // TODO: Nicer to use ranges, however for clang we need to wait for clang16
@@ -659,13 +658,13 @@ void Torrent::retry_peers() {
   const auto inactive = std::distance(m_peers.begin(), it);
 
   if (inactive) {
-    m_logger->info("Stopping {} inactive peers", inactive);
+    logger()->info("Stopping {} inactive peers", inactive);
     std::for_each(m_peers.begin(), it, [](auto& p) { p->stop(); });
   }
 
   // Connect to new peers (discarding the ones we just dropped or active ones)
   const auto tracker_peers = tracker_request(TrackerEvent::UNSPECIFIED);
-  m_logger->debug("{} candidate peers", tracker_peers.size());
+  logger()->debug("{} candidate peers", tracker_peers.size());
   std::vector<std::shared_ptr<Peer>> new_peers;
 
   for (const auto& tracker_peer : tracker_peers) {
@@ -678,7 +677,7 @@ void Torrent::retry_peers() {
                               tracker_peer->url().value().str() ==
                                   existing_peer->url().value().str();
                      }) != m_peers.end();
-    m_logger->debug("Candidate {} was inactive: {}", tracker_peer->str(),
+    logger()->debug("Candidate {} was inactive: {}", tracker_peer->str(),
                     in_use);
     if (!in_use) {
       tracker_peer->handshake();
@@ -687,7 +686,7 @@ void Torrent::retry_peers() {
   }
 
   if (!new_peers.empty()) {
-    m_logger->info("Found {} new peers", new_peers.size());
+    logger()->info("Found {} new peers", new_peers.size());
   }
 
   if (inactive) {
@@ -705,12 +704,12 @@ bool Torrent::set_block(uint32_t piece_id, uint32_t offset, bytes_span data) {
   if (m_active_pieces.find(piece_id) != m_active_pieces.end()) {
     auto piece = m_active_pieces[piece_id];
     if (piece->set_block(offset, data)) {
-      m_logger->debug("Piece {} done!", piece_id);
+      logger()->debug("Piece {} done!", piece_id);
       piece_done(piece);
     }
     return true;
   }
-  m_logger->warn("Tried to set block for non active piece");
+  logger()->warn("Tried to set block for non active piece");
   return false;
 }
 
@@ -759,7 +758,7 @@ std::tuple<FileInfo, int64_t, int64_t> Torrent::file_at_pos(int64_t pos) const {
 }
 
 void Torrent::last_piece_written() {
-  m_logger->info("{} completed. Notifying peers and tracker.", m_name);
+  logger()->info("{} completed. Notifying peers and tracker.", m_name);
 
   for (auto& peer : m_peers) {
     if (!peer->is_listening()) {

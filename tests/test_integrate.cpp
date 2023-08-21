@@ -25,12 +25,14 @@
 #include <torrent.hpp>
 
 #include "gtest/gtest.h"
+#include "logger.hpp"
 #include "test_main.hpp"
 #include "test_utils.hpp"
 
 using namespace std;
 using namespace std::chrono_literals;
 using namespace std::string_literals;
+using namespace zit;
 namespace fs = std::filesystem;
 
 class TestConfig : public zit::Config {
@@ -87,8 +89,7 @@ class Process {
         throw runtime_error("Process " + m_name +
                             " is already dead. Aborting!");
       }
-      auto console = spdlog::get("console");
-      console->info("Process {} started", m_name);
+      logger()->info("Process {} started", m_name);
     }
   }
 
@@ -107,28 +108,27 @@ class Process {
    */
   void terminate() {
     if (m_pid) {
-      auto console = spdlog::get("console");
       kill(m_pid, SIGTERM);
-      console->info("Waiting for {}", m_name);
+      logger()->info("Waiting for {}", m_name);
       int status;
       for (int i = 0; i < 500; ++i) {
         auto ret = waitpid(m_pid, &status, WNOHANG);
         if (ret > 0) {
-          console->info("{} exited with status: {}", m_name,
-                        WEXITSTATUS(status));
+          logger()->info("{} exited with status: {}", m_name,
+                         WEXITSTATUS(status));
           m_pid = 0;
           return;
         }
         if (ret == -1) {
-          console->error("waitpid errored - {}", strerror(errno));
+          logger()->error("waitpid errored - {}", strerror(errno));
           return;
         }
         std::this_thread::sleep_for(10ms);
       }
-      console->info("{} still not dead, sending SIGKILL", m_name);
+      logger()->info("{} still not dead, sending SIGKILL", m_name);
       kill(m_pid, SIGKILL);
       waitpid(m_pid, &status, 0);
-      console->info("{} exited with status: {}", m_name, WEXITSTATUS(status));
+      logger()->info("{} exited with status: {}", m_name, WEXITSTATUS(status));
     }
     m_pid = 0;
   }
@@ -199,7 +199,7 @@ auto download(const fs::path& data_dir,
               const fs::path& torrent_file,
               zit::Torrent& torrent,
               uint8_t number_of_seeders) {
-  spdlog::get("console")->info("Starting {} seeders...", number_of_seeders);
+  logger()->info("Starting {} seeders...", number_of_seeders);
   vector<Process> seeders;
   for (int i = 0; i < number_of_seeders; ++i) {
     seeders.emplace_back(start_seeder(data_dir, torrent_file));
@@ -218,7 +218,7 @@ auto download(const fs::path& data_dir,
   }
 
   zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
-    spdlog::get("console")->info("Download completed");
+    logger()->info("Download completed");
     torrent.stop();
   });
   start(torrent);
@@ -277,13 +277,13 @@ TEST_F(IntegrateOodF, DISABLED_download_ood) {
   zit::Torrent torrent(torrent_file, download_dir, test_config);
 
   sigint_function = [&](int /*s*/) {
-    spdlog::get("console")->warn("CTRL-C pressed. Stopping torrent...");
+    logger()->warn("CTRL-C pressed. Stopping torrent...");
     torrent.stop();
   };
 
   // Test the case where we can store the file once
-  spdlog::get("console")->info("Available: {}, Torrent length: {}", available(),
-                               torrent.length());
+  logger()->info("Available: {}, Torrent length: {}", available(),
+                 torrent.length());
   ASSERT_GT(available(), torrent.length());
   ASSERT_LT(available(), 2 * torrent.length());
 
@@ -441,7 +441,7 @@ TEST_F(Integrate, DISABLED_upload) {
   ASSERT_TRUE(torrent.done());
 
   sigint_function = [&](int /*s*/) {
-    spdlog::get("console")->warn("CTRL-C pressed. Stopping torrent...");
+    logger()->warn("CTRL-C pressed. Stopping torrent...");
     torrent.stop();
   };
 
@@ -450,7 +450,7 @@ TEST_F(Integrate, DISABLED_upload) {
   auto leecher = start_leecher(target, torrent_file);
 
   torrent.set_disconnect_callback([&](zit::Peer*) {
-    spdlog::get("console")->info("Peer disconnect - stopping");
+    logger()->info("Peer disconnect - stopping");
     torrent.stop();
     leecher.terminate();
   });
@@ -491,7 +491,7 @@ TEST_F(Integrate, DISABLED_multi_upload) {
   auto leecher = start_leecher(target, torrent_file);
 
   torrent.set_disconnect_callback([&](zit::Peer*) {
-    spdlog::get("console")->info("Peer disconnect - stopping");
+    logger()->info("Peer disconnect - stopping");
     torrent.stop();
     leecher.terminate();
   });

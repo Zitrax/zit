@@ -10,11 +10,8 @@
 #include "arg_parser.hpp"
 #include "file_writer.hpp"
 #include "global_config.hpp"
+#include "logger.hpp"
 #include "torrent.hpp"
-
-#include <spdlog/cfg/env.h>
-#include <spdlog/sinks/stdout_color_sinks.h>
-#include <spdlog/spdlog.h>
 
 #ifndef WIN32
 #include <csignal>
@@ -28,8 +25,7 @@ namespace {
 // recurses to print the explanatory of the exception it holds
 void print_exception(const exception& e, string::size_type level = 0) noexcept {
   try {
-    spdlog::get("console")->error("{}exception: {}", string(level, ' '),
-                                  e.what());
+    zit::logger()->error("{}exception: {}", string(level, ' '), e.what());
     try {
       rethrow_if_nested(e);
     } catch (const exception& ex) {
@@ -53,8 +49,6 @@ void sigint_handler(int s) {
 
 int main(int argc, const char* argv[]) noexcept {
   try {
-    auto console = spdlog::stdout_color_mt("console");
-
     zit::ArgParser parser("Zit - torrent client");
     std::string torrent_file;
     int listening_port{0};
@@ -84,16 +78,16 @@ int main(int argc, const char* argv[]) noexcept {
       return 0;
     }
 
-    // This makes it possible to set the level using env: SPDLOG_LEVEL=trace
-    spdlog::cfg::load_env_levels();
     if (!log_level.empty()) {
       const auto lvl = spdlog::level::from_str(log_level);
       if (lvl == spdlog::level::off && log_level != "off") {
         throw runtime_error("Unknown log level: " + log_level);
       }
-      console->set_level(lvl);
-      spdlog::stdout_color_mt("file_writer")->set_level(lvl);
+      zit::logger()->set_level(lvl);
+      zit::logger("file_writer")->set_level(lvl);
     }
+
+    zit::logger()->trace("TEST");
 
     class CommandLineArgs : public zit::Config {
      public:
@@ -123,14 +117,14 @@ int main(int argc, const char* argv[]) noexcept {
       return 0;
     }
 
-    zit::FileWriterThread file_writer(torrent, [&console](zit::Torrent& /*t*/) {
-      console->info(
+    zit::FileWriterThread file_writer(torrent, [&](zit::Torrent& /*t*/) {
+      zit::logger()->info(
           "Download completed. Continuing to seed. Press ctrl-c to stop.");
     });
-    console->info("\n{}", torrent);
+    zit::logger()->info("\n{}", torrent);
 
     sigint_function = [&](int /*s*/) {
-      console->warn("CTRL-C pressed. Stopping torrent...");
+      zit::logger()->warn("CTRL-C pressed. Stopping torrent...");
       torrent.stop();
     };
 

@@ -385,7 +385,6 @@ class Torrent {
   std::string m_md5sum{};
   std::vector<FileInfo> m_files{};
   Sha1 m_info_hash{};
-  std::shared_ptr<spdlog::logger> m_logger{};
   std::filesystem::path m_tmpfile{};
   std::filesystem::path m_data_dir{};
   std::vector<PieceCallback> m_piece_callbacks{};
