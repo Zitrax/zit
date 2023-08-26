@@ -8,95 +8,94 @@ using namespace zit;
 
 TEST(arg_parser, duplicate) {
   ArgParser parser("desc");
-  bool dst{false};
-  parser.add_option("--test", {}, "test help", dst);
-  EXPECT_THROW(parser.add_option<bool>("--test", {}, "test help", dst),
-               std::runtime_error);
+  parser.add_option<bool>("--test");
+  EXPECT_THROW(parser.add_option<bool>("--test"), std::runtime_error);
+}
+
+TEST(arg_parser, no_such_option) {
+  ArgParser parser("desc");
+  parser.add_option<bool>("--test");
+  EXPECT_THROW(std::ignore = parser.get<bool>("--test2"), std::runtime_error);
 }
 
 TEST(arg_parser, bool) {
   {
     ArgParser parser("desc");
-    bool dst = true;
-    parser.add_option("--test", {}, "test help", dst);
-    EXPECT_TRUE(dst);
+    parser.add_option<bool>("--test");
+    // Bool implicitly defaults to false
+    EXPECT_FALSE(parser.get<bool>("--test"));
   }
 
   {
     ArgParser parser("desc");
-    bool dst = true;
-    parser.add_option("--test", {false}, "test help", dst);
-    EXPECT_FALSE(dst);
+    parser.add_option<bool>("--test").default_value(true);
+    EXPECT_TRUE(parser.get<bool>("--test"));
   }
 
   {
     ArgParser parser("desc");
-    bool dst = false;
-    parser.add_option("--test", {false}, "test help", dst);
+    parser.add_option<bool>("--test");
     parser.parse({"cmd", "--test"});
-    EXPECT_TRUE(dst);
+    EXPECT_TRUE(parser.get<bool>("--test"));
+    EXPECT_THROW(std::ignore = parser.get<int>("--test"), std::runtime_error);
   }
 }
 
 TEST(arg_parser, int) {
   {
     ArgParser parser("desc");
-    int dst = 1;
-    parser.add_option("--test", {}, "test help", dst);
-    EXPECT_EQ(dst, 1);
+    parser.add_option<int>("--test");
+    EXPECT_FALSE(parser.is_provided("--test"));
+    EXPECT_THROW(std::ignore = parser.get<int>("--test"), std::runtime_error);
   }
 
   {
     ArgParser parser("desc");
-    int dst = 1;
-    parser.add_option("--test", {2}, "test help", dst);
-    EXPECT_EQ(dst, 2);
+    parser.add_option<int>("--test").default_value(2);
+    EXPECT_FALSE(parser.is_provided("--test"));
+    EXPECT_EQ(parser.get<int>("--test"), 2);
   }
 
   {
     ArgParser parser("desc");
-    int dst = 1;
-    parser.add_option("--test", {2}, "test help", dst);
+    parser.add_option<int>("--test").default_value(2);
     parser.parse({"cmd", "--test", "3"});
-    EXPECT_EQ(dst, 3);
+    EXPECT_TRUE(parser.is_provided("--test"));
+    EXPECT_EQ(parser.get<int>("--test"), 3);
   }
 
   {
     ArgParser parser("desc");
-    int dst = 1;
-    parser.add_option("--test", {2}, "test help", dst);
+    parser.add_option<int>("--test").default_value(2);
     parser.parse({"cmd", "--test", "-3"});
-    EXPECT_EQ(dst, -3);
+    EXPECT_EQ(parser.get<int>("--test"), -3);
   }
 }
 
 TEST(arg_parser, unsigned) {
   {
     ArgParser parser("desc");
-    unsigned dst = 1;
-    parser.add_option("--test", {}, "test help", dst);
-    EXPECT_EQ(dst, 1);
+    parser.add_option<unsigned>("--test");
+    EXPECT_THROW(std::ignore = parser.get<unsigned>("--test"), std::runtime_error);
   }
 
   {
     ArgParser parser("desc");
-    unsigned dst = 1;
-    parser.add_option("--test", {2}, "test help", dst);
-    EXPECT_EQ(dst, 2);
+    parser.add_option<unsigned>("--test").default_value(2);
+    EXPECT_EQ(parser.get<unsigned>("--test"), 2);
+    EXPECT_THROW(std::ignore = parser.get<int>("--test"), std::runtime_error);
   }
 
   {
     ArgParser parser("desc");
-    unsigned dst = 1;
-    parser.add_option("--test", {2}, "test help", dst);
+    parser.add_option<unsigned>("--test").default_value(2);
     parser.parse({"cmd", "--test", "3"});
-    EXPECT_EQ(dst, 3);
+    EXPECT_EQ(parser.get<unsigned>("--test"), 3);
   }
 
   {
     ArgParser parser("desc");
-    unsigned dst = 1;
-    parser.add_option("--test", {2}, "test help", dst);
+    parser.add_option<unsigned>("--test").default_value(2);
     EXPECT_THROW(parser.parse({"cmd", "--test", "-3"}), std::out_of_range);
   }
 }
@@ -104,38 +103,33 @@ TEST(arg_parser, unsigned) {
 TEST(arg_parser, float) {
   {
     ArgParser parser("desc");
-    float dst = 1.1F;
-    parser.add_option("--test", {}, "test help", dst);
-    EXPECT_EQ(dst, 1.1F);
+    parser.add_option<float>("--test");
+    EXPECT_THROW(std::ignore = parser.get<float>("--test"), std::runtime_error);
   }
 
   {
     ArgParser parser("desc");
-    float dst = 1.1F;
-    parser.add_option("--test", {2.2F}, "test help", dst);
-    EXPECT_EQ(dst, 2.2F);
+    parser.add_option<float>("--test").default_value(2.2F);
+    EXPECT_EQ(parser.get<float>("--test"), 2.2F);
   }
 
   {
     ArgParser parser("desc");
-    float dst = 1.1F;
-    parser.add_option("--test", {2.0F}, "test help", dst);
+    parser.add_option<float>("--test").default_value(2.0F);
     parser.parse({"cmd", "--test", "3.3"});
-    EXPECT_EQ(dst, 3.3F);
+    EXPECT_EQ(parser.get<float>("--test"), 3.3F);
   }
 
   {
     ArgParser parser("desc");
-    float dst = 1.1F;
-    parser.add_option("--test", {}, "test help", dst);
+    parser.add_option<float>("--test");
     parser.parse({"cmd", "--test", "3.14159"});
-    EXPECT_EQ(dst, 3.14159F);
+    EXPECT_EQ(parser.get<float>("--test"), 3.14159F);
   }
 
   {
     ArgParser parser("desc");
-    float dst = 1.1F;
-    parser.add_option("--test", {2.0F}, "test help", dst);
+    parser.add_option<float>("--test").default_value(2.0F);
     EXPECT_THROW(parser.parse({"cmd", "--test", "1E39"}), std::out_of_range);
   }
 }
@@ -143,56 +137,49 @@ TEST(arg_parser, float) {
 TEST(arg_parser, string) {
   {
     ArgParser parser("desc");
-    std::string dst = "s";
-    parser.add_option("--test", {}, "test help", dst);
-    EXPECT_EQ(dst, "s");
+    parser.add_option<std::string>("--test");
+    EXPECT_THROW(std::ignore = parser.get<std::string>("--test"), std::runtime_error);
   }
 
   {
     ArgParser parser("desc");
-    std::string dst = "s";
-    parser.add_option("--test", {"t"}, "test help", dst);
-    EXPECT_EQ(dst, "t");
+    parser.add_option<std::string>("--test").default_value("t");
+    EXPECT_EQ(parser.get<std::string>("--test"), "t");
   }
 
   {
     ArgParser parser("desc");
-    std::string dst = "s";
-    parser.add_option("--test", {"t"}, "test help", dst);
+    parser.add_option<std::string>("--test").default_value("t");
     parser.parse({"cmd", "--test", "uj"});
-    EXPECT_EQ(dst, "uj");
+    EXPECT_EQ(parser.get<std::string>("--test"), "uj");
   }
 }
 
 TEST(arg_parser, required) {
   {
     ArgParser parser("desc");
-    std::string dst = "s";
-    parser.add_option("--test", {"t"}, "test help", dst, true);
+    parser.add_option<std::string>("--test").default_value("t").required();
     EXPECT_THROW(parser.parse({"cmd"}), std::runtime_error);
   }
   {
     ArgParser parser("desc");
-    std::string dst = "s";
-    parser.add_option("--test", {"t"}, "test help", dst, false);
+    parser.add_option<std::string>("--test").default_value("t");
     parser.parse({"cmd", "--test", "uj"});
-    EXPECT_EQ(dst, "uj");
+    EXPECT_EQ(parser.get<std::string>("--test"), "uj");
   }
 }
 
 TEST(arg_parser, help) {
   ArgParser parser("desc");
   EXPECT_EQ(parser.usage(), "Usage:\n\ndesc\n\n");
-  int val{};
-  int val2{};
-  parser.add_option("--test", {}, "test help", val);
+  parser.add_option<int>("--test").help("test help");
   EXPECT_EQ(parser.usage(), R"(Usage:
 
 desc
 
   --test    test help 
 )");
-  parser.add_option("--req", {}, "test req", val2, true);
+  parser.add_option<int>("--req").help("test req").required();
   EXPECT_EQ(parser.usage(), R"(Usage:
 
 desc
@@ -203,14 +190,11 @@ desc
 }
 
 TEST(arg_parser, help_option) {
-  int val{};
-  int val2{};
-  bool help{false};
   auto getParser = [&] {
     ArgParser parser("desc");
-    parser.add_option("--test", {}, "test help", val);
-    parser.add_option("--req", {}, "test req", val2, true);
-    parser.add_help_option("--help", "Print help", help);
+    parser.add_option<int>("--test").help("test help");
+    parser.add_option<int>("--req").help("test req").required();
+    parser.add_option<bool>("--help").help("Print help").help_arg();
     return parser;
   };
 
@@ -227,76 +211,75 @@ TEST(arg_parser, help_option) {
   }
 }
 
-TEST(arg_parser, duplicate_dst) {
-  ArgParser parser("desc");
-  int val{false};
-  parser.add_option("--test", {}, "test help", val);
-  // Same dst should throw
-  EXPECT_THROW(parser.add_option("--test2", {}, "test help", val),
-               std::runtime_error);
-}
-
 TEST(arg_parser, alias) {
-  int val{false};
   auto getParser = [&] {
     ArgParser parser("desc");
-    parser.add_option("--test,-t", {}, "test help", val);
+    parser.add_option<int>("--test").aliases({"-t"});
     return parser;
   };
 
   {
-    getParser().parse({"cmd", "--test", "1"});
-    EXPECT_EQ(val, 1);
+    auto parser = getParser();
+    parser.parse({"cmd", "--test", "1"});
+    EXPECT_EQ(parser.get<int>("--test"), 1);
+    EXPECT_EQ(parser.get<int>("-t"), 1);
   }
 
   {
-    getParser().parse({"cmd", "-t", "2"});
-    EXPECT_EQ(val, 2);
+    auto parser = getParser();
+    parser.parse({"cmd", "-t", "2"});
+    EXPECT_EQ(parser.get<int>("--test"), 2);
+    EXPECT_EQ(parser.get<int>("-t"), 2);
   }
 }
 
 TEST(arg_parser, alias_help) {
-  bool val{false};
   auto getParser = [&] {
     ArgParser parser("desc");
-    parser.add_help_option("--help,-h", "test help", val);
+    parser.add_option<bool>("--help").aliases({"-h"}).help_arg();
     return parser;
   };
 
   {
-    getParser().parse({"cmd", "--help"});
-    EXPECT_TRUE(val);
+    auto parser = getParser();
+    parser.parse({"cmd", "--help"});
+    EXPECT_TRUE(parser.get<bool>("--help"));
   }
 
   {
-    getParser().parse({"cmd", "-h"});
-    EXPECT_TRUE(val);
+    auto parser = getParser();
+    parser.parse({"cmd", "-h"});
+    EXPECT_TRUE(parser.get<bool>("-h"));
   }
 
   {
-    getParser().parse({"cmd"});
-    EXPECT_FALSE(val);
+    auto parser = getParser();
+    parser.parse({"cmd", "-h"});
+    EXPECT_TRUE(parser.get<bool>("--help"));
   }
 }
 
 TEST(arg_parser, help_plus_required) {
-  bool help{false};
   auto getParser = [&] {
     ArgParser parser("desc");
-    parser.add_help_option("--help,-h", "test help", help);
-    bool required;
-    parser.add_option("--test", {"t"}, "test help", required, true);
+    parser.add_option<bool>("--help").aliases({"-h", "/?"}).help_arg();
+    parser.add_option<std::string>("--test")
+        .default_value("t")
+        .required()
+        .help_arg();
     return parser;
   };
 
   {
-    getParser().parse({"cmd", "--help"});
-    EXPECT_TRUE(help);
+    auto parser = getParser();
+    parser.parse({"cmd", "--help"});
+    EXPECT_TRUE(parser.get<bool>("--help"));
   }
 
   {
-    getParser().parse({"cmd", "-h"});
-    EXPECT_TRUE(help);
+    auto parser = getParser();
+    parser.parse({"cmd", "-h"});
+    EXPECT_TRUE(parser.get<bool>("-h"));
   }
 
   {
@@ -305,8 +288,9 @@ TEST(arg_parser, help_plus_required) {
   }
 
   {
-    getParser().parse({"cmd", "-h", "--test"});
-    EXPECT_TRUE(help);
+    auto parser = getParser();
+    parser.parse({"cmd", "-h", "--test", "s"});
+    EXPECT_TRUE(parser.get<bool>("-h"));
+    EXPECT_EQ(parser.get<std::string>("--test"), "s");
   }
-
 }

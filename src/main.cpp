@@ -50,33 +50,33 @@ void sigint_handler(int s) {
 int main(int argc, const char* argv[]) noexcept {
   try {
     zit::ArgParser parser("Zit - torrent client");
-    std::string torrent_file;
-    int listening_port{0};
-    std::string log_level;
-    bool help = false;
-    bool dump_torrent = false;
-    bool dump_config = false;
-    parser.add_help_option("--help,-h", "Print help", help);
-    parser.add_option("--torrent", {}, "Torrent file to download", torrent_file,
-                      true);
-    parser.add_option("--listening-port,-p", {},
-                      "Port listening on incoming connections", listening_port);
-    parser.add_option<std::string>(
-        "--log-level", "",
-        "Log level (trace, debug, info, warning, error, critical, off)",
-        log_level);
-    parser.add_option("--dump-torrent", {},
-                      "Dump info about specified .torrent file and exit",
-                      dump_torrent);
-    parser.add_option("--dump-config", {}, "Dump config to console",
-                      dump_config);
+    parser.add_option<bool>("--help").aliases({"-h"}).help("Print help");
+    parser.add_option<std::string>("--torrent")
+        .help("Torrent file to download")
+        .required();
+    parser.add_option<int>("--listening-port")
+        .aliases({"-p"})
+        .default_value(0)
+        .help("Port listening on incoming connections");
+    parser.add_option<std::string>("--log-level")
+        .default_value("")
+        .help("Log level (trace, debug, info, warning, error, critical, off)");
+    parser.add_option<bool>("--dump-torrent")
+        .help("Dump info about specified .torrent file and exit");
+    parser.add_option<bool>("--dump-config").help("Dump config to console");
     const auto args = std::vector<std::string>{argv, std::next(argv, argc)};
     parser.parse(args);
 
-    if (help) {
+    if (parser.get<bool>("--help")) {
       std::cout << parser.usage();
       return 0;
     }
+
+    const auto torrent_file = parser.get<std::string>("--torrent");
+    const auto listening_port = parser.get<int>("--listening-port");
+    const auto log_level = parser.get<std::string>("--log-level");
+    const auto dump_torrent = parser.get<bool>("--dump-torrent");
+    const auto dump_config = parser.get<bool>("--dump-config");
 
     if (!log_level.empty()) {
       const auto lvl = spdlog::level::from_str(log_level);
