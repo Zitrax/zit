@@ -1,10 +1,13 @@
 #include "arg_parser.hpp"
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 
 #include <limits.h>
 #include <stdexcept>
 
 using namespace zit;
+
+using ::testing::ElementsAreArray;
 
 TEST(arg_parser, duplicate) {
   ArgParser parser("desc");
@@ -53,6 +56,8 @@ TEST(arg_parser, int) {
     ArgParser parser("desc");
     parser.add_option<int>("--test").default_value(2);
     EXPECT_FALSE(parser.is_provided("--test"));
+    EXPECT_THROW(std::ignore = parser.get_multi<int>("--test"),
+                 std::runtime_error);
     EXPECT_EQ(parser.get<int>("--test"), 2);
   }
 
@@ -66,9 +71,47 @@ TEST(arg_parser, int) {
 
   {
     ArgParser parser("desc");
-    parser.add_option<int>("--test").default_value(2);
+    parser.add_option<int>("--test");
     parser.parse({"cmd", "--test", "-3"});
     EXPECT_EQ(parser.get<int>("--test"), -3);
+  }
+
+  {
+    ArgParser parser("desc");
+    parser.add_option<int>("--test");
+    EXPECT_THROW(parser.parse({"cmd", "--test", "-3", "--test", "4"}),
+                 std::runtime_error);
+    EXPECT_EQ(parser.get<int>("--test"), -3);
+  }
+}
+
+TEST(arg_parser, int_multi) {
+  {
+    ArgParser parser("desc");
+    auto& option = parser.add_option<int>("--test").multi();
+    EXPECT_EQ(option.get_type(), ArgParser::Type::INT);
+    parser.parse({"cmd", "--test", "-3"});
+    EXPECT_THROW(std::ignore = parser.get<int>("--test"), std::runtime_error);
+    EXPECT_THAT(parser.get_multi<int>("--test"), ElementsAreArray({-3}));
+  }
+
+  {
+    ArgParser parser("desc");
+    auto& option = parser.add_option<int>("--test").multi();
+    EXPECT_EQ(option.get_type(), ArgParser::Type::INT);
+    parser.parse({"cmd", "--test", "-3", "--test", "4"});
+    EXPECT_THROW(std::ignore = parser.get<int>("--test"), std::runtime_error);
+    EXPECT_THAT(parser.get_multi<int>("--test"), ElementsAreArray({-3, 4}));
+  }
+
+  {
+    ArgParser parser("desc");
+    auto& option =
+        parser.add_option<int>("--test").multi().default_value({1, 2, 3});
+    EXPECT_EQ(option.get_type(), ArgParser::Type::INT);
+    parser.parse({"cmd"});
+    EXPECT_THROW(std::ignore = parser.get<int>("--test"), std::runtime_error);
+    EXPECT_THAT(parser.get_multi<int>("--test"), ElementsAreArray({1, 2, 3}));
   }
 }
 
@@ -76,7 +119,8 @@ TEST(arg_parser, unsigned) {
   {
     ArgParser parser("desc");
     parser.add_option<unsigned>("--test");
-    EXPECT_THROW(std::ignore = parser.get<unsigned>("--test"), std::runtime_error);
+    EXPECT_THROW(std::ignore = parser.get<unsigned>("--test"),
+                 std::runtime_error);
   }
 
   {
@@ -138,7 +182,8 @@ TEST(arg_parser, string) {
   {
     ArgParser parser("desc");
     parser.add_option<std::string>("--test");
-    EXPECT_THROW(std::ignore = parser.get<std::string>("--test"), std::runtime_error);
+    EXPECT_THROW(std::ignore = parser.get<std::string>("--test"),
+                 std::runtime_error);
   }
 
   {
