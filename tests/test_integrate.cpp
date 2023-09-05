@@ -217,10 +217,11 @@ auto download(const fs::path& data_dir,
     fs::remove(target);
   }
 
-  zit::FileWriterThread file_writer(torrent, [&torrent](zit::Torrent&) {
+  zit::FileWriterThread file_writer([&torrent](zit::Torrent&) {
     logger()->info("Download completed");
     torrent.stop();
   });
+  file_writer.register_torrent(torrent);
   start(torrent);
   return target;
 }

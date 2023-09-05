@@ -103,11 +103,17 @@ class FileWriter {
  */
 class FileWriterThread {
  public:
-  explicit FileWriterThread(Torrent& torrent, TorrentWrittenCallback cb = {})
+  explicit FileWriterThread(TorrentWrittenCallback cb = {})
       : m_logger(init_logger()),
         m_file_writer(FileWriter::getInstance()),
         m_file_writer_thread([this]() { m_file_writer.run(); }) {
     m_file_writer.set_callback(std::move(cb));
+  }
+
+  /**
+   * Each torrent needs to be registered to hook up file writing.
+   */
+  void register_torrent(Torrent& torrent) {
     torrent.add_piece_callback(
         [&](Torrent* t, const std::shared_ptr<Piece>& piece) {
           m_file_writer.add(t, piece);

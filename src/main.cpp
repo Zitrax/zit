@@ -1,10 +1,14 @@
+#include <fmt/core.h>
 #include <spdlog/common.h>
+#include <algorithm>
 #include <exception>
 #include <functional>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <stdexcept>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include "arg_parser.hpp"
@@ -36,11 +40,18 @@ void print_exception(const exception& e, string::size_type level = 0) noexcept {
   }
 }
 
+#ifdef WIN32
+std::function<BOOL(DWORD)> ctrl_function;
+BOOL ctrl_handler(DWORD d) {
+  return ctrl_function(d);
+}
+#else
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::function<void(int)> sigint_function;
 void sigint_handler(int s) {
   sigint_function(s);
 }
+#endif
 
 }  // namespace
 
@@ -53,7 +64,8 @@ int main(int argc, const char* argv[]) noexcept {
     parser.add_option<bool>("--help").aliases({"-h"}).help("Print help");
     parser.add_option<std::string>("--torrent")
         .help("Torrent file to download")
-        .required();
+        .required()
+        .multi();
     parser.add_option<int>("--listening-port")
         .aliases({"-p"})
         .default_value(0)
@@ -72,7 +84,7 @@ int main(int argc, const char* argv[]) noexcept {
       return 0;
     }
 
-    const auto torrent_file = parser.get<std::string>("--torrent");
+    const auto torrent_files = parser.get_multi<std::string>("--torrent");
     const auto listening_port = parser.get<int>("--listening-port");
     const auto log_level = parser.get<std::string>("--log-level");
     const auto dump_torrent = parser.get<bool>("--dump-torrent");
@@ -107,28 +119,85 @@ int main(int argc, const char* argv[]) noexcept {
 
     CommandLineArgs clargs{listening_port};
 
-    zit::Torrent torrent(torrent_file, "", clargs);
-    if (dump_torrent) {
-      std::cout << torrent << "\n";
-      return 0;
-    }
-    if (dump_config) {
-      std::cout << torrent.config();
+    std::vector<std::unique_ptr<zit::Torrent>> torrents;
+    std::ranges::transform(torrent_files, std::back_inserter(torrents),
+                           [&](const auto& torrent_file) {
+                             return std::make_unique<zit::Torrent>(torrent_file,
+                                                                   "", clargs);
+                           });
+
+    if (dump_torrent || dump_config) {
+      for (const auto& torrent : torrents) {
+        if (dump_torrent) {
+          std::cout << *torrent << "\n";
+        }
+        if (dump_config) {
+          std::cout << torrent->config() << "\n";
+        }
+      }
       return 0;
     }
 
-    zit::FileWriterThread file_writer(torrent, [&](zit::Torrent& /*t*/) {
-      zit::logger()->info(
-          "Download completed. Continuing to seed. Press ctrl-c to stop.");
+    zit::FileWriterThread file_writer([](zit::Torrent& torrent) {
+      zit::logger()->info(fmt::format(
+          "Download completed of {}. Continuing to seed. Press ctrl-c to stop.",
+          torrent.name()));
     });
-    zit::logger()->info("\n{}", torrent);
 
-    sigint_function = [&](int /*s*/) {
-      zit::logger()->warn("CTRL-C pressed. Stopping torrent...");
-      torrent.stop();
+    for (auto& torrent : torrents) {
+      file_writer.register_torrent(*torrent);
+      zit::logger()->info("\n{}", *torrent);
+    }
+
+    std::vector<std::thread> torrent_threads;
+    std::ranges::transform(
+        torrents, std::back_inserter(torrent_threads), [](auto& torrent) {
+          return std::thread([&]() {
+            try {
+              torrent->start();
+              torrent->run();
+            } catch (const std::exception& ex) {
+              zit::logger()->error("Exception in thread: {}", ex.what());
+            }
+          });
+        });
+
+#ifdef WIN32
+    // Windows ctrl-handler
+
+    ctrl_function = [&](DWORD fdwCtrlType) -> BOOL {
+      if (fdwCtrlType == CTRL_C_EVENT) {
+        zit::logger()->warn("CTRL-C pressed. Stopping torrent(s)...");
+        for (auto& torrent : torrents) {
+          torrent->stop();
+        }
+        for (auto& torrent_thread : torrent_threads) {
+          torrent_thread.join();
+        }
+        ExitProcess(0);
+      }
+      return FALSE;
     };
 
-#ifndef WIN32
+    // Register the Ctrl-C handler
+    if (!SetConsoleCtrlHandler((PHANDLER_ROUTINE)ctrl_handler, TRUE)) {
+      zit::logger()->error("Error: Failed to set Ctrl-C handler.");
+      return 1;
+    }
+
+#else
+    // Linux ctrl-c handler
+
+    sigint_function = [&](int /*s*/) {
+      zit::logger()->warn("CTRL-C pressed. Stopping torrent(s)...");
+      for (auto& torrent : torrents) {
+        torrent->stop();
+      }
+      for (auto& torrent_thread : torrent_threads) {
+        torrent_thread.join();
+      }
+    };
+
     // NOLINTBEGIN(cppcoreguidelines-pro-type-union-access,misc-include-cleaner)
     struct sigaction sigIntHandler {};
     sigIntHandler.sa_handler = sigint_handler;
@@ -138,8 +207,10 @@ int main(int argc, const char* argv[]) noexcept {
     // NOLINTEND(cppcoreguidelines-pro-type-union-access,misc-include-cleaner)
 #endif  // !WIN32
 
-    torrent.start();
-    torrent.run();
+    for (auto& torrent_thread : torrent_threads) {
+      torrent_thread.join();
+    }
+
   } catch (const exception& e) {
     print_exception(e);
     return 1;
