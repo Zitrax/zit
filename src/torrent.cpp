@@ -128,7 +128,15 @@ Torrent::Torrent(const filesystem::path& file,
 
   const auto& root_dict = root->to<TypedElement<BeDict>>()->val();
 
+  auto has = [&root_dict](const auto& key) {
+    return root_dict.find(key) != root_dict.end();
+  };
+
   // Required
+  if (!has("announce")) {
+    throw runtime_error(
+        "Zit does not currently support torrents without the announce field");
+  }
   m_announce = root_dict.at("announce")->to<TypedElement<string>>()->val();
   const auto& info = root_dict.at("info")->to<TypedElement<BeDict>>()->val();
 
@@ -160,10 +168,6 @@ Torrent::Torrent(const filesystem::path& file,
   if (m_length == 0 && m_files.empty()) {
     throw runtime_error("Invalid torrent: no mode");
   }
-
-  auto has = [&root_dict](const auto& key) {
-    return root_dict.find(key) != root_dict.end();
-  };
 
   // Optional
   if (has("creation date")) {
