@@ -14,23 +14,6 @@
 
 namespace zit {
 
-/*
-template <typename T>
-concept HasValueType = requires { typename T::value_type; };
-
-template <typename T>
-struct ExtractValueType {
-  using type = T;
-  bool is_container = false;
-};
-
-template <HasValueType T>
-struct ExtractValueType<T> {
-  using type = typename T::value_type;
-  bool is_container = true;
-};
-*/
-
 /**
  * Simple argument parser
  */
