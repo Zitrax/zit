@@ -66,7 +66,10 @@ class Url {
    * At the moment the URL class does not include the userinfo.
    */
   [[nodiscard]] auto authority() const {
-    return m_host + (m_port ? (":" + std::to_string(*m_port)) : "");
+    if(m_port) {
+      return m_host + ":" + std::to_string(*m_port);
+    }
+    return m_host;
   }
 
   /** Url represented as a full string */
