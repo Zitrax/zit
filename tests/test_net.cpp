@@ -42,6 +42,7 @@ TEST(net, url_string) {
   EXPECT_EQ(url1.port(), std::nullopt);
   EXPECT_EQ(url1.service(), "https");
   EXPECT_EQ(url1.path(), "/announce");
+  EXPECT_EQ(url1.authority(), "torrent.ubuntu.com");
 
   Url url2("http://torrent.ubuntu.com:6969/announce");
   EXPECT_EQ(url2.scheme(), "http");
@@ -49,6 +50,7 @@ TEST(net, url_string) {
   EXPECT_EQ(url2.port(), 6969);
   EXPECT_EQ(url2.service(), "6969");
   EXPECT_EQ(url2.path(), "/announce");
+  EXPECT_EQ(url2.authority(), "torrent.ubuntu.com:6969");
 
   Url url3(
       "https://torrent.ubuntu.com/"
@@ -65,6 +67,7 @@ TEST(net, url_string) {
       "85&"
       "peer_id=abcdefghijklmnopqrst&port=20001&uploaded=0&downloaded=0&left="
       "1999503360&event=started&compact=1");
+  EXPECT_EQ(url3.authority(), "torrent.ubuntu.com");
 }
 
 TEST(net, httpGetHTTP) {
