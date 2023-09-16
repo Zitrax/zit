@@ -50,6 +50,8 @@ target_link_libraries(zitest
   $<$<PLATFORM_ID:Windows>:Crypt32.lib>
 )
 
+target_precompile_headers(zitest REUSE_FROM zitlib)
+
 if(NOT WIN32)
   if(SANITIZED_LIBCXX)
     target_link_libraries(zitest c++fs)
