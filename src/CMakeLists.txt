@@ -49,6 +49,14 @@ target_link_libraries(zitlib
     $<$<PLATFORM_ID:Windows>:Crypt32.lib>
 )
 
+# Based on build insights in Visual Studio these two were the worst offenders
+# Making them precompiled headers took the compile down from ~10-11s to 8-9s
+target_precompile_headers(zitlib
+    PUBLIC
+        types.hpp
+        ${ASIO_INCLUDE_DIR}/asio.hpp
+)
+
 add_executable(zit main.cpp)
 
 target_link_libraries(zit zitlib)
