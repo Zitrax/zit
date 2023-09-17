@@ -110,12 +110,13 @@ auto random_string(std::size_t len) -> std::string {
 
 // Could possibly be grouped in a struct
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-Torrent::Torrent(const filesystem::path& file,
+Torrent::Torrent(filesystem::path file,
                  std::filesystem::path data_dir,
                  const Config& config,
                  HttpGet http_get)
     : m_config(config),
       m_data_dir(std::move(data_dir)),
+      m_torrent_file(std::move(file)),
       m_peer_id(random_string(20)),
       m_listening_port(
           numeric_cast<unsigned short>(config.get(IntSetting::LISTENING_PORT),
@@ -124,7 +125,7 @@ Torrent::Torrent(const filesystem::path& file,
           numeric_cast<unsigned short>(config.get(IntSetting::CONNECTION_PORT),
                                        "connection port out of range")),
       m_http_get(std::move(http_get)) {
-  auto root = bencode::decode(read_file(file));
+  auto root = bencode::decode(read_file(m_torrent_file));
 
   const auto& root_dict = root->to<TypedElement<BeDict>>()->val();
 
@@ -143,7 +144,7 @@ Torrent::Torrent(const filesystem::path& file,
   m_name = (m_data_dir / info.at("name")->to<TypedElement<string>>()->val())
                .string();
   m_tmpfile = m_name + Torrent::tmpfileExtension();
-  logger()->debug("Using tmpfile {} for {}", m_tmpfile, file);
+  logger()->debug("Using tmpfile {} for {}", m_tmpfile, m_torrent_file);
   auto pieces = info.at("pieces")->to<TypedElement<string>>()->val();
   if (pieces.size() % 20) {
     throw runtime_error("Unexpected pieces length");

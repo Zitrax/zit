@@ -81,7 +81,7 @@ class Torrent {
    * @param http_get a http request getter function
    */
   explicit Torrent(
-      const std::filesystem::path& file,
+      std::filesystem::path file,
       std::filesystem::path data_dir = "",
       const Config& config = SingletonDirectoryFileConfig::getInstance(),
       HttpGet http_get = [](const Url& url) { return Net::httpGet(url); });
@@ -203,6 +203,11 @@ class Torrent {
    * this is a directory.
    */
   [[nodiscard]] auto tmpfile() const { return m_tmpfile; }
+
+  /**
+   * The .torrent file used to create this torrent.
+   */
+  [[nodiscard]] auto torrent_file() const { return m_torrent_file; }
 
   /**
    * The suffix of a file used during transfer (before completion)
@@ -387,6 +392,7 @@ class Torrent {
   Sha1 m_info_hash{};
   std::filesystem::path m_tmpfile{};
   std::filesystem::path m_data_dir{};
+  std::filesystem::path m_torrent_file{};
   std::vector<PieceCallback> m_piece_callbacks{};
   DisconnectCallback m_disconnect_callback{};
   std::string m_peer_id{};
