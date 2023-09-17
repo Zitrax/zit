@@ -259,6 +259,33 @@ void download(const fs::path& data_dir,
   download(data_dir, torrents, number_of_seeders);
 }
 
+void verify_download(const zit::Torrent& torrent,
+                     const fs::path& source,
+                     bool clean = true) {
+  const auto name = torrent.name();
+
+  if (torrent.is_single_file()) {
+    auto source_sha1 = zit::Sha1::calculateFile(source).hex();
+    auto target_sha1 = zit::Sha1::calculateFile(name).hex();
+    EXPECT_EQ(source_sha1, target_sha1);
+  } else {
+    for (const auto& fi : torrent.files()) {
+      auto file_source = source / fi.path();
+      auto dst = name / fi.path();
+      auto source_sha1 = zit::Sha1::calculateFile(file_source).hex();
+      auto target_sha1 = zit::Sha1::calculateFile(dst).hex();
+      EXPECT_EQ(source_sha1, target_sha1) << fi.path();
+      // Delete downloaded file
+      if (clean) {
+        fs::remove(dst);
+      }
+    }
+    if (clean) {
+      fs::remove(name);
+    }
+  }
+}
+
 }  // namespace
 
 class IntegrateF : public TestWithTmpDir,
@@ -283,10 +310,7 @@ TEST_P(IntegrateF, DISABLED_download) {
   const auto target = torrent.name();
 
   // Transfer done - Verify content
-  auto source = data_dir / "1MiB.dat";
-  auto source_sha1 = zit::Sha1::calculateFile(source).hex();
-  auto target_sha1 = zit::Sha1::calculateFile(target).hex();
-  EXPECT_EQ(source_sha1, target_sha1);
+  verify_download(torrent, data_dir / "1MiB.dat");
 }
 
 INSTANTIATE_TEST_SUITE_P(SeedCount,
@@ -327,10 +351,7 @@ TEST_F(IntegrateOodF, DISABLED_download_ood) {
   const auto target = torrent.name();
 
   // Transfer done - Verify content
-  auto source = data_dir / "1MiB.dat";
-  auto source_sha1 = zit::Sha1::calculateFile(source).hex();
-  auto target_sha1 = zit::Sha1::calculateFile(target).hex();
-  EXPECT_EQ(source_sha1, target_sha1);
+  verify_download(torrent, data_dir / "1MiB.dat");
 }
 
 using Integrate = TestWithTmpDir;
@@ -365,31 +386,9 @@ TEST_F(IntegrateF, DISABLED_download_dual_torrents) {
                                                              torrent_2};
   download(data_dir, torrents, number_of_seeders);
 
-  // Transfer done
-
-  // Verify content of torrent_1
-  {
-    const auto target = torrent_1.name();
-    auto source = data_dir / "1MiB.dat";
-    auto source_sha1 = zit::Sha1::calculateFile(source).hex();
-    auto target_sha1 = zit::Sha1::calculateFile(target).hex();
-    EXPECT_EQ(source_sha1, target_sha1);
-  }
-
-  // Verify content of torrent_2
-  {
-    const auto name = torrent_2.name();
-    for (const auto& fi : torrent_2.files()) {
-      auto source = data_dir / name / fi.path();
-      auto dst = name / fi.path();
-      auto source_sha1 = zit::Sha1::calculateFile(source).hex();
-      auto target_sha1 = zit::Sha1::calculateFile(dst).hex();
-      EXPECT_EQ(source_sha1, target_sha1) << fi.path();
-      // Delete downloaded file
-      fs::remove(dst);
-    }
-    fs::remove(name);
-  }
+  // Transfer done - verify contents
+  verify_download(torrent_1, data_dir / "1MiB.dat");
+  verify_download(torrent_2, data_dir / torrent_2.name());
 }
 
 // This test verifies that we can resume a download
@@ -427,10 +426,7 @@ TEST_P(IntegrateF, DISABLED_download_part) {
   const auto target = torrent.name();
 
   // Transfer done - Verify content
-  auto source = data_dir / "1MiB.dat";
-  auto source_sha1 = zit::Sha1::calculateFile(source).hex();
-  auto target_sha1 = zit::Sha1::calculateFile(target).hex();
-  EXPECT_EQ(source_sha1, target_sha1);
+  verify_download(torrent, data_dir / "1MiB.dat");
 
   // Since we only changed one piece we should only have to get one piece again
   EXPECT_GT(torrent.pieces().size(), 1);
@@ -472,17 +468,7 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
   const auto target = torrent.name();
 
   // Transfer done - Verify content
-  const auto name = torrent.name();
-  for (const auto& fi : torrent.files()) {
-    auto source = data_dir / name / fi.path();
-    auto dst = name / fi.path();
-    auto source_sha1 = zit::Sha1::calculateFile(source).hex();
-    auto target_sha1 = zit::Sha1::calculateFile(dst).hex();
-    EXPECT_EQ(source_sha1, target_sha1) << fi.path();
-    // Delete the downloaded file
-    fs::remove(dst);
-  }
-  fs::remove(name);
+  verify_download(torrent, data_dir / torrent.name());
 
   // Since we only changed one piece we should only have to get one piece again
   EXPECT_GT(torrent.pieces().size(), 1);
@@ -507,17 +493,7 @@ TEST_F(Integrate, DISABLED_download_multi_file) {
   const auto target = torrent.name();
 
   // Transfer done - Verify content
-  const auto name = torrent.name();
-  for (const auto& fi : torrent.files()) {
-    auto source = data_dir / name / fi.path();
-    auto dst = name / fi.path();
-    auto source_sha1 = zit::Sha1::calculateFile(source).hex();
-    auto target_sha1 = zit::Sha1::calculateFile(dst).hex();
-    EXPECT_EQ(source_sha1, target_sha1) << fi.path();
-    // Delete downloaded file
-    fs::remove(dst);
-  }
-  fs::remove(name);
+  verify_download(torrent, data_dir / torrent.name());
 }
 
 #ifdef INTEGRATION_TESTS
@@ -560,10 +536,7 @@ TEST_F(Integrate, DISABLED_upload) {
   torrent.run();
 
   // Transfer done - Verify content
-  auto source = data_dir / "1MiB.dat";
-  auto source_sha1 = zit::Sha1::calculateFile(source).hex();
-  auto target_sha1 = zit::Sha1::calculateFile(target / "1MiB.dat").hex();
-  EXPECT_EQ(source_sha1, target_sha1);
+  verify_download(torrent, data_dir / "1MiB.dat");
 }
 
 #ifdef INTEGRATION_TESTS
@@ -601,15 +574,7 @@ TEST_F(Integrate, DISABLED_multi_upload) {
   torrent.run();
 
   // Transfer done - Verify content
-  const auto name = torrent.name();
-  EXPECT_EQ(torrent.files().size(), 7);
-  for (const auto& fi : torrent.files()) {
-    auto source = data_dir / name / fi.path();
-    auto dst = target / name / fi.path();
-    auto source_sha1 = zit::Sha1::calculateFile(source).hex();
-    auto target_sha1 = zit::Sha1::calculateFile(dst).hex();
-    EXPECT_EQ(source_sha1, target_sha1) << fi.path();
-  }
+  verify_download(torrent, data_dir / torrent.name(), false);
 }
 
 #endif  // __linux__
