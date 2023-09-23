@@ -308,10 +308,7 @@ TEST(arg_parser, help_plus_required) {
   auto getParser = [&] {
     ArgParser parser("desc");
     parser.add_option<bool>("--help").aliases({"-h", "/?"}).help_arg();
-    parser.add_option<std::string>("--test")
-        .default_value("t")
-        .required()
-        .help_arg();
+    parser.add_option<std::string>("--test").required();
     return parser;
   };
 
@@ -337,5 +334,38 @@ TEST(arg_parser, help_plus_required) {
     parser.parse({"cmd", "-h", "--test", "s"});
     EXPECT_TRUE(parser.get<bool>("-h"));
     EXPECT_EQ(parser.get<std::string>("--test"), "s");
+  }
+}
+
+TEST(arg_parser, help_plus_required_multi) {
+  auto getParser = [&] {
+    ArgParser parser("desc");
+    parser.add_option<bool>("--help").aliases({"-h", "/?"}).help_arg();
+    parser.add_option<std::string>("--test").required().multi();
+    return parser;
+  };
+
+  {
+    auto parser = getParser();
+    parser.parse({"cmd", "--help"});
+    EXPECT_TRUE(parser.get<bool>("--help"));
+  }
+
+  {
+    auto parser = getParser();
+    parser.parse({"cmd", "-h"});
+    EXPECT_TRUE(parser.get<bool>("-h"));
+  }
+
+  {
+    // Missing required arg
+    EXPECT_THROW(getParser().parse({"cmd"}), std::runtime_error);
+  }
+
+  {
+    auto parser = getParser();
+    parser.parse({"cmd", "-h", "--test", "s"});
+    EXPECT_TRUE(parser.get<bool>("-h"));
+    EXPECT_THAT(parser.get_multi<std::string>("--test"), ElementsAreArray({"s"}));
   }
 }
