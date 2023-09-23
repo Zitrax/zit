@@ -61,7 +61,10 @@ void sigint_handler(int s) {
 int main(int argc, const char* argv[]) noexcept {
   try {
     zit::ArgParser parser("Zit - torrent client");
-    parser.add_option<bool>("--help").aliases({"-h"}).help("Print help");
+    parser.add_option<bool>("--help")
+        .aliases({"-h"})
+        .help("Print help")
+        .help_arg();
     parser.add_option<std::string>("--torrent")
         .help("Torrent file to download")
         .required()
