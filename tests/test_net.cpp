@@ -2,11 +2,15 @@
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "net.hpp"
+#include "process.hpp"
 
 #include <spdlog/common.h>
 #include <spdlog/spdlog.h>
 #include <algorithm>
 #include <asio.hpp>
+#include <filesystem>
+#include <memory>
+
 using asio::detail::socket_ops::host_to_network_short;
 
 using ::testing::ElementsAreArray;
@@ -107,10 +111,32 @@ TEST(net, chunkedTransfer) {
   EXPECT_EQ(expected.str(), response);
 }
 
-TEST(net, udp_request) {
+// As long as zit::Process is Linux specific
+#ifdef __linux__
+
+class UDP : public ::testing::Test {
+ protected:
+  void SetUp() override {
+    const auto udp_server_path =
+        (std::filesystem::path(DATA_DIR) / ".." / "udp_server.py")
+            .lexically_normal();
+    echo_server = std::make_unique<zit::Process>(
+        "udp_echo",
+        std::vector<const char*>{"python3", udp_server_path.c_str()});
+  }
+
+  void TearDown() override { echo_server->terminate(); }
+
+ private:
+  std::unique_ptr<zit::Process> echo_server;
+};
+
+TEST_F(UDP, request) {
   Url url("udp://127.0.0.1:12345");
 
   const bytes message{'h'_b, 'e'_b, 'l'_b, 'l'_b, 'o'_b};
   const auto reply = Net::udpRequest(url, message);
   ASSERT_THAT(message, ElementsAreArray(reply));
 }
+
+#endif  // __linux__
