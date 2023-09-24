@@ -25,6 +25,7 @@ endif()
 # The test code
 include_directories("../src")
 add_executable(zitest
+  process.cpp
   test_arg_parser.cpp
   test_bencode.cpp
   test_bitfield.cpp

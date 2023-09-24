@@ -13,12 +13,6 @@
  *    - sudo apt install transmission-cli
  */
 
-#include <sys/prctl.h>
-#include <unistd.h>
-#include <chrono>
-#include <filesystem>
-#include <thread>
-#include <utility>
 
 #include <file_utils.hpp>
 #include <file_writer.hpp>
@@ -26,6 +20,7 @@
 
 #include "gtest/gtest.h"
 #include "logger.hpp"
+#include "process.hpp"
 #include "test_main.hpp"
 #include "test_utils.hpp"
 
@@ -44,108 +39,6 @@ class TestConfig : public zit::Config {
   }
 
   void set(IntSetting setting, int val) { m_int_settings[setting] = val; }
-};
-
-/**
- * Launch background process which is stopped/killed by the destructor.
- */
-class Process {
- public:
-  Process(const string& name,
-          vector<const char*> argv,
-          const char* cwd = nullptr)
-      : m_pid(0), m_name(name) {
-    pid_t ppid = getpid();
-    m_pid = fork();
-
-    if (m_pid == -1) {
-      throw runtime_error("Failed to fork for "s + argv[0] + " process");
-    }
-
-    if (m_pid == 0) {
-      // Ensure that child is killed when parent dies
-      int r = prctl(PR_SET_PDEATHSIG, SIGTERM);
-      if (r == -1) {
-        perror("prctl failed");
-        exit(1);
-      }
-      // Exit directly if parent is already dead
-      if (getppid() != ppid) {
-        exit(1);
-      }
-      if (cwd && chdir(cwd) == -1) {
-        perror("chdir failed");
-        exit(1);
-      }
-      argv.push_back(nullptr);
-      execvp(argv[0], const_cast<char* const*>(argv.data()));
-      cerr << "Failed launching " << argv[0] << ": " << strerror(errno) << endl;
-      exit(1);
-    } else {
-      logger()->trace("Started '{}'", fmt::join(argv, " "));
-      // Slight delay to verify that process did not immediately die
-      // for more clear and faster error response.
-      this_thread::sleep_for(200ms);
-      int wstatus;
-      auto status = waitpid(m_pid, &wstatus, WNOHANG | WUNTRACED);
-      if (status < 0 || (status > 0 && WIFEXITED(wstatus))) {
-        throw runtime_error("Process " + m_name +
-                            " is already dead. Aborting!");
-      }
-      logger()->info("Process {} started", m_name);
-    }
-  }
-
-  // Since this should be created and deleted only once
-  // forbid copying and assignment.
-  Process(const Process&) = delete;
-  Process& operator=(const Process&) = delete;
-  // But allow moving
-  Process(Process&& rhs) : m_pid(rhs.m_pid), m_name(rhs.m_name) {
-    rhs.m_pid = 0;  // Ensure we wont kill the moved from process
-  }
-
-  /**
-   * Terminate the process. Try to be nice and send SIGTERM first, and SIGKILL
-   * later if that did not help.
-   */
-  void terminate() {
-    if (m_pid) {
-      kill(m_pid, SIGTERM);
-      logger()->info("Waiting for {}", m_name);
-      int status;
-      for (int i = 0; i < 500; ++i) {
-        auto ret = waitpid(m_pid, &status, WNOHANG);
-        if (ret > 0) {
-          logger()->info("{} exited with status: {}", m_name,
-                         WEXITSTATUS(status));
-          m_pid = 0;
-          return;
-        }
-        if (ret == -1) {
-          logger()->error("waitpid errored - {}", strerror(errno));
-          return;
-        }
-        std::this_thread::sleep_for(10ms);
-      }
-      logger()->info("{} still not dead, sending SIGKILL", m_name);
-      kill(m_pid, SIGKILL);
-      waitpid(m_pid, &status, 0);
-      const auto fstatus = WEXITSTATUS(status);
-      logger()->log(fstatus ? spdlog::level::warn : spdlog::level::info,
-                    "{} exited with status: {}", m_name, fstatus);
-    }
-    m_pid = 0;
-  }
-
-  /**
-   * Kill the process if not already dead.
-   */
-  ~Process() { terminate(); }
-
- private:
-  pid_t m_pid;
-  string m_name;
 };
 
 namespace {

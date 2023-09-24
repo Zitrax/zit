@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import socket
 
 # Define the server's IP address and port
