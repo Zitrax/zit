@@ -128,7 +128,7 @@ class UDP : public ::testing::Test {
   void TearDown() override { echo_server->terminate(); }
 
  private:
-  std::unique_ptr<zit::Process> echo_server;
+  std::unique_ptr<zit::Process> echo_server{};
 };
 
 TEST_F(UDP, request) {
