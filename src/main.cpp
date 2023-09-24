@@ -160,7 +160,7 @@ int main(int argc, const char* argv[]) noexcept {
               torrent->start();
               torrent->run();
             } catch (const std::exception& ex) {
-              zit::logger()->error("Exception in thread: {}", ex.what());
+              print_exception(ex);
             }
           });
         });

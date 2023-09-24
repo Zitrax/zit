@@ -514,7 +514,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
   // According to the spec we will now try each tier in order and within a tier
   // we shuffle the announce list.
 
-  std::optional<std::exception> thrown;
+  std::exception_ptr thrown;
   std::vector<std::shared_ptr<Peer>> peers_from_tracker;
 
   std::random_device rd;
@@ -524,11 +524,11 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
     for (const auto& announce_url : tier) {
       try {
         peers_from_tracker = do_tracker_request(announce_url);
-        thrown.reset();
+        thrown = nullptr;
         break;
       } catch (const std::exception& ex) {
         logger()->warn("{}: {}", announce_url, ex.what());
-        thrown = ex;
+        thrown = std::current_exception();
       }
     }
     if (!peers_from_tracker.empty()) {
@@ -537,7 +537,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
   }
 
   if (thrown) {
-    throw_with_nested(*thrown);
+    std::rethrow_exception(thrown);
   }
 
   return peers_from_tracker;
