@@ -9,7 +9,7 @@ namespace zit {
 
 /**
  * Launch background process which is stopped/killed by the destructor.
- * 
+ *
  * FIXME: Implement support for Windows. Currently linux only.
  */
 class Process {
@@ -36,7 +36,13 @@ class Process {
   /**
    * Kill the process if not already dead.
    */
-  ~Process() { terminate(); }
+  ~Process() {
+    try {
+      terminate();
+    } catch (std::exception& ex) {
+      std::cout << "ERROR in ~Process: " << ex.what();
+    }
+  }
 
  private:
   pid_t m_pid;
