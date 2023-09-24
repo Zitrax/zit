@@ -1,4 +1,5 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
+#include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include "net.hpp"
 
@@ -7,6 +8,8 @@
 #include <algorithm>
 #include <asio.hpp>
 using asio::detail::socket_ops::host_to_network_short;
+
+using ::testing::ElementsAreArray;
 
 using namespace zit;
 using namespace std;
@@ -102,4 +105,12 @@ TEST(net, chunkedTransfer) {
   ASSERT_TRUE(pos != std::string::npos);
   response.erase(0, pos);
   EXPECT_EQ(expected.str(), response);
+}
+
+TEST(net, udp_request) {
+  Url url("udp://127.0.0.1:12345");
+
+  const bytes message{'h'_b, 'e'_b, 'l'_b, 'l'_b, 'o'_b};
+  const auto reply = Net::udpRequest(url, message);
+  ASSERT_THAT(message, ElementsAreArray(reply));
 }

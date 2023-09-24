@@ -66,7 +66,7 @@ class Url {
    * At the moment the URL class does not include the userinfo.
    */
   [[nodiscard]] auto authority() const {
-    if(m_port) {
+    if (m_port) {
       return m_host + ":" + std::to_string(*m_port);
     }
     return m_host;
@@ -96,7 +96,8 @@ class Url {
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {
   const auto& port = url.port();
-  const auto port_str = port.has_value() ? std::to_string(port.value()) : "<not set>";
+  const auto port_str =
+      port.has_value() ? std::to_string(port.value()) : "<not set>";
   os << "Scheme:        " << url.scheme() << "\n";
   os << "Host:          " << url.host() << "\n";
   os << "Port:          " << port_str << "\n";
@@ -129,11 +130,21 @@ class Net {
   Net() = default;
 
   /**
-   * Perform a http request.
+   * Perform a http/https request.
    *
    * @return A tuple with headers and response.
    */
   static std::tuple<std::string, std::string> httpGet(const Url& url);
+
+  /**
+   * Perform a udp request.
+   *
+   * @return Response bytes.
+   */
+  static bytes udpRequest(
+      const Url& url,
+      const bytes& data,
+      std::chrono::duration<unsigned> timeout = std::chrono::seconds{1});
 
   /**
    * URL encode string.
