@@ -5,6 +5,7 @@
 #include <openssl/tls1.h>
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>
+#include <asio/buffer.hpp>
 #include <asio/buffers_iterator.hpp>
 #include <asio/completion_condition.hpp>
 #include <asio/connect.hpp>
@@ -13,7 +14,9 @@
 #include <asio/error_code.hpp>
 #include <asio/io_context.hpp>
 #include <asio/io_service.hpp>
+#include <asio/ip/address.hpp>
 #include <asio/ip/tcp.hpp>
+#include <asio/ip/udp.hpp>
 #include <asio/read_until.hpp>
 #include <asio/ssl/context.hpp>
 #include <asio/ssl/rfc2818_verification.hpp>
@@ -29,6 +32,7 @@
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <chrono>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -360,6 +364,10 @@ std::tuple<std::string, std::string> Net::httpGet(const Url& url) {
     return httpsGet(url);
   }
 
+  if (url.scheme() != "http") {
+    throw std::runtime_error("httpGet called on non-http url: " + url.str());
+  }
+
   asio::io_service io_service;
   tcp::resolver resolver(io_service);
   auto endpoints = resolver.resolve(url.host(), url.service());
@@ -374,6 +382,63 @@ std::tuple<std::string, std::string> Net::httpGet(const Url& url) {
   }
 
   return request(socket, url);
+}
+
+bytes Net::udpRequest(const Url& url,
+                      const bytes& data,
+                      std::chrono::duration<unsigned> timeout) {
+  logger()->trace("udpRequest to {} of {} bytes", url.str(), data.size());
+
+  if (url.scheme() != "udp") {
+    throw std::runtime_error("udpGet called on non-udp url: " + url.str());
+  }
+  if (!url.port()) {
+    throw std::runtime_error("udp url without port not supported: " +
+                             url.str());
+  }
+
+  asio::io_service io_service;
+  // Automatically assign a local port for receiving responses on
+  asio::ip::udp::socket socket(io_service,
+                               asio::ip::udp::endpoint(asio::ip::udp::v4(), 0));
+
+  // Setup listening for reply
+  bytes reply;
+  asio::ip::udp::endpoint sender_endpoint;
+  logger()->trace("udp listening on: {}:{}",
+                  socket.local_endpoint().address().to_string(),
+                  socket.local_endpoint().port());
+  socket.async_receive_from(
+      asio::null_buffers(), sender_endpoint,
+      [&](const asio::error_code& error,
+          size_t /*not interesting since we use null_buffers */) {
+        if (error == asio::error::operation_aborted) {
+          logger()->debug("udp request aborted");
+        } else if (error) {
+          logger()->warn("udp request failed: {}", error.message());
+        } else {
+          const auto available = socket.available();
+          reply.resize(available);
+          socket.receive_from(asio::buffer(reply), sender_endpoint);
+          logger()->debug("udp received {} bytes from {}:{}", available,
+                          sender_endpoint.address().to_string(),
+                          sender_endpoint.port());
+          io_service.stop();
+        }
+      });
+
+  // Send outgoing request
+  const auto receiver_endpoint = asio::ip::udp::endpoint(
+      asio::ip::address::from_string(url.host()), url.port().value_or(0));
+  socket.send_to(asio::buffer(data), receiver_endpoint);
+
+  io_service.run_for(timeout);
+
+  if (reply.empty()) {
+    logger()->warn("udp request got no reply");
+  }
+
+  return reply;
 }
 
 // Based on https://stackoverflow.com/a/17708801/11722
@@ -403,7 +468,7 @@ string Net::urlEncode(const string& value) {
 
 Url::Url(const string& url, bool binary) {
   if (!binary) {
-    const regex ur("^(https?)://([^:/]*)(?::(\\d+))?(.*?)$");
+    const regex ur("^(udp|https?)://([^:/]*)(?::(\\d+))?(.*?)$");
     smatch match;
     if (!regex_match(url, match, ur) || match.size() != 5) {
       throw runtime_error("Invalid URL: '" + url + "'");
