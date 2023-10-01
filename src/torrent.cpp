@@ -633,8 +633,18 @@ class UDPTrackerRequest {
         const auto port = from_big_endian<uint16_t>(
             announce_response,
             peer_offset + i * size_of_peer + sizeof(int32_t));
-        const Url purl{fmt::format("http://{}:{}", ip, port)};
-        peers.emplace_back(std::make_shared<Peer>(purl, m_torrent));
+
+        const auto ip_str =
+            fmt::format("{}.{}.{}.{}", static_cast<uint8_t>((ip >> 24) & 0xFF),
+                        static_cast<uint8_t>((ip >> 16) & 0xFF),
+                        static_cast<uint8_t>((ip >> 8) & 0xFF),
+                        static_cast<uint8_t>((ip >> 0) & 0xFF));
+
+        Url purl{fmt::format("http://{}:{}", ip_str, port)};
+        if (!is_local(purl, m_torrent.listening_port())) {
+          purl.resolve();
+          peers.emplace_back(std::make_shared<Peer>(purl, m_torrent));
+        }
       }
 
       return {true, peers};
