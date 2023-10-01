@@ -14,6 +14,7 @@
 #include <string>
 #include <vector>
 
+#include <fmt/core.h>
 #include <openssl/sha.h>
 
 #include "string_utils.hpp"
@@ -34,8 +35,8 @@ void fill(zit::Sha1& dst, T* src) {
 
 Sha1::Sha1(const std::string& val) : array() {
   if (val.size() != SHA_DIGEST_LENGTH) {
-    throw std::invalid_argument("sha1 size must be 20, was " +
-                                to_string(val.size()));
+    throw invalid_argument(
+        fmt::format("sha1 size must be 20, was {}", val.size()));
   }
 
   zit::fill(*this, val.data());
@@ -51,6 +52,13 @@ std::string Sha1::str() const {
 
 std::string Sha1::hex() const {
   return to_hex(str());
+}
+
+zit::bytes Sha1::bytes() const {
+  zit::bytes ret;
+  std::ranges::transform(*this, std::back_inserter(ret),
+                         [](char c) { return static_cast<std::byte>(c); });
+  return ret;
 }
 
 Sha1 Sha1::calculate(const unsigned char* src, size_t count) {
@@ -69,7 +77,7 @@ Sha1 Sha1::calculateData(const std::string& data) {
                    data.size());
 }
 
-Sha1 Sha1::calculateData(const bytes& data) {
+Sha1 Sha1::calculateData(const zit::bytes& data) {
   return calculate(reinterpret_cast<const unsigned char*>(data.data()),
                    data.size());
 }
@@ -128,7 +136,7 @@ std::string format_as(const Sha1& sha1) {
 // To keep the implementation in the .cpp file
 template Sha1 Sha1::fromBuffer<string>(const string& buffer,
                                        string::size_type offset);
-template Sha1 Sha1::fromBuffer<bytes>(const bytes& buffer,
-                                      bytes::size_type offset);
+template Sha1 Sha1::fromBuffer<zit::bytes>(const zit::bytes& buffer,
+                                           bytes::size_type offset);
 
 }  // namespace zit

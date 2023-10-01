@@ -277,9 +277,9 @@ void Peer::request(uint32_t index, uint32_t begin, uint32_t length) {
   }
   logger()->debug("Sending PIECE {}", piece->id());
   bytes msg;
-  auto len = to_big_endian(numeric_cast<uint32_t>(9 + data.size()));
-  auto offset = to_big_endian(begin);
-  auto idx = to_big_endian(index);
+  auto len = to_big_endian<uint32_t>(numeric_cast<uint32_t>(9 + data.size()));
+  auto offset = to_big_endian<uint32_t>(begin);
+  auto idx = to_big_endian<uint32_t>(index);
   msg.insert(msg.cend(), len.begin(), len.end());
   msg.push_back(static_cast<byte>(peer_wire_id::PIECE));
   msg.insert(msg.cend(), idx.begin(), idx.end());
@@ -367,9 +367,9 @@ std::size_t Peer::request_next_block(unsigned short count) {
       logger()->debug("{}: No block requests left to do!", str());
       break;
     }
-    auto len = to_big_endian(13);
-    auto index = to_big_endian(piece->id());
-    auto begin = to_big_endian(*block_offset);
+    auto len = to_big_endian<uint32_t>(13);
+    auto index = to_big_endian<uint32_t>(piece->id());
+    auto begin = to_big_endian<uint32_t>(*block_offset);
     const auto LENGTH = [&] {
       if (*block_offset + piece->block_size() > piece->piece_size()) {
         // Last block - so reduce request size
@@ -381,7 +381,7 @@ std::size_t Peer::request_next_block(unsigned short count) {
     logger()->debug(
         "{}: Sending block request for piece {} with size {} and offset {}",
         str(), piece->id(), LENGTH, *block_offset);
-    auto blength = to_big_endian(LENGTH);
+    auto blength = to_big_endian<uint32_t>(LENGTH);
     req.insert(req.end(), len.begin(), len.end());
     req.push_back(static_cast<byte>(peer_wire_id::REQUEST));
     req.insert(req.end(), index.begin(), index.end());
@@ -457,7 +457,7 @@ void Peer::report_bitfield() const {
   if (bf.next(true)) {
     // Send BITFIELD
     bytes msg;
-    auto len = to_big_endian(numeric_cast<uint32_t>(1 + bf.size_bytes()));
+    auto len = to_big_endian<uint32_t>(numeric_cast<uint32_t>(1 + bf.size_bytes()));
     msg.insert(msg.cend(), len.begin(), len.end());
     msg.push_back(static_cast<byte>(peer_wire_id::BITFIELD));
     msg.insert(msg.cend(), bf.data().begin(), bf.data().end());

@@ -169,7 +169,7 @@ class HandshakeMsg {
         return {};
       }
       // 4-byte big endian
-      auto len = big_endian(msg, 68);
+      auto len = from_big_endian<uint32_t>(msg, 68);
       auto end = 73 + len - 1;
       if (end > msg.size()) {
         logger()->debug("Wait for more handshake data...");
@@ -226,7 +226,7 @@ size_t Message::parse(PeerConnection& connection) {
   }
 
   if (m_msg.size() >= 4) {
-    auto len = big_endian(m_msg);
+    auto len = from_big_endian<uint32_t>(m_msg);
     logger()->debug("{}: Incoming length = {}, message/buffer size = {}",
                     peer.str(), len, m_msg.size());
     if (len + 4 > m_msg.size()) {
@@ -249,8 +249,8 @@ size_t Message::parse(PeerConnection& connection) {
           peer.set_choking(false);
           return len + 4;
         case peer_wire_id::PIECE: {
-          const auto index = big_endian(m_msg, 5);
-          const auto offset = big_endian(m_msg, 9);
+          const auto index = from_big_endian<uint32_t>(m_msg, 5);
+          const auto offset = from_big_endian<uint32_t>(m_msg, 9);
           const auto start = m_msg.begin() + 13;
           const auto end = start + (len - 9);
           peer.set_block(index, offset, {start, end});
@@ -264,7 +264,7 @@ size_t Message::parse(PeerConnection& connection) {
           return len + 4;
         case peer_wire_id::HAVE: {
           try {
-            auto have_id = big_endian(m_msg, 5);
+            auto have_id = from_big_endian<uint32_t>(m_msg, 5);
             peer.have(have_id);
           } catch (const std::out_of_range&) {
             // Seen cases of too short messages here, for when it happen again
@@ -284,9 +284,9 @@ size_t Message::parse(PeerConnection& connection) {
           return len + 4;
         }
         case peer_wire_id::REQUEST: {
-          auto index = big_endian(m_msg, 5);
-          auto begin = big_endian(m_msg, 9);
-          auto length = big_endian(m_msg, 13);
+          auto index = from_big_endian<uint32_t>(m_msg, 5);
+          auto begin = from_big_endian<uint32_t>(m_msg, 9);
+          auto length = from_big_endian<uint32_t>(m_msg, 13);
           peer.request(index, begin, length);
           return len + 4;
         }

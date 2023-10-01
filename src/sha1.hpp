@@ -22,6 +22,7 @@ class Sha1 : public std::array<char, SHA_LENGTH> {
 
   [[nodiscard]] std::string str() const;
   [[nodiscard]] std::string hex() const;
+  [[nodiscard]] zit::bytes bytes() const;
 
   /**
    * Calculate SHA1 of the string content.
@@ -31,7 +32,7 @@ class Sha1 : public std::array<char, SHA_LENGTH> {
   /**
    * Calculate SHA1 of the byte vector content.
    */
-  [[nodiscard]] static Sha1 calculateData(const bytes& data);
+  [[nodiscard]] static Sha1 calculateData(const zit::bytes& data);
 
   /**
    * Calculate SHA1 of the content of the file.
