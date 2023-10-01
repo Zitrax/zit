@@ -77,6 +77,16 @@ TEST(net, url_string) {
   EXPECT_EQ(url3.authority(), "torrent.ubuntu.com");
 }
 
+TEST(net, url_equality) {
+  Url google_url("http://www.google.com");
+  Url google_url2("http://www.google.com");
+  EXPECT_EQ(google_url, google_url);
+  EXPECT_EQ(google_url, google_url2);
+
+  Url amazon_url("http://www.amazon.com");
+  EXPECT_NE(google_url, amazon_url);
+}
+
 TEST(net, httpGetHTTP) {
   Url url("http://www.google.com");
   const auto reply = Net::httpGet(url);

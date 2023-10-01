@@ -457,7 +457,8 @@ void Peer::report_bitfield() const {
   if (bf.next(true)) {
     // Send BITFIELD
     bytes msg;
-    auto len = to_big_endian<uint32_t>(numeric_cast<uint32_t>(1 + bf.size_bytes()));
+    auto len =
+        to_big_endian<uint32_t>(numeric_cast<uint32_t>(1 + bf.size_bytes()));
     msg.insert(msg.cend(), len.begin(), len.end());
     msg.push_back(static_cast<byte>(peer_wire_id::BITFIELD));
     msg.insert(msg.cend(), bf.data().begin(), bf.data().end());
@@ -524,7 +525,7 @@ void Peer::init_io_service() {
   m_work = make_unique<asio::io_service::work>(*m_io_service);
   try {
     m_connection = make_unique<PeerConnection>(*this, *m_io_service,
-                                               m_torrent.listning_port(),
+                                               m_torrent.listening_port(),
                                                m_torrent.connection_port());
   } catch (const asio::system_error& err) {
     throw_with_nested(
