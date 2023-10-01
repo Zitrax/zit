@@ -440,9 +440,8 @@ void read_peers_binary_form(Torrent& torrent,
 
 }  // namespace
 
-std::vector<std::shared_ptr<Peer>> Torrent::http_tracker_request(
-    const Url& announce_url,
-    TrackerEvent event) {
+std::pair<bool, std::vector<std::shared_ptr<Peer>>>
+Torrent::http_tracker_request(const Url& announce_url, TrackerEvent event) {
   Url url(announce_url);
   url.add_param("info_hash=" + Net::urlEncode(m_info_hash));
   url.add_param(fmt::format("peer_id={}", peer_id()));
@@ -470,7 +469,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::http_tracker_request(
   if (event == TrackerEvent::UNSPECIFIED || event == TrackerEvent::STARTED) {
     if (!m_config.get(BoolSetting::INITIATE_PEER_CONNECTIONS) && done()) {
       logger()->debug("Skipping peer list since the torrent is completed.");
-      return {};
+      return {true, {}};
     }
 
     ElmPtr reply;
@@ -498,7 +497,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::http_tracker_request(
       read_peers_binary_form(*this, *peers_dict, peers);
     }
   }
-  return peers;
+  return {true, peers};
 }
 
 /**
@@ -515,7 +514,8 @@ class UDPTrackerRequest {
   /**
    * Announce request to get peer list
    */
-  std::vector<std::shared_ptr<Peer>> announce(Torrent::TrackerEvent event) {
+  std::pair<bool, std::vector<std::shared_ptr<Peer>>> announce(
+      Torrent::TrackerEvent event) {
     connect();
 
     if (!m_connection_id) {
@@ -570,7 +570,7 @@ class UDPTrackerRequest {
         Net::udpRequest(m_announce_url, announce_request, 15s);
     if (announce_response.empty()) {
       logger()->debug("UDP Tracker request: empty announce response");
-      return {};
+      return {true, {}};
     }
 
     const auto announce_reply_action =
@@ -581,7 +581,7 @@ class UDPTrackerRequest {
     if (announce_reply_transaction_id != transaction_id) {
       logger()->warn("Udp request got unexpected transaction id {} != {}",
                      announce_reply_transaction_id, transaction_id);
-      return {};
+      return {false, {}};
     }
 
     switch (announce_reply_action) {
@@ -595,13 +595,13 @@ class UDPTrackerRequest {
                        std::ostream_iterator<char>(error_msg),
                        [](std::byte b) { return static_cast<char>(b); });
         logger()->warn("UDP Tracker request error: {}", error_msg.str());
-        return {};
+        return {false, {}};
       }
       case UdpAction::CONNECT:
       case UdpAction::SCRAPE:
         logger()->warn("UDP Tracker request unexpected action: {}",
                        static_cast<int>(announce_reply_action));
-        return {};
+        return {false, {}};
     }
 
     if (event == Torrent::TrackerEvent::UNSPECIFIED ||
@@ -609,7 +609,7 @@ class UDPTrackerRequest {
       if (!m_torrent.config().get(BoolSetting::INITIATE_PEER_CONNECTIONS) &&
           m_torrent.done()) {
         logger()->debug("Skipping peer list since the torrent is completed.");
-        return {};
+        return {true, {}};
       }
 
       // TODO: Number of seconds to wait before re-annoncing
@@ -637,9 +637,9 @@ class UDPTrackerRequest {
         peers.emplace_back(std::make_shared<Peer>(purl, m_torrent));
       }
 
-      return peers;
+      return {true, peers};
     }
-    return {};
+    return {true, {}};
   }
 
  private:
@@ -738,9 +738,8 @@ class UDPTrackerRequest {
   TimePoint m_last_connection_id{ClockType::time_point::min()};
 };
 
-std::vector<std::shared_ptr<Peer>> Torrent::udp_tracker_request(
-    const Url& announce_url,
-    TrackerEvent event) {
+std::pair<bool, std::vector<std::shared_ptr<Peer>>>
+Torrent::udp_tracker_request(const Url& announce_url, TrackerEvent event) {
   // FIXME: Replace this with a max size map, that throws out older request
   //        objects to keep a fixed size max.
   static std::map<Url, UDPTrackerRequest> tracker_requests;
@@ -760,8 +759,8 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
     return {{m_announce}};
   }();
 
-  auto do_tracker_request =
-      [&](const auto& announce_url) -> std::vector<std::shared_ptr<Peer>> {
+  auto do_tracker_request = [&](const auto& announce_url)
+      -> std::pair<bool, std::vector<std::shared_ptr<Peer>>> {
     const Url url(announce_url);
     if (url.scheme().starts_with("http")) {
       return http_tracker_request(url, event);
@@ -780,6 +779,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
 
   std::exception_ptr thrown;
   std::vector<std::shared_ptr<Peer>> peers_from_tracker;
+  bool success = false;
 
   std::random_device rd;
   std::mt19937 g(rd());
@@ -787,7 +787,9 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
     shuffle(tier.begin(), tier.end(), g);
     for (const auto& announce_url : tier) {
       try {
-        peers_from_tracker = do_tracker_request(announce_url);
+        auto ret = do_tracker_request(announce_url);
+        success = ret.first;
+        peers_from_tracker = ret.second;
         thrown = nullptr;
         break;
       } catch (const std::exception& ex) {
@@ -795,7 +797,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
         thrown = std::current_exception();
       }
     }
-    if (!peers_from_tracker.empty()) {
+    if (success) {
       break;
     }
   }

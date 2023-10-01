@@ -368,14 +368,14 @@ class Torrent {
   /**
    * HTTP(S) tracker requests
    */
-  std::vector<std::shared_ptr<Peer>> http_tracker_request(
+  std::pair<bool, std::vector<std::shared_ptr<Peer>>> http_tracker_request(
       const Url& announce_url,
       TrackerEvent event);
 
   /**
    * UDP tracker requests
    */
-  std::vector<std::shared_ptr<Peer>> udp_tracker_request(
+  std::pair<bool, std::vector<std::shared_ptr<Peer>>> udp_tracker_request(
       const Url& announce_url,
       TrackerEvent event);
 
