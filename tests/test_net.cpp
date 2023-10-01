@@ -87,6 +87,12 @@ TEST(net, url_equality) {
   EXPECT_NE(google_url, amazon_url);
 }
 
+TEST(net, url_resolve) {
+  Url url("http://127.0.0.1/");
+  url.resolve();
+  EXPECT_EQ(url.host(), "localhost");
+}
+
 TEST(net, httpGetHTTP) {
   Url url("http://www.google.com");
   const auto reply = Net::httpGet(url);

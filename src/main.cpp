@@ -1,6 +1,7 @@
 #include <fmt/core.h>
 #include <spdlog/common.h>
 #include <algorithm>
+#include <cstdlib>
 #include <exception>
 #include <functional>
 #include <iostream>
@@ -197,6 +198,8 @@ int main(int argc, const char* argv[]) noexcept {
       for (auto& torrent_thread : torrent_threads) {
         torrent_thread.join();
       }
+      // Assume we are the only one calling it for now
+      // NOLINTNEXTLINE(concurrency-mt-unsafe)
       std::exit(0);
     };
 

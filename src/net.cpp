@@ -15,6 +15,7 @@
 #include <asio/io_context.hpp>
 #include <asio/io_service.hpp>
 #include <asio/ip/address.hpp>
+#include <asio/ip/address_v4.hpp>
 #include <asio/ip/tcp.hpp>
 #include <asio/ip/udp.hpp>
 #include <asio/read_until.hpp>
@@ -498,6 +499,20 @@ Url::Url(const string& url, bool binary) {
     m_port = host_to_network_short(static_cast<uint16_t>(
         static_cast<uint8_t>(url[4]) << 0 | static_cast<uint8_t>(url[5]) << 8));
     m_scheme = "http";
+  }
+}
+
+void Url::resolve() {
+  try {
+    asio::io_service io_service;
+    asio::ip::tcp::resolver resolver(io_service);
+    auto original_host = m_host;
+    auto res = resolver.resolve(asio::ip::tcp::endpoint(
+        asio::ip::address_v4::from_string(m_host), m_port.value_or(0)));
+    m_host = res->host_name();
+    logger()->debug("Resolved {} -> {}", original_host, m_host);
+  } catch (const asio::system_error& ex) {
+    logger()->debug("Could not resolve: {} ({})", str(), ex.what());
   }
 }
 

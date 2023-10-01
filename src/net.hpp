@@ -64,6 +64,12 @@ class Url {
   }
 
   /**
+   * If the host part is an ip, it will be replaced by the resolved DNS name if
+   * available.
+   */
+  void resolve();
+
+  /**
    * In an URL the authority is the "[userinfo@]host[:port]" part.
    *
    * At the moment the URL class does not include the userinfo.
