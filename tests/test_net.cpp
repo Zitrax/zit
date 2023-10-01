@@ -131,8 +131,16 @@ class UDP : public ::testing::Test {
   std::unique_ptr<zit::Process> echo_server{};
 };
 
-TEST_F(UDP, request) {
+TEST_F(UDP, request_ip) {
   Url url("udp://127.0.0.1:12345");
+
+  const bytes message{'h'_b, 'e'_b, 'l'_b, 'l'_b, 'o'_b};
+  const auto reply = Net::udpRequest(url, message);
+  ASSERT_THAT(message, ElementsAreArray(reply));
+}
+
+TEST_F(UDP, request_named_host) {
+  Url url("udp://localhost:12345");
 
   const bytes message{'h'_b, 'e'_b, 'l'_b, 'l'_b, 'o'_b};
   const auto reply = Net::udpRequest(url, message);
