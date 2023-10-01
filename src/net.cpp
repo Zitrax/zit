@@ -387,7 +387,8 @@ std::tuple<std::string, std::string> Net::httpGet(const Url& url) {
 bytes Net::udpRequest(const Url& url,
                       const bytes& data,
                       std::chrono::duration<unsigned> timeout) {
-  logger()->trace("udpRequest to {} of {} bytes", url.str(), data.size());
+  logger()->trace("udpRequest to {} of {} bytes (timeout={})", url.str(),
+                  data.size(), duration_cast<chrono::seconds>(timeout).count());
 
   if (url.scheme() != "udp") {
     throw std::runtime_error("udpGet called on non-udp url: " + url.str());
@@ -428,8 +429,9 @@ bytes Net::udpRequest(const Url& url,
       });
 
   // Send outgoing request
-  const auto receiver_endpoint = asio::ip::udp::endpoint(
-      asio::ip::address::from_string(url.host()), url.port().value_or(0));
+  asio::ip::udp::resolver resolver(io_service);
+  const auto receiver_endpoint =
+      *resolver.resolve(asio::ip::udp::v4(), url.host(), url.service()).begin();
   socket.send_to(asio::buffer(data), receiver_endpoint);
 
   io_service.run_for(timeout);
