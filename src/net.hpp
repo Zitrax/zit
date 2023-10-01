@@ -46,6 +46,9 @@ class Url {
         m_path(std::move(path)),
         m_port(port) {}
 
+  /** Provide default ordering */
+  auto operator<=>(const Url&) const = default;
+
   /**
    * Add http query params to existing Url object.
    */

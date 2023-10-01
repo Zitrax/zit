@@ -317,7 +317,7 @@ class Torrent {
   /**
    * Port that we listen to.
    */
-  [[nodiscard]] auto listning_port() const { return m_listening_port; }
+  [[nodiscard]] auto listening_port() const { return m_listening_port; }
 
   /**
    * Port for outgoing connections.
@@ -342,6 +342,8 @@ class Torrent {
   [[nodiscard]] std::tuple<FileInfo, int64_t, int64_t> file_at_pos(
       int64_t pos) const;
 
+  enum class TrackerEvent { STARTED, STOPPED, COMPLETED, UNSPECIFIED };
+
  private:
   /**
    * If a piece have requests but have not received data in a while we mark the
@@ -353,8 +355,6 @@ class Torrent {
    * Go over the list of peers and remove inactive ones, and reconnect to new.
    */
   void retry_peers();
-
-  enum class TrackerEvent { STARTED, STOPPED, COMPLETED, UNSPECIFIED };
 
   friend std::ostream& operator<<(std::ostream& os, const TrackerEvent& te);
 
