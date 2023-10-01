@@ -360,10 +360,24 @@ class Torrent {
 
   friend std::string format_as(const Torrent::TrackerEvent& te);
 
-    /**
+  /**
    * Request a list of peers from the tracker.
    */
   std::vector<std::shared_ptr<Peer>> tracker_request(TrackerEvent event);
+
+  /**
+   * HTTP(S) tracker requests
+   */
+  std::vector<std::shared_ptr<Peer>> http_tracker_request(
+      const Url& announce_url,
+      TrackerEvent event);
+
+  /**
+   * UDP tracker requests
+   */
+  std::vector<std::shared_ptr<Peer>> udp_tracker_request(
+      const Url& announce_url,
+      TrackerEvent event);
 
   /**
    * Called when one piece has been downloaded.

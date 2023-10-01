@@ -26,6 +26,8 @@ using ConnectionPort = StrongType<unsigned short, struct ConnectionPortTag>;
 // numeric_cast ( Copied from https://codereview.stackexchange.com/a/26496/39248
 // ) by user Matt Whitlock - functions renamed.
 
+// FIXME: These casts could fall back to no checking at all if I == J
+
 template <typename I, typename J>
 static constexpr
     typename std::enable_if_t<std::is_signed_v<I> && std::is_signed_v<J>, I>
@@ -101,28 +103,80 @@ static constexpr std::byte operator""_b(char arg) noexcept {
 /**
  * Extract big endian value to int
  */
-static inline uint32_t big_endian(const bytes& buf,
-                                  bytes::size_type offset = 0) {
-  if (offset + 4 > buf.size() ||
-      offset > std::numeric_limits<bytes::size_type>::max() - 4) {
+template <typename T>
+static inline T from_big_endian(const bytes& buf, bytes::size_type offset = 0) {
+  constexpr auto size = sizeof(T);
+  static_assert(size == 2 || size == 4 || size == 8,
+                "from_big_endian only supported on 16, 32 or 64 bit types");
+
+  if (offset + size > buf.size() ||
+      offset > std::numeric_limits<bytes::size_type>::max() - size) {
     throw std::out_of_range(fmt::format(
         "Target range outside of buffer: ({},{})", offset, buf.size()));
   }
-  return static_cast<uint32_t>(static_cast<uint8_t>(buf[offset + 3]) << 0 |
-                               static_cast<uint8_t>(buf[offset + 2]) << 8 |
-                               static_cast<uint8_t>(buf[offset + 1]) << 16 |
-                               static_cast<uint8_t>(buf[offset + 0]) << 24);
+
+  if constexpr (size == 2) {
+    return static_cast<T>(static_cast<uint8_t>(buf[offset + 1])) << 0 |
+           static_cast<T>(static_cast<uint8_t>(buf[offset + 0])) << 8;
+  } else if constexpr (size == 4) {
+    return static_cast<T>(static_cast<uint8_t>(buf[offset + 3])) << 0 |
+           static_cast<T>(static_cast<uint8_t>(buf[offset + 2])) << 8 |
+           static_cast<T>(static_cast<uint8_t>(buf[offset + 1])) << 16 |
+           static_cast<T>(static_cast<uint8_t>(buf[offset + 0])) << 24;
+  } else if constexpr (size == 8) {
+    return static_cast<T>(static_cast<uint8_t>(buf[offset + 7])) << 0 |
+           static_cast<T>(static_cast<uint8_t>(buf[offset + 6])) << 8 |
+           static_cast<T>(static_cast<uint8_t>(buf[offset + 5])) << 16 |
+           static_cast<T>(static_cast<uint8_t>(buf[offset + 4])) << 24 |
+           static_cast<T>(static_cast<uint8_t>(buf[offset + 3])) << 32 |
+           static_cast<T>(static_cast<uint8_t>(buf[offset + 2])) << 40 |
+           static_cast<T>(static_cast<uint8_t>(buf[offset + 1])) << 48 |
+           static_cast<T>(static_cast<uint8_t>(buf[offset + 0])) << 56;
+  } else {
+    static_assert(!sizeof(T*), "Unhandled size");
+  }
 }
 
 /**
- * Convert host int to 4 byte vector in network byte order.
+ * Convert host int to byte vector in network byte order.
  */
-static inline bytes to_big_endian(uint32_t val) {
-  val = host_to_network_long(val);
-  return bytes{static_cast<std::byte>((val & 0x000000FF) >> 0),
-               static_cast<std::byte>((val & 0x0000FF00) >> 8),
-               static_cast<std::byte>((val & 0x00FF0000) >> 16),
-               static_cast<std::byte>((val & 0xFF000000) >> 24)};
+template <typename T>
+static inline bytes to_big_endian(T val) {
+  constexpr auto size = sizeof(T);
+  static_assert(size == 2 || size == 4 || size == 8,
+                "to_big_endian only supported on 16, 32 or 64 bit types");
+
+  if constexpr (size == 2) {
+    return bytes{static_cast<std::byte>((val >> 8) & 0xFF),
+                 static_cast<std::byte>((val >> 0) & 0xFF)};
+  } else if constexpr (size == 4) {
+    return bytes{static_cast<std::byte>((val >> 24) & 0xFF),
+                 static_cast<std::byte>((val >> 16) & 0xFF),
+                 static_cast<std::byte>((val >> 8) & 0xFF),
+                 static_cast<std::byte>((val >> 0) & 0xFF)};
+  } else if constexpr (size == 8) {
+    return bytes{static_cast<std::byte>((val >> 56) & 0xFF),
+                 static_cast<std::byte>((val >> 48) & 0xFF),
+                 static_cast<std::byte>((val >> 40) & 0xFF),
+                 static_cast<std::byte>((val >> 32) & 0xFF),
+                 static_cast<std::byte>((val >> 24) & 0xFF),
+                 static_cast<std::byte>((val >> 16) & 0xFF),
+                 static_cast<std::byte>((val >> 8) & 0xFF),
+                 static_cast<std::byte>((val >> 0) & 0xFF)};
+  } else {
+    static_assert(!sizeof(T*), "Unhandled size");
+  }
+}
+
+/**
+ * Convert range to a byte vector
+ */
+template <std::ranges::input_range Range>
+bytes to_bytes(const Range& range) {
+  zit::bytes ret;
+  std::ranges::transform(range, std::back_inserter(ret),
+                         [](auto v) { return static_cast<std::byte>(v); });
+  return ret;
 }
 
 }  // namespace zit

@@ -7,6 +7,7 @@
 #include "net.hpp"
 #include "peer.hpp"
 #include "piece.hpp"
+#include "random.hpp"
 #include "sha1.hpp"
 #include "string_utils.hpp"
 #include "timer.hpp"
@@ -20,6 +21,7 @@
 #endif  // __clang__
 #include <algorithm>
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdint>
@@ -437,9 +439,267 @@ void read_peers_binary_form(Torrent& torrent,
 
 }  // namespace
 
+std::vector<std::shared_ptr<Peer>> Torrent::http_tracker_request(
+    const Url& announce_url,
+    TrackerEvent event) {
+  Url url(announce_url);
+  url.add_param("info_hash=" + Net::urlEncode(m_info_hash));
+  url.add_param(fmt::format("peer_id={}", peer_id()));
+  url.add_param("port=" + to_string(m_listening_port.get()));
+  url.add_param("uploaded=0");
+  // TODO: According to the spec this should be the amount downloaded
+  //       since the started event to the tracker. For now using the total.
+  url.add_param("downloaded=" + to_string(downloaded()));
+  url.add_param("left=" + to_string(left()));
+  // FIXME: No one calls this with COMPLETED and STOPPED (we should)
+  url.add_param("event=" + fmt::format("{}", event));
+  url.add_param("compact=1");
+
+  if (logger()->should_log(spdlog::level::debug)) {
+    logger()->debug("Tracker request:\n{}", url);
+  } else {
+    logger()->info("Tracker request: {}", url.str());
+  }
+
+  auto [headers, body] = m_http_get(url);
+
+  std::vector<std::shared_ptr<Peer>> peers;
+
+  // We only care about decoding the peer list for certain events
+  if (event == TrackerEvent::UNSPECIFIED || event == TrackerEvent::STARTED) {
+    if (!m_config.get(BoolSetting::INITIATE_PEER_CONNECTIONS) && done()) {
+      logger()->debug("Skipping peer list since the torrent is completed.");
+      return {};
+    }
+
+    ElmPtr reply;
+    try {
+      reply = decode(body);
+    } catch (const BencodeConversionError&) {
+      throw_with_nested(runtime_error("Could not decode peer list."));
+    }
+
+    logger()->debug("=====HEADER=====\n{}\n=====BODY=====\n{}", headers, reply);
+
+    auto reply_dict = reply->to<TypedElement<BeDict>>()->val();
+    if (reply_dict.find("peers") == reply_dict.end()) {
+      throw runtime_error("Invalid tracker reply, no peer list");
+    }
+    auto peers_dict = reply_dict["peers"];
+    // The peers might be in binary or string form
+    // First try string form ...
+    if (peers_dict->is<TypedElement<BeList>>()) {
+      logger()->debug("Peer list in string form");
+      read_peers_string_list(*this, *peers_dict, peers);
+    } else {
+      // ... else compact/binary form
+      logger()->debug("Peer list in binary form");
+      read_peers_binary_form(*this, *peers_dict, peers);
+    }
+  }
+  return peers;
+}
+
+std::vector<std::shared_ptr<Peer>> Torrent::udp_tracker_request(
+    const Url& announce_url,
+    TrackerEvent event) {
+  // Protocol documented here: https://libtorrent.org/udp_tracker_protocol.html
+
+  enum class UdpAction { CONNECT = 0, ANNOUNCE = 1, SCRAPE = 2, ERROR = 3 };
+
+  const auto ToUdpAction = [](int32_t action) {
+    switch (action) {
+      case static_cast<uint32_t>(UdpAction::CONNECT):
+        return UdpAction::CONNECT;
+      case static_cast<uint32_t>(UdpAction::ANNOUNCE):
+        return UdpAction::ANNOUNCE;
+      case static_cast<uint32_t>(UdpAction::SCRAPE):
+        return UdpAction::SCRAPE;
+      case static_cast<uint32_t>(UdpAction::ERROR):
+        return UdpAction::ERROR;
+      default:
+        throw std::runtime_error("Unknown udp tracker action: " +
+                                 std::to_string(action));
+    }
+  };
+
+  // TODO: When working refactor this into a class
+
+  // 1. Connect
+  constexpr int64_t connection_id{0x41727101980};
+  auto transaction_id = random_value<int32_t>();
+
+  bytes connect_request;
+  ranges::move(to_big_endian<int64_t>(connection_id),
+               back_inserter(connect_request));
+  ranges::move(to_big_endian<int32_t>(static_cast<int32_t>(UdpAction::CONNECT)),
+               back_inserter(connect_request));
+  ranges::move(to_big_endian<int32_t>(transaction_id),
+               back_inserter(connect_request));
+
+  // TODO: According to doc we can retry this for 60s. Add retry support.
+  const auto connect_response =
+      Net::udpRequest(announce_url, connect_request, 15s);
+  if (connect_response.empty()) {
+    logger()->debug("UDP Tracker request: empty connect response");
+    return {};
+  }
+
+  if (connect_response.size() < 16) {
+    logger()->debug("UDP Tracker request: too short connect response");
+    return {};
+  }
+
+  const auto connect_reply_action =
+      ToUdpAction(from_big_endian<int32_t>(connect_response));
+  const auto connect_reply_transaction_id =
+      from_big_endian<int32_t>(connect_response, sizeof(int32_t));
+
+  if (connect_reply_transaction_id != transaction_id) {
+    logger()->warn("Udp request got unexpected transaction id {} != {}",
+                   connect_reply_transaction_id, transaction_id);
+    return {};
+  }
+
+  switch (connect_reply_action) {
+    case UdpAction::CONNECT:
+      logger()->debug("UDP Tracker request connected");
+      break;
+    case UdpAction::ERROR: {
+      std::stringstream error_msg;
+      std::transform(connect_response.cbegin() + 2 * sizeof(int32_t),
+                     connect_response.cend(),
+                     std::ostream_iterator<char>(error_msg),
+                     [](std::byte b) { return static_cast<char>(b); });
+      logger()->warn("UDP Tracker request error: {}", error_msg.str());
+      return {};
+    }
+    case UdpAction::ANNOUNCE:
+    case UdpAction::SCRAPE:
+      logger()->warn("UDP Tracker request unexpected action: {}",
+                     static_cast<int>(connect_reply_action));
+      return {};
+  }
+
+  const auto reply_connection_id =
+      from_big_endian<int64_t>(connect_response, 2 * sizeof(int32_t));
+
+  // 2. Announce
+  transaction_id = random_value<int32_t>();
+
+  bytes announce_request;
+  ranges::move(to_big_endian<int64_t>(reply_connection_id),
+               back_inserter(announce_request));
+  ranges::move(
+      to_big_endian<int32_t>(static_cast<int32_t>(UdpAction::ANNOUNCE)),
+      back_inserter(announce_request));
+  ranges::move(to_big_endian<int32_t>(transaction_id),
+               back_inserter(announce_request));
+  ranges::move(m_info_hash.bytes(), back_inserter(announce_request));
+  ranges::move(to_bytes(m_peer_id), back_inserter(announce_request));
+  ranges::move(to_big_endian<int64_t>(downloaded()),
+               back_inserter(announce_request));
+  ranges::move(to_big_endian<int64_t>(left()), back_inserter(announce_request));
+  // FIXME: This is the upload bytes count - not yet keeping track of that
+  constexpr int64_t uploaded_bytes{0};
+  ranges::move(to_big_endian<int64_t>(uploaded_bytes),
+               back_inserter(announce_request));
+  ranges::move(to_big_endian<int32_t>(static_cast<int32_t>(event)),
+               back_inserter(announce_request));
+  // Using 0 to indicate the sender IP (but could be an explicit IP)
+  constexpr uint32_t my_ip{0};
+  ranges::move(to_big_endian<uint32_t>(my_ip), back_inserter(announce_request));
+  const auto key = random_value<uint32_t>();
+  ranges::move(to_big_endian<uint32_t>(key), back_inserter(announce_request));
+  constexpr int32_t max_peers_wanted{50};
+  ranges::move(to_big_endian<int32_t>(max_peers_wanted),
+               back_inserter(announce_request));
+  ranges::move(to_big_endian<uint16_t>(m_listening_port.get()),
+               back_inserter(announce_request));
+  // FIXME: This is related to authentication. Not supported at the moment.
+  constexpr uint16_t extensions{0};
+  ranges::move(to_big_endian<uint16_t>(extensions),
+               back_inserter(announce_request));
+
+  assert(announce_request.size() == 100);
+
+  // TODO: According to doc we can retry this for 60s. Add retry support.
+  const auto announce_response =
+      Net::udpRequest(announce_url, announce_request, 15s);
+  if (announce_response.empty()) {
+    logger()->debug("UDP Tracker request: empty announce response");
+    return {};
+  }
+
+  const auto announce_reply_action =
+      ToUdpAction(from_big_endian<int32_t>(announce_response));
+  const auto announce_reply_transaction_id =
+      from_big_endian<int32_t>(announce_response, sizeof(int32_t));
+
+  if (announce_reply_transaction_id != transaction_id) {
+    logger()->warn("Udp request got unexpected transaction id {} != {}",
+                   announce_reply_transaction_id, transaction_id);
+    return {};
+  }
+
+  switch (announce_reply_action) {
+    case UdpAction::ANNOUNCE:
+      logger()->debug("UDP Tracker request announce");
+      break;
+    case UdpAction::ERROR: {
+      std::stringstream error_msg;
+      std::transform(announce_response.cbegin() + 2 * sizeof(int32_t),
+                     announce_response.cend(),
+                     std::ostream_iterator<char>(error_msg),
+                     [](std::byte b) { return static_cast<char>(b); });
+      logger()->warn("UDP Tracker request error: {}", error_msg.str());
+      return {};
+    }
+    case UdpAction::CONNECT:
+    case UdpAction::SCRAPE:
+      logger()->warn("UDP Tracker request unexpected action: {}",
+                     static_cast<int>(connect_reply_action));
+      return {};
+  }
+
+  if (event == TrackerEvent::UNSPECIFIED || event == TrackerEvent::STARTED) {
+    if (!m_config.get(BoolSetting::INITIATE_PEER_CONNECTIONS) && done()) {
+      logger()->debug("Skipping peer list since the torrent is completed.");
+      return {};
+    }
+
+    // TODO: Number of seconds to wait before re-annoncing
+    const auto interval =
+        from_big_endian<int32_t>(announce_response, 2 * sizeof(int32_t));
+    const auto leechers =
+        from_big_endian<int32_t>(announce_response, 3 * sizeof(int32_t));
+    const auto seeders =
+        from_big_endian<int32_t>(announce_response, 4 * sizeof(int32_t));
+    logger()->debug("interval: {} leechers: {} seeders: {}", interval, leechers,
+                    seeders);
+    std::vector<std::shared_ptr<Peer>> peers;
+    constexpr auto size_of_peer = sizeof(uint16_t) + sizeof(int32_t);
+    constexpr auto peer_offset = 5 * sizeof(int32_t);
+    const auto peers_in_list =
+        (announce_response.size() - peer_offset) / size_of_peer;
+    logger()->debug("Parsing {} peers", peers_in_list);
+    for (size_t i = 0; i < peers_in_list; ++i) {
+      const auto ip = from_big_endian<int32_t>(announce_response,
+                                               peer_offset + i * size_of_peer);
+      const auto port = from_big_endian<uint16_t>(
+          announce_response, peer_offset + i * size_of_peer + sizeof(int32_t));
+      const Url purl{fmt::format("http://{}:{}", ip, port)};
+      peers.emplace_back(std::make_shared<Peer>(purl, *this));
+    }
+
+    return peers;
+  }
+  return {};
+}
+
 std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
     TrackerEvent event) {
-  // Folllowing multi-tracker spec:
+  // Following multi-tracker spec:
   // https://github.com/rakshasa/libtorrent/blob/master/doc/multitracker-spec.txt
   const auto local_announce_list =
       [this]() -> std::vector<std::vector<std::string>> {
@@ -450,65 +710,18 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
   }();
 
   auto do_tracker_request =
-      [&,
-       this](const auto& announce_url) -> std::vector<std::shared_ptr<Peer>> {
-    Url url(announce_url);
-    url.add_param("info_hash=" + Net::urlEncode(m_info_hash));
-    url.add_param(fmt::format("peer_id={}", peer_id()));
-    url.add_param("port=" + to_string(m_listening_port.get()));
-    url.add_param("uploaded=0");
-    // TODO: According to the spec this should be the amount downloaded
-    //       since the started event to the tracker. For now using the total.
-    url.add_param("downloaded=" + to_string(downloaded()));
-    url.add_param("left=" + to_string(left()));
-    // FIXME: No one calls this with COMPLETED and STOPPED (we should)
-    url.add_param("event=" + fmt::format("{}", event));
-    url.add_param("compact=1");
-
-    if (logger()->should_log(spdlog::level::debug)) {
-      logger()->debug("Tracker request:\n{}", url);
-    } else {
-      logger()->info("Tracker request: {}", url.str());
+      [&](const auto& announce_url) -> std::vector<std::shared_ptr<Peer>> {
+    const Url url(announce_url);
+    if (url.scheme().starts_with("http")) {
+      return http_tracker_request(url, event);
     }
 
-    auto [headers, body] = m_http_get(url);
-
-    std::vector<std::shared_ptr<Peer>> peers;
-
-    // We only care about decoding the peer list for certain events
-    if (event == TrackerEvent::UNSPECIFIED || event == TrackerEvent::STARTED) {
-      if (!m_config.get(BoolSetting::INITIATE_PEER_CONNECTIONS) && done()) {
-        logger()->debug("Skipping peer list since the torrent is completed.");
-        return {};
-      }
-
-      ElmPtr reply;
-      try {
-        reply = decode(body);
-      } catch (const BencodeConversionError&) {
-        throw_with_nested(runtime_error("Could not decode peer list."));
-      }
-
-      logger()->debug("=====HEADER=====\n{}\n=====BODY=====\n{}", headers,
-                      reply);
-
-      auto reply_dict = reply->to<TypedElement<BeDict>>()->val();
-      if (reply_dict.find("peers") == reply_dict.end()) {
-        throw runtime_error("Invalid tracker reply, no peer list");
-      }
-      auto peers_dict = reply_dict["peers"];
-      // The peers might be in binary or string form
-      // First try string form ...
-      if (peers_dict->is<TypedElement<BeList>>()) {
-        logger()->debug("Peer list in string form");
-        read_peers_string_list(*this, *peers_dict, peers);
-      } else {
-        // ... else compact/binary form
-        logger()->debug("Peer list in binary form");
-        read_peers_binary_form(*this, *peers_dict, peers);
-      }
+    if (url.scheme() == "udp") {
+      return udp_tracker_request(url, event);
     }
-    return peers;
+
+    throw std::runtime_error(
+        fmt::format("Unhandled tracker url scheme: {}", url.scheme()));
   };
 
   // According to the spec we will now try each tier in order and within a tier
