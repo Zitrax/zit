@@ -3,6 +3,7 @@ set(CMAKE_CXX_STANDARD 20)
 project(zit CXX)
 
 option(USE_CLANG_TIDY "Use clang-tidy when building" ON)
+option(USE_ASAN "Build with address sanitation" OFF)
 
 find_package(asio)
 find_package(OpenSSL)
@@ -89,6 +90,11 @@ endif()
 
 # Enable parallel building on windows for "cmake --build"
 add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
+
+if(USE_ASAN)
+  add_compile_options(-fsanitize=address)
+  add_link_options(-fsanitize=address)
+endif()
 
 add_subdirectory(src)
 enable_testing()
