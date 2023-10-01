@@ -50,6 +50,9 @@ class FileWriter {
   FileWriter(FileWriter const&) = delete;
   void operator=(FileWriter const&) = delete;
 
+  // Must stop the thread, without this the default destructor would hang
+  ~FileWriter() { stop(); }
+
   /**
    * Add a piece to the queue for writing by the writer thread.
    */

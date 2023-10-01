@@ -102,8 +102,6 @@ int main(int argc, const char* argv[]) noexcept {
       zit::logger("file_writer")->set_level(lvl);
     }
 
-    zit::logger()->trace("TEST");
-
     class CommandLineArgs : public zit::Config {
      public:
       explicit CommandLineArgs(const int& listening_port)
@@ -153,17 +151,17 @@ int main(int argc, const char* argv[]) noexcept {
     }
 
     std::vector<std::thread> torrent_threads;
-    std::ranges::transform(
-        torrents, std::back_inserter(torrent_threads), [](auto& torrent) {
-          return std::thread([&]() {
-            try {
-              torrent->start();
-              torrent->run();
-            } catch (const std::exception& ex) {
-              print_exception(ex);
-            }
-          });
-        });
+    std::ranges::transform(torrents, std::back_inserter(torrent_threads),
+                           [](auto& torrent) {
+                             return std::thread([&]() {
+                               try {
+                                 torrent->start();
+                                 torrent->run();
+                               } catch (const std::exception& ex) {
+                                 print_exception(ex);
+                               }
+                             });
+                           });
 
 #ifdef WIN32
     // Windows ctrl-handler
@@ -193,12 +191,13 @@ int main(int argc, const char* argv[]) noexcept {
 
     sigint_function = [&](int /*s*/) {
       zit::logger()->warn("CTRL-C pressed. Stopping torrent(s)...");
-      for (auto& torrent : torrents) {
+      for (const auto& torrent : torrents) {
         torrent->stop();
       }
       for (auto& torrent_thread : torrent_threads) {
         torrent_thread.join();
       }
+      std::exit(0);
     };
 
     // NOLINTBEGIN(cppcoreguidelines-pro-type-union-access,misc-include-cleaner)
