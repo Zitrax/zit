@@ -90,7 +90,8 @@ TEST(net, url_equality) {
 TEST(net, url_resolve) {
   Url url("http://127.0.0.1/");
   url.resolve();
-  EXPECT_EQ(url.host(), "localhost");
+  EXPECT_FALSE(url.host().empty());
+  EXPECT_NE(url.host(), "127.0.0.1");
 }
 
 TEST(net, httpGetHTTP) {

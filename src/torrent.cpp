@@ -588,7 +588,7 @@ class UDPTrackerRequest {
       case UdpAction::ANNOUNCE:
         logger()->debug("UDP Tracker request announce");
         break;
-      case UdpAction::ERROR: {
+      case UdpAction::ERR: {
         std::stringstream error_msg;
         std::transform(announce_response.cbegin() + 2 * sizeof(int32_t),
                        announce_response.cend(),
@@ -653,7 +653,7 @@ class UDPTrackerRequest {
   }
 
  private:
-  enum class UdpAction { CONNECT = 0, ANNOUNCE = 1, SCRAPE = 2, ERROR = 3 };
+  enum class UdpAction { CONNECT = 0, ANNOUNCE = 1, SCRAPE = 2, ERR = 3 };
 
   /** Connect to UDP tracker */
   bool connect() {
@@ -704,7 +704,7 @@ class UDPTrackerRequest {
       case UdpAction::CONNECT:
         logger()->debug("UDP Tracker request connected");
         break;
-      case UdpAction::ERROR: {
+      case UdpAction::ERR: {
         std::stringstream error_msg;
         std::transform(connect_response.cbegin() + 2 * sizeof(int32_t),
                        connect_response.cend(),
@@ -734,8 +734,8 @@ class UDPTrackerRequest {
         return UdpAction::ANNOUNCE;
       case static_cast<uint32_t>(UdpAction::SCRAPE):
         return UdpAction::SCRAPE;
-      case static_cast<uint32_t>(UdpAction::ERROR):
-        return UdpAction::ERROR;
+      case static_cast<uint32_t>(UdpAction::ERR):
+        return UdpAction::ERR;
       default:
         throw std::runtime_error("Unknown udp tracker action: " +
                                  std::to_string(action));
