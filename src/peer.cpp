@@ -71,7 +71,7 @@ PeerConnection::PeerConnection(Peer& peer,
 }
 
 void PeerConnection::listen() {
-  logger()->info("{} port={}", PRETTY_FUNCTION, m_listening_port.get());
+  logger()->info("PeerConnection listening on port={}", m_listening_port.get());
   // if (!acceptor_.is_open()) {
   const asio::socket_base::reuse_address option(true);
   acceptor_.set_option(option);
@@ -111,7 +111,7 @@ void PeerConnection::write(const std::string& msg) {
 }
 
 void PeerConnection::write(const optional<Url>& url, const std::string& msg) {
-  logger()->debug(PRETTY_FUNCTION);
+  logger()->trace(PRETTY_FUNCTION);
 
   if (!m_msg.empty()) {
     throw runtime_error("Message not empty");
@@ -135,7 +135,7 @@ void PeerConnection::write(const optional<Url>& url, const std::string& msg) {
 
 void PeerConnection::handle_resolve(const asio::error_code& err,
                                     tcp::resolver::iterator endpoint_iterator) {
-  logger()->debug(PRETTY_FUNCTION);
+  logger()->trace(PRETTY_FUNCTION);
   if (!err) {
     // Attempt a connection to the first endpoint in the list. Each endpoint
     // will be tried until we successfully establish a connection.
@@ -148,7 +148,7 @@ void PeerConnection::handle_resolve(const asio::error_code& err,
     socket_.async_connect(endpoint, [this, it = ++endpoint_iterator](
                                         auto&& ec) { handle_connect(ec, it); });
   } else {
-    logger()->error("Resolve failed: {}", err.message());
+    logger()->error("Resolve failed for {}: {}", peer().str(), err.message());
   }
 }
 
@@ -187,7 +187,7 @@ void PeerConnection::send(bool start_read) {
 
 void PeerConnection::handle_connect(const asio::error_code& err,
                                     tcp::resolver::iterator endpoint_iterator) {
-  logger()->debug(PRETTY_FUNCTION);
+  logger()->trace(PRETTY_FUNCTION);
   if (!err) {
     // The connection was successful. Send the request.
     if (!m_connected) {
