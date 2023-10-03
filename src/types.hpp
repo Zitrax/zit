@@ -103,7 +103,7 @@ static constexpr std::byte operator""_b(char arg) noexcept {
 /**
  * Extract big endian value to int
  */
-template <typename T>
+template <std::integral T>
 static inline T from_big_endian(const bytes& buf, bytes::size_type offset = 0) {
   constexpr auto size = sizeof(T);
   static_assert(size == 2 || size == 4 || size == 8,
@@ -140,7 +140,7 @@ static inline T from_big_endian(const bytes& buf, bytes::size_type offset = 0) {
 /**
  * Convert host int to byte vector in network byte order.
  */
-template <typename T>
+template <std::integral T>
 static inline bytes to_big_endian(T val) {
   constexpr auto size = sizeof(T);
   static_assert(size == 2 || size == 4 || size == 8,

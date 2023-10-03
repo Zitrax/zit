@@ -8,6 +8,7 @@
 #include "peer.hpp"
 #include "piece.hpp"
 #include "random.hpp"
+#include "retry.hpp"
 #include "sha1.hpp"
 #include "string_utils.hpp"
 #include "timer.hpp"
@@ -502,10 +503,24 @@ Torrent::http_tracker_request(const Url& announce_url, TrackerEvent event) {
 
 /**
  * Protocol documented here: https://libtorrent.org/udp_tracker_protocol.html
+ *
+ * The requests are currently retired and synchronous so can be slow
+ * if all requests fail. A possible improvement would be to look up
+ * multiple trackers at the same time with async connections.
  */
 class UDPTrackerRequest {
   using ClockType = std::chrono::high_resolution_clock;
   using TimePoint = std::chrono::time_point<ClockType>;
+
+  template <std::integral T, typename Container>
+  void append_big_endian(T val, Container& container) {
+    ranges::move(to_big_endian<T>(val), std::back_inserter(container));
+  }
+
+  template <typename Container>
+  void append_big_endian(bytes&& data, Container& container) {
+    ranges::move(std::move(data), std::back_inserter(container));
+  }
 
  public:
   UDPTrackerRequest(Url announce_url, Torrent& torrent)
@@ -516,6 +531,12 @@ class UDPTrackerRequest {
    */
   std::pair<bool, std::vector<std::shared_ptr<Peer>>> announce(
       Torrent::TrackerEvent event) {
+    if (logger()->should_log(spdlog::level::debug)) {
+      logger()->debug("Tracker request:\n{}", m_announce_url);
+    } else {
+      logger()->info("Tracker request: {}", m_announce_url.str());
+    }
+
     connect();
 
     if (!m_connection_id) {
@@ -526,52 +547,47 @@ class UDPTrackerRequest {
     const auto transaction_id = random_value<int32_t>();
 
     bytes announce_request;
-    ranges::move(to_big_endian<int64_t>(m_connection_id.value()),
-                 back_inserter(announce_request));
-    ranges::move(
-        to_big_endian<int32_t>(static_cast<int32_t>(UdpAction::ANNOUNCE)),
-        back_inserter(announce_request));
-    ranges::move(to_big_endian<int32_t>(transaction_id),
-                 back_inserter(announce_request));
-    ranges::move(m_torrent.info_hash().bytes(),
-                 back_inserter(announce_request));
-    ranges::move(to_bytes(m_torrent.peer_id()),
-                 back_inserter(announce_request));
-    ranges::move(to_big_endian<int64_t>(m_torrent.downloaded()),
-                 back_inserter(announce_request));
-    ranges::move(to_big_endian<int64_t>(m_torrent.left()),
-                 back_inserter(announce_request));
+    append_big_endian(m_connection_id.value(), announce_request);
+    append_big_endian(static_cast<int32_t>(UdpAction::ANNOUNCE),
+                      announce_request);
+    append_big_endian(transaction_id, announce_request);
+    append_big_endian(m_torrent.info_hash().bytes(), announce_request);
+    append_big_endian(to_bytes(m_torrent.peer_id()), announce_request);
+    append_big_endian(m_torrent.downloaded(), announce_request);
+    append_big_endian(m_torrent.left(), announce_request);
     // FIXME: This is the upload bytes count - not yet keeping track of that
     constexpr int64_t uploaded_bytes{0};
-    ranges::move(to_big_endian<int64_t>(uploaded_bytes),
-                 back_inserter(announce_request));
-    ranges::move(to_big_endian<int32_t>(static_cast<int32_t>(event)),
-                 back_inserter(announce_request));
+    append_big_endian(uploaded_bytes, announce_request);
+    append_big_endian(static_cast<int32_t>(event), announce_request);
     // Using 0 to indicate the sender IP (but could be an explicit IP)
     constexpr uint32_t my_ip{0};
-    ranges::move(to_big_endian<uint32_t>(my_ip),
-                 back_inserter(announce_request));
+    append_big_endian(my_ip, announce_request);
     const auto key = random_value<uint32_t>();
-    ranges::move(to_big_endian<uint32_t>(key), back_inserter(announce_request));
+    append_big_endian(key, announce_request);
     constexpr int32_t max_peers_wanted{50};
-    ranges::move(to_big_endian<int32_t>(max_peers_wanted),
-                 back_inserter(announce_request));
-    ranges::move(to_big_endian<uint16_t>(m_torrent.listening_port().get()),
-                 back_inserter(announce_request));
+    append_big_endian(max_peers_wanted, announce_request);
+    append_big_endian(m_torrent.listening_port().get(), announce_request);
     // FIXME: This is related to authentication. Not supported at the moment.
     constexpr uint16_t extensions{0};
-    ranges::move(to_big_endian<uint16_t>(extensions),
-                 back_inserter(announce_request));
+    append_big_endian(extensions, announce_request);
 
     assert(announce_request.size() == 100);
 
-    // TODO: According to doc we can retry this for 60s. Add retry support.
-    const auto announce_response =
-        Net::udpRequest(m_announce_url, announce_request, 15s);
-    if (announce_response.empty()) {
+    const auto maybe_announce_response = retry_call(
+        [&]() -> std::optional<bytes> {
+          auto response =
+              Net::udpRequest(m_announce_url, announce_request, 15s);
+          if (response.empty()) {
+            return {};
+          }
+          return response;
+        },
+        4, 15s);
+    if (!maybe_announce_response) {
       logger()->debug("UDP Tracker request: empty announce response");
       return {true, {}};
     }
+    const auto& announce_response = maybe_announce_response.value();
 
     const auto announce_reply_action =
         toUdpAction(from_big_endian<int32_t>(announce_response));
@@ -668,21 +684,27 @@ class UDPTrackerRequest {
     auto transaction_id = random_value<int32_t>();
 
     bytes connect_request;
-    ranges::move(to_big_endian<int64_t>(connection_id),
-                 back_inserter(connect_request));
-    ranges::move(
-        to_big_endian<int32_t>(static_cast<int32_t>(UdpAction::CONNECT)),
-        back_inserter(connect_request));
-    ranges::move(to_big_endian<int32_t>(transaction_id),
-                 back_inserter(connect_request));
+    append_big_endian(connection_id, connect_request);
+    append_big_endian(static_cast<int32_t>(UdpAction::CONNECT),
+                      connect_request);
+    append_big_endian(transaction_id, connect_request);
 
-    // TODO: According to doc we can retry this for 60s. Add retry support.
-    const auto connect_response =
-        Net::udpRequest(m_announce_url, connect_request, 15s);
-    if (connect_response.empty()) {
+    const auto maybe_connect_response = retry_call(
+        [&]() -> std::optional<bytes> {
+          auto response = Net::udpRequest(m_announce_url, connect_request, 15s);
+          if (response.empty()) {
+            return {};
+          }
+          return response;
+        },
+        4, 15s);
+
+    if (!maybe_connect_response) {
       logger()->debug("UDP Tracker request: empty connect response");
       return false;
     }
+
+    const auto& connect_response = maybe_connect_response.value();
 
     if (connect_response.size() < 16) {
       logger()->debug("UDP Tracker request: too short connect response");
