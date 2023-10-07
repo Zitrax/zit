@@ -24,12 +24,16 @@
 #include <asio/ssl/stream.hpp>
 #include <asio/ssl/verify_context.hpp>
 #include <asio/ssl/verify_mode.hpp>
+#include <asio/steady_timer.hpp>
 #include <asio/streambuf.hpp>
 #include <asio/system_error.hpp>
 
 #ifndef _MSC_VER
 #include <bits/basic_string.h>
 #endif  // !_MSC_VER
+#if __clang__
+#include <bits/chrono.h>
+#endif  // __clang__
 #include <algorithm>
 #include <array>
 #include <cctype>
@@ -38,6 +42,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
@@ -59,6 +64,7 @@
 using asio::detail::socket_ops::host_to_network_short;
 using asio::ip::tcp;
 using namespace std;
+
 namespace ssl = asio::ssl;
 
 namespace zit {
@@ -469,8 +475,8 @@ string Net::urlEncode(const string& value) {
   return escaped.str();
 }
 
-Url::Url(const string& url, bool binary) {
-  if (!binary) {
+Url::Url(const string& url, Binary binary, Resolve resolve) {
+  if (!binary.get()) {
     const regex ur("^(udp|https?)://([^:/]*)(?::(\\d+))?(.*?)$");
     smatch match;
     if (!regex_match(url, match, ur) || match.size() != 5) {
@@ -500,19 +506,64 @@ Url::Url(const string& url, bool binary) {
         static_cast<uint8_t>(url[4]) << 0 | static_cast<uint8_t>(url[5]) << 8));
     m_scheme = "http";
   }
+
+  if (resolve.get()) {
+    this->resolve();
+  }
 }
 
 void Url::resolve() {
+  logger()->trace("Trying to resolve {}", str());
+
+  asio::error_code err;
+  asio::ip::make_address(m_host, err);
+  if (err) {
+    // Already resolved or invalid address - so don't bother
+    logger()->trace("{} does not need resolving", str());
+    return;
+  }
+
+  // Note this is just doing a best effort at not spending too much time
+  // resolving. However as for example https://stackoverflow.com/q/6407273/11722
+  // shows, canceling an ongoing resolve will not actually cancelling the low
+  // level resolve, so it can still take up to 10s.
+
   try {
     asio::io_service io_service;
     asio::ip::tcp::resolver resolver(io_service);
     auto original_host = m_host;
-    auto res = resolver.resolve(asio::ip::tcp::endpoint(
-        asio::ip::address_v4::from_string(m_host), m_port.value_or(0)));
-    m_host = res->host_name();
-    logger()->debug("Resolved {} -> {}", original_host, m_host);
-  } catch (const asio::system_error& ex) {
-    logger()->debug("Could not resolve: {} ({})", str(), ex.what());
+    const auto endpoint = asio::ip::tcp::endpoint(
+        asio::ip::address_v4::from_string(m_host), m_port.value_or(0));
+
+    asio::steady_timer timer(io_service);
+    timer.expires_from_now(100ms);
+
+    resolver.async_resolve(
+        endpoint, [&](const asio::error_code& error,
+                      const asio::ip::tcp::resolver::results_type& results) {
+          timer.cancel();
+          if (!error) {
+            m_host = results->host_name();
+            logger()->debug("Resolved {} -> {}", original_host, m_host);
+            io_service.stop();
+          } else if (error == asio::error::operation_aborted) {
+            logger()->trace("Resolve aborted");
+          } else {
+            logger()->debug("Could not resolve: {} ({})", str(),
+                            error.message());
+          }
+        });
+
+    timer.async_wait([&](const asio::error_code& error) {
+      if (error != asio::error::operation_aborted) {
+        logger()->trace("Resolver for {} aborted by timeout", str());
+        resolver.cancel();
+      }
+    });
+
+    io_service.run();
+  } catch (const std::exception&) {
+    std::throw_with_nested(std::runtime_error("Resolve error"));
   }
 }
 

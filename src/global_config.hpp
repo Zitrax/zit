@@ -23,7 +23,11 @@ enum class BoolSetting {
    * torrent clients refuse to connect to localhost if both clients are on
    * localhost (as is the case for the current integration tests).
    */
-  INITIATE_PEER_CONNECTIONS
+  INITIATE_PEER_CONNECTIONS,
+  /**
+   * Spend extra time on resolving URLs
+   */
+  RESOLVE_URLS
 };
 
 /**
@@ -62,14 +66,15 @@ class Config {
  protected:
   // Default values for all settings
   std::map<BoolSetting, bool> m_bool_settings{
-      {BoolSetting::INITIATE_PEER_CONNECTIONS, false}};
+      {BoolSetting::INITIATE_PEER_CONNECTIONS, false},
+      {BoolSetting::RESOLVE_URLS, true}};
 
   std::map<IntSetting, int> m_int_settings{
       {IntSetting::LISTENING_PORT, 20001},
       {IntSetting::CONNECTION_PORT, 20000}};
-
-  friend std::ostream& operator<<(std::ostream& os, const Config& config);
 };
+
+std::ostream& operator<<(std::ostream& os, const Config& config);
 
 /**
  * Reads config from disk on the format:

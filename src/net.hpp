@@ -18,6 +18,9 @@ using namespace std::string_literals;
  */
 class Url {
  public:
+  using Binary = StrongType<bool, struct BinaryTag>;
+  using Resolve = StrongType<bool, struct ResolveTag>;
+
   /**
    * Create Url object from string
    *
@@ -26,8 +29,13 @@ class Url {
    *
    * @param binary if true the string length is expected to be exactly 6, the
    *   first 4 bytes is the ip and the two last bytes the port.
+   *
+   * @param resolve if true the constructor will try to resolve the URL to
+   *   fqdn.
    */
-  explicit Url(const std::string& url, bool binary = false);
+  explicit Url(const std::string& url,
+               Binary binary = Binary{false},
+               Resolve resolve = Resolve{false});
 
   /**
    * Create Url object

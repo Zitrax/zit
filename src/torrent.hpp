@@ -5,6 +5,7 @@
 #include <utility>
 #include <vector>
 
+#include "bencode.hpp"
 #include "global_config.hpp"
 #include "peer.hpp"
 #include "sha1.hpp"
@@ -345,6 +346,18 @@ class Torrent {
   enum class TrackerEvent { STARTED, STOPPED, COMPLETED, UNSPECIFIED };
 
  private:
+  /**
+   * Read and add peers in string form and add to the peer vector.
+   */
+  void read_peers_string_list(const bencode::Element& peers_dict,
+                              std::vector<std::shared_ptr<Peer>>& peers);
+
+  /**
+   * Read and add peers in binary form and add to the peer vector.
+   */
+  void read_peers_binary_form(const bencode::Element& peers_dict,
+                              std::vector<std::shared_ptr<Peer>>& peers);
+
   /**
    * If a piece have requests but have not received data in a while we mark the
    * blocks as non requested to be tried again.
