@@ -37,6 +37,10 @@ std::string getenv(const char* env) {
 }
 
 // Return a list of candidate config directories in precedence order
+//
+// On Linux following the XDG Base Directory Specification (0.8)
+//  https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
+//
 std::vector<fs::path> config_dirs() {
 #ifndef __linux__
   logger()->warn("Config dirs not yet implemented for non linux");
@@ -46,17 +50,31 @@ std::vector<fs::path> config_dirs() {
 
   const auto home_dir = getenv("HOME");
 
+  // $XDG_CONFIG_HOME defines the base directory relative to which user-specific
+  // configuration files should be stored. If $XDG_CONFIG_HOME is either not set
+  // or empty, a default equal to $HOME/.config should be used.
   auto config_dir = getenv("XDG_CONFIG_HOME");
-  if (fs::exists(config_dir)) {
-    dirs.emplace_back(config_dir);
+  if (config_dir.empty()) {
+    dirs.emplace_back(fs::path(home_dir) / ".config");
   } else if (fs::exists(home_dir)) {
-    dirs.emplace_back(fs::path(home_dir) / ".local" / "share");
+    dirs.emplace_back(config_dir);
   }
 
+  // $XDG_CONFIG_DIRS defines the preference-ordered set of base directories to
+  // search for configuration files in addition to the $XDG_CONFIG_HOME base
+  // directory. The directories in $XDG_CONFIG_DIRS should be seperated with a
+  // colon ':'.
+  //
+  // If $XDG_CONFIG_DIRS is either not set or empty, a value equal to /etc/xdg
+  // should be used.
   config_dir = getenv("XDG_CONFIG_DIRS");
-  for (const auto& dir : split(config_dir, ":")) {
-    if (fs::exists(dir)) {
-      dirs.emplace_back(dir);
+  if (config_dir.empty()) {
+    dirs.emplace_back("etc/xdg");
+  } else {
+    for (const auto& dir : split(config_dir, ":")) {
+      if (fs::exists(dir)) {
+        dirs.emplace_back(dir);
+      }
     }
   }
 
