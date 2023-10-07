@@ -407,38 +407,6 @@ bool is_local(const auto& purl, auto port) {
   return purl.host() == "127.0.0.1" && purl.port() == port.get();
 }
 
-void read_peers_string_list(Torrent& torrent,
-                            const bencode::Element& peers_dict,
-                            std::vector<std::shared_ptr<Peer>>& peers) {
-  const auto peer_list = peers_dict.to<TypedElement<BeList>>()->val();
-  for (const auto& elm : peer_list) {
-    const auto peer = elm->to<TypedElement<BeDict>>()->val();
-    const auto purl = Url(fmt::format(
-        "http://{}:{}", peer.at("ip")->to<TypedElement<std::string>>()->val(),
-        peer.at("port")->to<TypedElement<int64_t>>()->val()));
-    if (!is_local(purl, torrent.listening_port())) {
-      peers.emplace_back(make_shared<Peer>(purl, torrent));
-    }
-  }
-}
-
-void read_peers_binary_form(Torrent& torrent,
-                            const bencode::Element& peers_dict,
-                            std::vector<std::shared_ptr<Peer>>& peers) {
-  auto binary_peers = peers_dict.to<TypedElement<string>>()->val();
-  if (binary_peers.empty()) {
-    throw runtime_error("Peer list is empty");
-  }
-
-  const int THREE_HEX_BYTES = 6;
-  for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
-    const auto purl = Url(binary_peers.substr(i, THREE_HEX_BYTES), true);
-    if (!is_local(purl, torrent.listening_port())) {
-      peers.emplace_back(make_shared<Peer>(purl, torrent));
-    }
-  }
-}
-
 }  // namespace
 
 std::pair<bool, std::vector<std::shared_ptr<Peer>>>
@@ -491,11 +459,11 @@ Torrent::http_tracker_request(const Url& announce_url, TrackerEvent event) {
     // First try string form ...
     if (peers_dict->is<TypedElement<BeList>>()) {
       logger()->debug("Peer list in string form");
-      read_peers_string_list(*this, *peers_dict, peers);
+      read_peers_string_list(*peers_dict, peers);
     } else {
       // ... else compact/binary form
       logger()->debug("Peer list in binary form");
-      read_peers_binary_form(*this, *peers_dict, peers);
+      read_peers_binary_form(*peers_dict, peers);
     }
   }
   return {true, peers};
@@ -656,9 +624,10 @@ class UDPTrackerRequest {
                         static_cast<uint8_t>((ip >> 8) & 0xFF),
                         static_cast<uint8_t>((ip >> 0) & 0xFF));
 
-        Url purl{fmt::format("http://{}:{}", ip_str, port)};
+        const Url purl{
+            fmt::format("http://{}:{}", ip_str, port), Url::Binary{false},
+            Url::Resolve{m_torrent.config().get(BoolSetting::RESOLVE_URLS)}};
         if (!is_local(purl, m_torrent.listening_port())) {
-          purl.resolve();
           peers.emplace_back(std::make_shared<Peer>(purl, m_torrent));
         }
       }
@@ -894,6 +863,43 @@ void Torrent::stop() {
     peer->stop();
   }
   tracker_request(TrackerEvent::STOPPED);
+}
+
+void Torrent::read_peers_string_list(
+    const bencode::Element& peers_dict,
+    std::vector<std::shared_ptr<Peer>>& peers) {
+  const auto peer_list = peers_dict.to<TypedElement<BeList>>()->val();
+  for (const auto& elm : peer_list) {
+    const auto peer = elm->to<TypedElement<BeDict>>()->val();
+    const auto purl =
+        Url(fmt::format("http://{}:{}",
+                        peer.at("ip")->to<TypedElement<std::string>>()->val(),
+                        peer.at("port")->to<TypedElement<int64_t>>()->val()),
+            Url::Binary{false},
+            Url::Resolve{m_config.get(BoolSetting::RESOLVE_URLS)});
+    if (!is_local(purl, listening_port())) {
+      peers.emplace_back(make_shared<Peer>(purl, *this));
+    }
+  }
+}
+
+void Torrent::read_peers_binary_form(
+    const bencode::Element& peers_dict,
+    std::vector<std::shared_ptr<Peer>>& peers) {
+  auto binary_peers = peers_dict.to<TypedElement<string>>()->val();
+  if (binary_peers.empty()) {
+    throw runtime_error("Peer list is empty");
+  }
+
+  const int THREE_HEX_BYTES = 6;
+  for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
+    const auto purl =
+        Url(binary_peers.substr(i, THREE_HEX_BYTES), Url::Binary{true},
+            Url::Resolve{m_config.get(BoolSetting::RESOLVE_URLS)});
+    if (!is_local(purl, listening_port())) {
+      peers.emplace_back(make_shared<Peer>(purl, *this));
+    }
+  }
 }
 
 void Torrent::retry_pieces() {

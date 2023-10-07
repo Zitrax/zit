@@ -115,6 +115,10 @@ int main(int argc, const char* argv[]) noexcept {
         return zit::SingletonDirectoryFileConfig::getInstance().get(setting);
       }
 
+      [[nodiscard]] bool get(zit::BoolSetting setting) const override {
+        return zit::SingletonDirectoryFileConfig::getInstance().get(setting);
+      }
+
      private:
       const int& m_listening_port;
     };

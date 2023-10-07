@@ -35,7 +35,7 @@ TEST(net, url_binary) {
                         1,
                         static_cast<char>(port & 0xFF),
                         static_cast<char>((port & 0xFF00) >> 8)};
-  Url url(urlstr, true);
+  Url url(urlstr, Url::Binary{true});
   EXPECT_EQ(url.scheme(), "http");
   EXPECT_EQ(url.host(), "192.168.0.1");
   EXPECT_EQ(url.port(), 10000);

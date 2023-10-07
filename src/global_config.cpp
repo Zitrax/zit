@@ -11,7 +11,6 @@
 #ifndef _MSC_VER
 #include <bits/basic_string.h>
 #endif  // !_MSC_VER
-#include <algorithm>
 #include <cstdlib>
 #include <filesystem>
 #include <map>
@@ -19,7 +18,6 @@
 #include <ostream>
 #include <stdexcept>
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -106,7 +104,8 @@ const std::map<std::string, T> settings_map;
 
 template <>
 const std::map<std::string, BoolSetting> settings_map<BoolSetting>{
-    {"initiate_peer_connections", BoolSetting::INITIATE_PEER_CONNECTIONS}};
+    {"initiate_peer_connections", BoolSetting::INITIATE_PEER_CONNECTIONS},
+    {"resolve_urls", BoolSetting::RESOLVE_URLS}};
 
 template <>
 const std::map<std::string, IntSetting> settings_map<IntSetting>{
@@ -118,17 +117,12 @@ const std::map<std::string, IntSetting> settings_map<IntSetting>{
 std::ostream& operator<<(std::ostream& os, const Config& config) {
   const auto dump = [&](const auto& settings) {
     for (const auto& [key, val] : settings) {
-      // Note - important to remove const to match the variable template type
-      using key_type = std::remove_cv_t<decltype(key)>;
-      const auto res = std::ranges::find_if(
-          settings_map<key_type>,
-          [k = key](const auto& kv) { return kv.second == k; });
-      os << res->first << "=" << val << "\n";
+      os << key << "=" << config.get(val) << "\n";
     }
   };
 
-  dump(config.m_bool_settings);
-  dump(config.m_int_settings);
+  dump(settings_map<BoolSetting>);
+  dump(settings_map<IntSetting>);
   return os;
 }
 
