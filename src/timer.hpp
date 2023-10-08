@@ -12,7 +12,11 @@ class Timer {
   ~Timer() {
     const std::chrono::duration<double> total =
         std::chrono::system_clock::now() - m_start;
-    logger()->info("{:.3f} seconds spent on {}", total.count(), m_name);
+    try {
+      logger()->info("{:.3f} seconds spent on {}", total.count(), m_name);
+    } catch (const std::exception&) {
+      std::cerr << "Timer logger failure\n";
+    }
   }
 
  private:
