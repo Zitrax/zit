@@ -21,6 +21,11 @@
 #include <utility>
 #include <vector>
 
+#ifdef _WIN32
+#include <KnownFolders.h>
+#include <ShlObj.h>
+#endif  // _WIN32
+
 namespace fs = std::filesystem;
 
 namespace zit {
@@ -40,11 +45,19 @@ std::string getenv(const char* env) {
 //  https://specifications.freedesktop.org/basedir-spec/basedir-spec-latest.html
 //
 std::vector<fs::path> config_dirs() {
-#ifndef __linux__
-  logger()->warn("Config dirs not yet implemented for non linux");
-#endif
-
   std::vector<fs::path> dirs;
+
+#ifdef _WIN32
+  PWSTR wpath = nullptr;
+  if (SUCCEEDED(
+          SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &wpath))) {
+    fs::path path{wpath};
+    dirs.emplace_back(wpath);
+    CoTaskMemFree(wpath);
+  } else {
+    logger()->warn("Failed to retrieve AppData path.");
+  }
+#elif __linux__
 
   const auto home_dir = getenv("HOME");
 
@@ -80,6 +93,10 @@ std::vector<fs::path> config_dirs() {
   if (fs::exists(home_dir)) {
     dirs.emplace_back(home_dir);
   }
+
+#else
+  logger()->warn("Config dirs not yet implemented for this platform");
+#endif
 
   logger()->debug("Config candidate dirs:");
   for (const auto& dir : dirs) {
@@ -187,7 +204,7 @@ void FileConfig::update_value(const std::string& key,
 SingletonDirectoryFileConfig::SingletonDirectoryFileConfig() : FileConfig("") {
   // Read and apply config from disk
   for (const auto& config_dir : config_dirs()) {
-    const auto config_file = config_dir / "zit" / ".zit";
+    const auto config_file = config_dir / "zit" / "config.ini";
     if (try_file(config_file)) {
       break;
     }

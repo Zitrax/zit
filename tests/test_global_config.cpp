@@ -44,4 +44,4 @@ TEST_F(FileConfigTest, CorrectFile) {
   EXPECT_EQ(config.get(IntSetting::CONNECTION_PORT), 321);
 }
 
-#endif // __linux__
+#endif  // __linux__

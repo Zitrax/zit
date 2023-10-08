@@ -107,7 +107,7 @@ class FileConfig : public Config {
  * At the moment there is no support for escaping '='
  *
  * This is the main config for Zit. It will look for the config file
- * zit/.zit in all the default locations based on XDG Base Directory
+ * zit/config.ini in all the default locations based on XDG Base Directory
  * Specification and finally fall back on the home directory.
  *
  * An example config with all the current default options:
