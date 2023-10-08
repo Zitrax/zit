@@ -359,6 +359,22 @@ class Torrent {
                               std::vector<std::shared_ptr<Peer>>& peers);
 
   /**
+   * Helper for `verify_existing_file` for single file pieces.
+   */
+  void verify_piece_single_file(uintmax_t file_length,
+                                std::atomic_uint32_t& num_pieces,
+                                std::mutex& mutex,
+                                const Sha1& sha1);
+
+  /**
+   * Helper for `verify_existing_file` for single multi file pieces.
+   */
+  void verify_piece_multi_file(std::atomic_uint32_t& num_pieces,
+                               std::mutex& mutex,
+                               int64_t global_len,
+                               const Sha1& sha1);
+
+  /**
    * If a piece have requests but have not received data in a while we mark the
    * blocks as non requested to be tried again.
    */
