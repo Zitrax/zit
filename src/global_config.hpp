@@ -27,7 +27,11 @@ enum class BoolSetting {
   /**
    * Spend extra time on resolving URLs
    */
-  RESOLVE_URLS
+  RESOLVE_URLS,
+  /**
+   * Allow using threads for verifying existing pieces
+   */
+  PIECE_VERIFY_THREADS
 };
 
 /**
@@ -67,7 +71,8 @@ class Config {
   // Default values for all settings
   std::map<BoolSetting, bool> m_bool_settings{
       {BoolSetting::INITIATE_PEER_CONNECTIONS, false},
-      {BoolSetting::RESOLVE_URLS, true}};
+      {BoolSetting::RESOLVE_URLS, true},
+      {BoolSetting::PIECE_VERIFY_THREADS, true}};
 
   std::map<IntSetting, int> m_int_settings{
       {IntSetting::LISTENING_PORT, 20001},

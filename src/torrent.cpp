@@ -246,96 +246,106 @@ void Torrent::verify_existing_file() {
   if (filesystem::exists(m_tmpfile)) {
     std::atomic_uint32_t num_pieces = 0;
     std::mutex mutex;
+    const bool use_threads = m_config.get(BoolSetting::PIECE_VERIFY_THREADS);
     if (is_single_file()) {
       logger()->info("Verifying existing file: {}", m_tmpfile);
-      const Timer timer("verifying existing file");
+      const Timer timer(fmt::format("verifying existing file ({}using threads)",
+                                    use_threads ? "" : "not "));
       const auto file_length = filesystem::file_size(m_tmpfile);
-      // Verify each piece in parallel to speed it up
-      std::for_each(
-          std::execution::par_unseq, m_pieces.begin(), m_pieces.end(),
-          [&file_length, &num_pieces, &mutex,
-           this  // Be careful what is used from this. It needs to be
-                 // thread safe.
+
+      const auto verify_piece = [&file_length, &num_pieces, &mutex,
+                                 this  // Be careful what is used from this. It
+                                       // needs to be thread safe.
       ](const Sha1& sha1) {
-            const auto id =
-                zit::numeric_cast<uint32_t>(&sha1 - m_pieces.data());
-            const auto offset = id * m_piece_length;
-            ifstream is{m_tmpfile, ios::in | ios::binary};
-            is.exceptions(ifstream::failbit | ifstream::badbit);
-            is.seekg(offset);
-            const auto tail = zit::numeric_cast<uint32_t>(file_length - offset);
-            const auto len = std::min(m_piece_length, tail);
-            bytes data(len);
-            is.read(reinterpret_cast<char*>(data.data()), len);
-            const auto fsha1 = Sha1::calculateData(data);
-            if (sha1 == fsha1) {
-              // Lock when updating num_pieces, inserting into
-              // std::map is likely not thread safe.
-              const std::lock_guard<std::mutex> lock(mutex);
-              m_client_pieces[id] = true;
-              m_active_pieces.emplace(
-                  id,
-                  make_shared<Piece>(PieceId(id), PieceSize(piece_length(id))));
-              m_active_pieces[id]->set_piece_written(true);
-              ++num_pieces;
-            } else {
-              logger()->trace("Piece {} does not match ({}!={})", id, sha1,
-                              fsha1);
-            }
-          });
+        const auto id = zit::numeric_cast<uint32_t>(&sha1 - m_pieces.data());
+        const auto offset = id * m_piece_length;
+        ifstream is{m_tmpfile, ios::in | ios::binary};
+        is.exceptions(ifstream::failbit | ifstream::badbit);
+        is.seekg(offset);
+        const auto tail = zit::numeric_cast<uint32_t>(file_length - offset);
+        const auto len = std::min(m_piece_length, tail);
+        bytes data(len);
+        is.read(reinterpret_cast<char*>(data.data()), len);
+        const auto fsha1 = Sha1::calculateData(data);
+        if (sha1 == fsha1) {
+          // Lock when updating num_pieces, inserting into
+          // std::map is likely not thread safe.
+          const std::lock_guard<std::mutex> lock(mutex);
+          m_client_pieces[id] = true;
+          m_active_pieces.emplace(
+              id, make_shared<Piece>(PieceId(id), PieceSize(piece_length(id))));
+          m_active_pieces[id]->set_piece_written(true);
+          ++num_pieces;
+        } else {
+          logger()->trace("Piece {} does not match ({}!={})", id, sha1, fsha1);
+        }
+      };
+
+      // Verify each piece in parallel to speed it up
+      if (use_threads) {
+        std::for_each(std::execution::par_unseq, m_pieces.begin(),
+                      m_pieces.end(), verify_piece);
+      } else {
+        std::for_each(std::execution::unseq, m_pieces.begin(), m_pieces.end(),
+                      verify_piece);
+      }
     } else {
       logger()->info("Verifying existing files in: {}", m_tmpfile);
       const auto global_len = length();
-      // Verify each piece in parallel to speed it up
-      std::for_each(
-          std::execution::par_unseq, m_pieces.begin(), m_pieces.end(),
-          [&num_pieces, &mutex, &global_len,
-           this  // Be careful what is used from this. It needs to be
-                 // thread safe.
+
+      const auto verify_piece = [&num_pieces, &mutex, &global_len,
+                                 this  // Be careful what is used from this. It
+                                       // needs to be thread safe.
       ](const Sha1& sha1) {
-            const auto id =
-                zit::numeric_cast<uint32_t>(&sha1 - m_pieces.data());
-            const auto pos = id * m_piece_length;
-            // The piece might be spread over more than one file
-            bytes data(m_piece_length, 0_b);
-            auto remaining = numeric_cast<int64_t>(m_piece_length);
-            int64_t gpos = pos;  // global pos
-            int64_t ppos = 0;    // piece pos
-            while (remaining > 0 && gpos < global_len) {
-              const auto& [fi, offset, left] = file_at_pos(gpos);
-              const auto file = name() / fi.path();
-              if (!filesystem::exists(file)) {
-                return;
-              }
-              ifstream is{name() / fi.path(), ios::in | ios::binary};
-              is.exceptions(ifstream::failbit | ifstream::badbit);
-              is.seekg(offset);
-              const auto len = std::min(left, remaining);
-              is.read(reinterpret_cast<char*>(std::next(
-                          data.data(), numeric_cast<std::ptrdiff_t>(ppos))),
-                      len);
-              gpos += len;
-              ppos += len;
-              remaining -= len;
-            }
-            // Since last piece might not be filled
-            data.resize(data.size() - numeric_cast<size_t>(remaining));
-            const auto fsha1 = Sha1::calculateData(data);
-            if (sha1 == fsha1) {
-              // Lock when updating num_pieces, inserting into std::map is
-              // likely not thread safe.
-              const std::lock_guard<std::mutex> lock(mutex);
-              m_client_pieces[id] = true;
-              m_active_pieces.emplace(
-                  id,
-                  make_shared<Piece>(PieceId(id), PieceSize(piece_length(id))));
-              m_active_pieces[id]->set_piece_written(true);
-              ++num_pieces;
-            } else {
-              logger()->trace("Piece {} does not match ({}!={})", id, sha1,
-                              fsha1);
-            }
-          });
+        const auto id = zit::numeric_cast<uint32_t>(&sha1 - m_pieces.data());
+        const auto pos = id * m_piece_length;
+        // The piece might be spread over more than one file
+        bytes data(m_piece_length, 0_b);
+        auto remaining = numeric_cast<int64_t>(m_piece_length);
+        int64_t gpos = pos;  // global pos
+        int64_t ppos = 0;    // piece pos
+        while (remaining > 0 && gpos < global_len) {
+          const auto& [fi, offset, left] = file_at_pos(gpos);
+          const auto file = name() / fi.path();
+          if (!filesystem::exists(file)) {
+            return;
+          }
+          ifstream is{name() / fi.path(), ios::in | ios::binary};
+          is.exceptions(ifstream::failbit | ifstream::badbit);
+          is.seekg(offset);
+          const auto len = std::min(left, remaining);
+          is.read(reinterpret_cast<char*>(std::next(
+                      data.data(), numeric_cast<std::ptrdiff_t>(ppos))),
+                  len);
+          gpos += len;
+          ppos += len;
+          remaining -= len;
+        }
+        // Since last piece might not be filled
+        data.resize(data.size() - numeric_cast<size_t>(remaining));
+        const auto fsha1 = Sha1::calculateData(data);
+        if (sha1 == fsha1) {
+          // Lock when updating num_pieces, inserting into std::map is
+          // likely not thread safe.
+          const std::lock_guard<std::mutex> lock(mutex);
+          m_client_pieces[id] = true;
+          m_active_pieces.emplace(
+              id, make_shared<Piece>(PieceId(id), PieceSize(piece_length(id))));
+          m_active_pieces[id]->set_piece_written(true);
+          ++num_pieces;
+        } else {
+          logger()->trace("Piece {} does not match ({}!={})", id, sha1, fsha1);
+        }
+      };
+
+      // Verify each piece in parallel to speed it up
+      if (use_threads) {
+        std::for_each(std::execution::par_unseq, m_pieces.begin(),
+                      m_pieces.end(), verify_piece);
+      } else {
+        std::for_each(std::execution::unseq, m_pieces.begin(), m_pieces.end(),
+                      verify_piece);
+      }
     }
     logger()->info("Verification done. {}/{} pieces done.", num_pieces,
                    m_pieces.size());

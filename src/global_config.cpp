@@ -122,7 +122,8 @@ const std::map<std::string, T> settings_map;
 template <>
 const std::map<std::string, BoolSetting> settings_map<BoolSetting>{
     {"initiate_peer_connections", BoolSetting::INITIATE_PEER_CONNECTIONS},
-    {"resolve_urls", BoolSetting::RESOLVE_URLS}};
+    {"resolve_urls", BoolSetting::RESOLVE_URLS},
+    {"piece_verify_threads", BoolSetting::PIECE_VERIFY_THREADS}};
 
 template <>
 const std::map<std::string, IntSetting> settings_map<IntSetting>{
