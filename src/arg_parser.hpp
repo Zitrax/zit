@@ -37,6 +37,7 @@ class ArgParser {
     [[nodiscard]] auto is_required() const { return m_required; }
     [[nodiscard]] auto is_help_arg() const { return m_help_arg; }
     [[nodiscard]] auto is_multi() const { return m_is_multi; }
+    [[nodiscard]] auto position() const { return m_position; }
 
     void set_help_arg(bool help_arg) { m_help_arg = help_arg; }
     void set_provided(bool provided) { m_provided = provided; }
@@ -50,6 +51,7 @@ class ArgParser {
     bool m_required = false;
     bool m_help_arg = false;
     bool m_is_multi = false;
+    std::optional<unsigned> m_position{};
   };
 
   template <typename T>
@@ -121,6 +123,14 @@ class ArgParser {
       return *this;
     }
 
+    auto& positional(int pos) {
+      if (m_is_multi) {
+        throw std::runtime_error("Positional argument can't be multi");
+      }
+      m_position = pos;
+      return *this;
+    }
+
     /** Mark this option as providing help, for example for "--help". This will
      * override the check on other required arguments */
     auto& help_arg() {
@@ -137,6 +147,9 @@ class ArgParser {
     /** Allow multiple values for the option. Then use get_multi to retrieve all
      * the values. */
     auto& multi() {
+      if (m_position) {
+        throw std::runtime_error("Positional argument can't be multi");
+      }
       m_is_multi = true;
       return *this;
     }
@@ -153,8 +166,10 @@ class ArgParser {
 
   [[nodiscard]] ConstArgIterator find(const std::string& option) const;
   [[nodiscard]] ArgIterator find(const std::string& option);
+  [[nodiscard]] ArgIterator find(unsigned position);
 
   [[nodiscard]] bool has_option(const std::string& option) const;
+  void verify_no_duplicate_positionals() const;
 
   std::string m_desc;
   std::vector<std::unique_ptr<BaseArg>> m_options{};
