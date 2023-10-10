@@ -10,6 +10,7 @@
 #include <algorithm>
 #include <cerrno>
 #include <cstddef>
+#include <set>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -31,8 +32,26 @@ ArgParser::ArgIterator ArgParser::find(const std::string& option) {
   });
 }
 
+ArgParser::ArgIterator ArgParser::find(unsigned position) {
+  return std::ranges::find_if(
+      m_options, [&](const auto& a) { return a->position() == position; });
+}
+
 bool ArgParser::has_option(const std::string& option) const {
   return find(option) != m_options.end();
+}
+
+void ArgParser::verify_no_duplicate_positionals() const {
+  std::set<unsigned> positions;
+  for (const auto& option : m_options) {
+    const auto& pos = option->position();
+    if (pos && !positions.insert(pos.value()).second) {
+      throw std::runtime_error(
+          fmt::format("There cannot be multiple options with the same "
+                      "positional index: {}",
+                      pos.value()));
+    }
+  }
 }
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
@@ -40,25 +59,39 @@ void ArgParser::parse(const std::vector<std::string>& argv) {
   if (m_parsed) {
     throw runtime_error("Options already parsed");
   }
+
+  verify_no_duplicate_positionals();
+
   m_parsed = true;
+  unsigned positional{0};
   for (size_t i = 1; i < argv.size(); i++) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
     const std::string& name = argv[i];
     auto m = find(name);
     if (m == m_options.end()) {
-      throw runtime_error(fmt::format("Unknown argument: {}", name));
+      // No named argument - check if we have positional
+      m = find(positional);
+      if (m == m_options.end()) {
+        throw runtime_error(fmt::format("Unknown argument: {}", name));
+      }
+      positional++;
     }
     auto& arg = *m;
 
     if (arg->get_type() == Type::BOOL) {
       as<bool>(arg).set_dst(true);
     } else {
+      std::string val;
       // Read next arg
-      if (i == argv.size() - 1) {
-        throw runtime_error(fmt::format("Missing value for {}", name));
+      if (arg->position()) {
+        val = name;
+      } else {
+        if (i == argv.size() - 1) {
+          throw runtime_error(fmt::format("Missing value for {}", name));
+        }
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
+        val = argv[i++ + 1];
       }
-      // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-      const auto& val = argv[i++ + 1];
 
       switch (arg->get_type()) {
         case Type::FLOAT: {

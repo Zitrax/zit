@@ -85,6 +85,77 @@ TEST(arg_parser, int) {
   }
 }
 
+TEST(arg_parser, positional) {
+  {  // Single positional arg
+    ArgParser parser("desc");
+    parser.add_option<int>("--test").positional(0);
+    EXPECT_FALSE(parser.is_provided("--test"));
+    parser.parse({"cmd", "5"});
+    EXPECT_TRUE(parser.is_provided("--test"));
+    EXPECT_EQ(parser.get<int>("--test"), 5);
+  }
+
+  {  // Single provided required positional arg
+    ArgParser parser("desc");
+    parser.add_option<int>("--test").positional(0).required();
+    EXPECT_FALSE(parser.is_provided("--test"));
+    parser.parse({"cmd", "5"});
+    EXPECT_TRUE(parser.is_provided("--test"));
+    EXPECT_EQ(parser.get<int>("--test"), 5);
+  }
+
+  {  // Single non provided required positional arg
+    ArgParser parser("desc");
+    parser.add_option<int>("--test").positional(0).required();
+    EXPECT_FALSE(parser.is_provided("--test"));
+    EXPECT_THROW(parser.parse({"cmd"}), std::runtime_error);
+  }
+
+  {  // Dual positional args
+    ArgParser parser("desc");
+    parser.add_option<int>("--test").positional(0);
+    parser.add_option<int>("--test2").positional(1);
+    EXPECT_FALSE(parser.is_provided("--test"));
+    EXPECT_FALSE(parser.is_provided("--test2"));
+    parser.parse({"cmd", "5", "6"});
+    EXPECT_TRUE(parser.is_provided("--test"));
+    EXPECT_TRUE(parser.is_provided("--test2"));
+    EXPECT_EQ(parser.get<int>("--test"), 5);
+    EXPECT_EQ(parser.get<int>("--test2"), 6);
+  }
+
+  {  // Duplicate positional args
+    ArgParser parser("desc");
+    parser.add_option<int>("--test").positional(0);
+    parser.add_option<int>("--test2").positional(0);
+    EXPECT_FALSE(parser.is_provided("--test"));
+    EXPECT_FALSE(parser.is_provided("--test2"));
+    EXPECT_THROW(parser.parse({"cmd", "5", "6"}), std::runtime_error);
+  }
+
+  {  // Mixed named and positional args
+    ArgParser parser("desc");
+    parser.add_option<int>("--test").positional(0);
+    parser.add_option<int>("--test2").positional(1);
+    parser.add_option<int>("--named");
+    parser.add_option<int>("--named2");
+    EXPECT_FALSE(parser.is_provided("--test"));
+    EXPECT_FALSE(parser.is_provided("--test2"));
+    EXPECT_FALSE(parser.is_provided("--named"));
+    EXPECT_FALSE(parser.is_provided("--named2"));
+    parser.parse({"cmd", "5", "--named", "6", "7", "--named2", "8"});
+    EXPECT_TRUE(parser.is_provided("--test"));
+    EXPECT_TRUE(parser.is_provided("--test2"));
+    EXPECT_TRUE(parser.is_provided("--named"));
+    EXPECT_TRUE(parser.is_provided("--named2"));
+
+    EXPECT_EQ(parser.get<int>("--test"), 5);
+    EXPECT_EQ(parser.get<int>("--test2"), 7);
+    EXPECT_EQ(parser.get<int>("--named"), 6);
+    EXPECT_EQ(parser.get<int>("--named2"), 8);
+  }
+}
+
 TEST(arg_parser, int_multi) {
   {
     ArgParser parser("desc");
