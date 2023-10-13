@@ -37,6 +37,11 @@ ArgParser::ArgIterator ArgParser::find(unsigned position) {
       m_options, [&](const auto& a) { return a->position() == position; });
 }
 
+ArgParser::ArgIterator ArgParser::find_collecting() {
+  return std::ranges::find_if(
+      m_options, [&](const auto& a) { return a->is_collecting(); });
+}
+
 bool ArgParser::has_option(const std::string& option) const {
   return find(option) != m_options.end();
 }
@@ -54,6 +59,19 @@ void ArgParser::verify_no_duplicate_positionals() const {
   }
 }
 
+void ArgParser::verify_no_duplicate_collecting() const {
+  int count{0};
+  for (const auto& option : m_options) {
+    if (option->is_collecting()) {
+      count++;
+    }
+    if (count >= 2) {
+      throw std::runtime_error(
+          "There cannot be multiple options marked as collecting");
+    }
+  }
+}
+
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-c-arrays)
 void ArgParser::parse(const std::vector<std::string>& argv) {
   if (m_parsed) {
@@ -61,6 +79,7 @@ void ArgParser::parse(const std::vector<std::string>& argv) {
   }
 
   verify_no_duplicate_positionals();
+  verify_no_duplicate_collecting();
 
   m_parsed = true;
   unsigned positional{0};
@@ -72,7 +91,11 @@ void ArgParser::parse(const std::vector<std::string>& argv) {
       // No named argument - check if we have positional
       m = find(positional);
       if (m == m_options.end()) {
-        throw runtime_error(fmt::format("Unknown argument: {}", name));
+        // No positional either - check if we have a collecting remaining arg
+        m = find_collecting();
+        if (m == m_options.end()) {
+          throw runtime_error(fmt::format("Unknown argument: {}", name));
+        }
       }
       positional++;
     }
@@ -83,7 +106,7 @@ void ArgParser::parse(const std::vector<std::string>& argv) {
     } else {
       std::string val;
       // Read next arg
-      if (arg->position()) {
+      if (arg->position() || arg->is_collecting()) {
         val = name;
       } else {
         if (i == argv.size() - 1) {

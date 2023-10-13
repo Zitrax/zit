@@ -156,6 +156,71 @@ TEST(arg_parser, positional) {
   }
 }
 
+TEST(arg_parser, collecting) {
+  {  // Single collecting
+    ArgParser parser("desc");
+    auto& option = parser.add_option<int>("--rem").collecting();
+    EXPECT_EQ(option.get_type(), ArgParser::Type::INT);
+    EXPECT_TRUE(option.is_multi());
+    EXPECT_TRUE(option.is_collecting());
+    EXPECT_FALSE(parser.is_provided("--rem"));
+    parser.parse({"cmd", "5"});
+    EXPECT_TRUE(parser.is_provided("--rem"));
+    EXPECT_THROW(std::ignore = parser.get<int>("--rem"), std::runtime_error);
+    EXPECT_THAT(parser.get_multi<int>("--rem"), ElementsAreArray({5}));
+  }
+
+  {  // Dual collecting
+    ArgParser parser("desc");
+    auto& option = parser.add_option<int>("--rem").collecting();
+    EXPECT_EQ(option.get_type(), ArgParser::Type::INT);
+    EXPECT_TRUE(option.is_multi());
+    EXPECT_TRUE(option.is_collecting());
+    EXPECT_FALSE(parser.is_provided("--rem"));
+    parser.parse({"cmd", "5", "6"});
+    EXPECT_TRUE(parser.is_provided("--rem"));
+    EXPECT_THROW(std::ignore = parser.get<int>("--rem"), std::runtime_error);
+    EXPECT_THAT(parser.get_multi<int>("--rem"), ElementsAreArray({5, 6}));
+  }
+
+  {  // Mixed
+    ArgParser parser("desc");
+    parser.add_option<float>("--rem").collecting();
+    parser.add_option<float>("--named");
+    parser.add_option<float>("--multi").multi();
+    parser.parse({"cmd", "5.0", "--named", "-1.1", "--multi", "2.0", "--multi",
+                  "2.1", "5.1"});
+    EXPECT_THAT(parser.get_multi<float>("--rem"), ElementsAreArray({5.0, 5.1}));
+  }
+
+  {  // Required collecting
+    ArgParser parser("desc");
+    parser.add_option<float>("--rem").collecting().required();
+    EXPECT_THROW(parser.parse({"cmd"}), std::runtime_error);
+  }
+
+  {  // Zero collecting
+    ArgParser parser("desc");
+    parser.add_option<float>("--rem").collecting();
+    parser.parse({"cmd"});
+    EXPECT_TRUE(parser.get_multi<float>("--rem").empty());
+  }
+
+  {  // Two different collecting
+    ArgParser parser("desc");
+    parser.add_option<float>("--rem").collecting();
+    parser.add_option<float>("--rem2").collecting();
+    EXPECT_THROW(parser.parse({"cmd"}), std::runtime_error);
+  }
+
+  {  // Collecting with default
+    ArgParser parser("desc");
+    parser.add_option<unsigned>("--rem").collecting().default_value(3U);
+    parser.parse({"cmd"});
+    EXPECT_THAT(parser.get_multi<unsigned>("--rem"), ElementsAreArray({3U}));
+  }
+}
+
 TEST(arg_parser, int_multi) {
   {
     ArgParser parser("desc");
