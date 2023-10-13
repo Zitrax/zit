@@ -37,6 +37,7 @@ class ArgParser {
     [[nodiscard]] auto is_required() const { return m_required; }
     [[nodiscard]] auto is_help_arg() const { return m_help_arg; }
     [[nodiscard]] auto is_multi() const { return m_is_multi; }
+    [[nodiscard]] auto is_collecting() const { return m_is_collecting; }
     [[nodiscard]] auto position() const { return m_position; }
 
     void set_help_arg(bool help_arg) { m_help_arg = help_arg; }
@@ -51,6 +52,7 @@ class ArgParser {
     bool m_required = false;
     bool m_help_arg = false;
     bool m_is_multi = false;
+    bool m_is_collecting = false;
     std::optional<unsigned> m_position{};
   };
 
@@ -154,6 +156,13 @@ class ArgParser {
       return *this;
     }
 
+    /** Collects all non-named non-positional arguments */
+    auto& collecting() {
+      m_is_multi = true;
+      m_is_collecting = true;
+      return *this;
+    }
+
    private:
     std::vector<T> m_dst{};
     std::vector<T> m_default{};
@@ -167,9 +176,12 @@ class ArgParser {
   [[nodiscard]] ConstArgIterator find(const std::string& option) const;
   [[nodiscard]] ArgIterator find(const std::string& option);
   [[nodiscard]] ArgIterator find(unsigned position);
+  [[nodiscard]] ArgIterator find_collecting();
 
   [[nodiscard]] bool has_option(const std::string& option) const;
+
   void verify_no_duplicate_positionals() const;
+  void verify_no_duplicate_collecting() const;
 
   std::string m_desc;
   std::vector<std::unique_ptr<BaseArg>> m_options{};
@@ -223,12 +235,9 @@ class ArgParser {
     auto [dst, multi] = get_internal<T>(option);
     if (!multi) {
       throw std::runtime_error(
-          "get?multi() called on single value option, use get");
+          "get_multi() called on single value option, use get");
     }
-    if (!dst.empty()) {
-      return dst;
-    }
-    throw std::runtime_error("No value provided for option: " + option);
+    return dst;
   }
 
   [[nodiscard]] bool is_provided(const std::string& option) const {
