@@ -4,6 +4,7 @@
 #include "file_utils.hpp"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
+#include "logger.hpp"
 #include "spdlog/fmt/ostr.h"
 #include "test_utils.hpp"
 #include "torrent.hpp"
@@ -112,6 +113,17 @@ TEST(torrent, construct_fail) {
                std::invalid_argument);
 }
 
+TEST(torrent, peer_id) {
+  const auto data_dir = fs::path(DATA_DIR);
+  zit::Torrent torrent(data_dir / "test2.torrent");
+
+  const auto peer_id = torrent.peer_id();
+
+  zit::logger()->debug("peer_id = {}", peer_id);
+
+  EXPECT_EQ(peer_id.size(), 20);
+}
+
 #ifdef __linux__
 
 // 127.0.0.1:65535
@@ -196,4 +208,4 @@ TEST_F(torrent_with_tmp_dir, tracker_requests_announce_list) {
               testing::UnorderedElementsAreArray({"t1_1", "t1_2", "t2_1"}));
 }
 
-#endif // __linux__
+#endif  // __linux__
