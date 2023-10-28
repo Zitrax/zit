@@ -17,7 +17,7 @@
     },
     {
       "name": "gtest",
-      "version": "1.12.1"
+      "version": "1.14.0"
     },
     {
       "name": "tbb",
@@ -28,5 +28,5 @@
       "version": "1.12.0"
     }
   ],
-  "builtin-baseline": "c95000e1b5bb62884de08d5e952993c8bced9db6"
+  "builtin-baseline": "820cf6afbd87244f1728d2dd7938a7ae38cf7ecf"
 }
