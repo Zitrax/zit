@@ -84,6 +84,7 @@ if(UNIX)
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_compile_options(
       -Wno-restrict                       # gcc 12 gets problems with including spdlog
+      -Wno-error=stringop-overflow        # See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=88443
     )
   endif()
 endif()
