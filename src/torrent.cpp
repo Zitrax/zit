@@ -13,6 +13,7 @@
 #include "string_utils.hpp"
 #include "timer.hpp"
 #include "types.hpp"
+#include "version.hpp"
 
 #include <fmt/core.h>
 #include <spdlog/common.h>
@@ -96,20 +97,6 @@ auto beDictToFileInfo(const Element& element) {
       md5);
 }
 
-// Based on answers in https://stackoverflow.com/q/440133/11722
-auto random_string(std::size_t len) -> std::string {
-  static std::string chars =
-      "0123456789"
-      "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-      "abcdefghijklmnopqrstuvwxyz";
-  thread_local static std::mt19937 rg{std::random_device{}()};
-  thread_local static auto dist = std::uniform_int_distribution<unsigned long>{
-      {}, zit::numeric_cast<unsigned long>(chars.size()) - 1};
-  std::string result(len, '\0');
-  std::generate_n(begin(result), len, [&] { return chars.at(dist(rg)); });
-  return result;
-}
-
 }  // namespace
 
 // Could possibly be grouped in a struct
@@ -121,7 +108,11 @@ Torrent::Torrent(filesystem::path file,
     : m_config(config),
       m_data_dir(std::move(data_dir)),
       m_torrent_file(std::move(file)),
-      m_peer_id(random_string(20)),
+      // Peer-ID Azureus style
+      m_peer_id(fmt::format("-ZI{:02}{:02}-{}",
+                            MAJOR_VERSION,
+                            MINOR_VERSION,
+                            random_string(12))),
       m_listening_port(
           numeric_cast<unsigned short>(config.get(IntSetting::LISTENING_PORT),
                                        "listening port out of range")),
