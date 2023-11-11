@@ -52,7 +52,9 @@ target_link_libraries(zitest
   $<$<PLATFORM_ID:Windows>:Crypt32.lib>
 )
 
-target_precompile_headers(zitest REUSE_FROM zitlib)
+if(NOT "${CMAKE_CXX_COMPILER}" MATCHES "ccache" AND NOT "${CMAKE_CXX_COMPILER_LAUNCHER}" MATCHES "ccache")
+  target_precompile_headers(zitest REUSE_FROM zitlib)
+endif()
 
 if(NOT WIN32)
   if(SANITIZED_LIBCXX)
