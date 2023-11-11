@@ -2,6 +2,7 @@
 
 #ifdef __linux__
 
+#include <iostream>
 #include <string>
 #include <vector>
 

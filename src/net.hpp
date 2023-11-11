@@ -8,6 +8,9 @@
 #include <tuple>
 #include <vector>
 
+#include "strong_type.hpp"
+#include "types.hpp"
+
 namespace zit {
 
 using string_list = std::vector<std::string>;

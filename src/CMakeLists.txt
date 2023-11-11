@@ -51,11 +51,13 @@ target_link_libraries(zitlib
 
 # Based on build insights in Visual Studio these two were the worst offenders
 # Making them precompiled headers took the compile down from ~10-11s to 8-9s
-target_precompile_headers(zitlib
+if(NOT "${CMAKE_CXX_COMPILER}" MATCHES "ccache" AND NOT "${CMAKE_CXX_COMPILER_LAUNCHER}" MATCHES "ccache")
+  target_precompile_headers(zitlib
     PUBLIC
-        types.hpp
-        ${ASIO_INCLUDE_DIR}/asio.hpp
-)
+    types.hpp
+    ${ASIO_INCLUDE_DIR}/asio.hpp
+  )
+endif()
 
 add_executable(zit main.cpp)
 

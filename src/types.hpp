@@ -116,8 +116,8 @@ static inline T from_big_endian(const bytes& buf, bytes::size_type offset = 0) {
   }
 
   if constexpr (size == 2) {
-    return static_cast<T>(static_cast<uint8_t>(buf[offset + 1])) << 0 |
-           static_cast<T>(static_cast<uint8_t>(buf[offset + 0])) << 8;
+    return static_cast<T>(static_cast<uint8_t>(buf[offset + 1]) << 0 |
+                          static_cast<uint8_t>(buf[offset + 0]) << 8);
   } else if constexpr (size == 4) {
     return static_cast<T>(static_cast<uint8_t>(buf[offset + 3])) << 0 |
            static_cast<T>(static_cast<uint8_t>(buf[offset + 2])) << 8 |
