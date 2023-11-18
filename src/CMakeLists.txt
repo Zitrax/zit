@@ -13,8 +13,17 @@ if(USE_CLANG_TIDY)
   find_program(CLANG_TIDY NAMES clang-tidy-17 clang-tidy-14)
 
   if(CLANG_TIDY)
+    find_program(CLANG_TIDY_CACHE NAMES "clang-tidy-cache")
+
+    if(CLANG_TIDY_CACHE)
+      message(STATUS "Found clang-tidy-cache: ${CLANG_TIDY_CACHE}")
+      set(CLANG_TIDY_CACHE_PREFIX "${CLANG_TIDY_CACHE};")
+    else()
+      message(STATUS "No clang-tidy-cache found")
+    endif()
+
     message(STATUS "Enabling clang-tidy: ${CLANG_TIDY}")
-    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY};--header-filter=${CMAKE_CURRENT_SOURCE_DIR}/.*\\.h")
+    set(CMAKE_CXX_CLANG_TIDY "${CLANG_TIDY_CACHE_PREFIX}${CLANG_TIDY};--header-filter=${CMAKE_CURRENT_SOURCE_DIR}/.*\\.h")
   else()
       message(WARNING "Could not find clang-tidy, tidy checking not available")
   endif()
