@@ -10,6 +10,7 @@
 # -cppcoreguidelines-special-member-functions (TODO: Fix this)
 # -hicpp-avoid-c-arrays (covered by cppcore)
 # -hicpp-braces-around-statements (can't handle constexpr if)
+# -hicpp-deprecated-headers (alias to modernize-deprecated-headers)
 # -hicpp-named-parameter (fine to leave it out when unused)
 # -hicpp-no-array-decay (same)
 # -hicpp-signed-bitwise seemed to give false positives
@@ -41,6 +42,7 @@ Checks:          '*,
                  -google-*,
                  -hicpp-avoid-c-arrays,
                  -hicpp-braces-around-statements,
+                 -hicpp-deprecated-headers,
                  -hicpp-named-parameter,
                  -hicpp-no-array-decay,
                  -hicpp-noexcept-move,

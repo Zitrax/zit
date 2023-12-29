@@ -119,3 +119,5 @@ if(NOT WIN32)
     target_link_libraries(zit stdc++fs)
   endif()
 endif()
+
+add_subdirectory(socket_test)
