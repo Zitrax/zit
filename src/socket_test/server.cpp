@@ -39,9 +39,9 @@ void register_signal_handler() {
 class Connection {
  public:
   explicit Connection(asio::io_context& io_context)
-      : m_io_context(io_context),
-        m_acceptor(m_io_context,
-                   asio::ip::tcp::endpoint(asio::ip::tcp::v4(), 8080)) {}
+      : m_acceptor(io_context,
+                   asio::ip::tcp::endpoint(asio::ip::tcp::v4(), 8080)),
+        m_socket(io_context) {}
 
   // Listen for incoming connections
   // Using asio start listening for incoming connections
@@ -49,15 +49,14 @@ class Connection {
     zit::logger()->info("Listening for incoming connections on {}",
                         m_acceptor.local_endpoint());
     m_acceptor.listen();
-    asio::ip::tcp::socket socket(m_io_context);
 
-    m_acceptor.async_accept(socket, [&](const asio::error_code& error) {
+    m_acceptor.async_accept(m_socket, [this](const asio::error_code& error) {
       if (error) {
         zit::logger()->error("Error accepting connection: {}", error.message());
         return;
       }
       zit::logger()->info("Accepted connection from {}",
-                          socket.remote_endpoint());
+                          m_socket.remote_endpoint());
       //  Handle the connection
       //  ...
 
@@ -68,8 +67,8 @@ class Connection {
   }
 
  private:
-  asio::io_context& m_io_context;
   asio::ip::tcp::acceptor m_acceptor;
+  asio::ip::tcp::socket m_socket;
 };
 
 int main() {
