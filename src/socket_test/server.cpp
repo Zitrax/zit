@@ -5,6 +5,7 @@
 #include <csignal>
 #include <exception>
 #include <tuple>
+#include <vector>
 #include "formatters.hpp"  // NOLINT(misc-include-cleaner)
 #include "logger.hpp"
 
@@ -39,9 +40,9 @@ void register_signal_handler() {
 class Connection {
  public:
   explicit Connection(asio::io_context& io_context)
-      : m_acceptor(io_context,
-                   asio::ip::tcp::endpoint(asio::ip::tcp::v4(), 8080)),
-        m_socket(io_context) {}
+      : m_io_context(io_context),
+        m_acceptor(io_context,
+                   asio::ip::tcp::endpoint(asio::ip::tcp::v4(), 8080)) {}
 
   // Listen for incoming connections
   // Using asio start listening for incoming connections
@@ -50,13 +51,17 @@ class Connection {
                         m_acceptor.local_endpoint());
     m_acceptor.listen();
 
-    m_acceptor.async_accept(m_socket, [this](const asio::error_code& error) {
+    m_sockets.emplace_back(m_io_context);
+    auto& socket = m_sockets.back();
+
+    m_acceptor.async_accept(socket, [this,
+                                     &socket](const asio::error_code& error) {
       if (error) {
         zit::logger()->error("Error accepting connection: {}", error.message());
         return;
       }
       zit::logger()->info("Accepted connection from {}",
-                          m_socket.remote_endpoint());
+                          socket.remote_endpoint());
       //  Handle the connection
       //  ...
 
@@ -67,8 +72,9 @@ class Connection {
   }
 
  private:
+  asio::io_context& m_io_context;
   asio::ip::tcp::acceptor m_acceptor;
-  asio::ip::tcp::socket m_socket;
+  std::vector<asio::ip::tcp::socket> m_sockets;
 };
 
 int main() {

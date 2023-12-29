@@ -41,9 +41,7 @@ void register_signal_handler() {
 class Connection {
  public:
   explicit Connection(asio::io_context& io_context)
-      :  // m_io_context(io_context),
-        m_resolver(io_context),
-        m_socket(io_context) {}
+      : m_resolver(io_context), m_socket(io_context) {}
 
   /**
    * Connect to server
@@ -73,7 +71,6 @@ class Connection {
   }
 
  private:
-  // asio::io_context& m_io_context;
   asio::ip::tcp::resolver m_resolver;
   asio::ip::tcp::socket m_socket;
 };
