@@ -1,42 +1,12 @@
-#include <bits/chrono.h>
 #include <asio/error_code.hpp>
 #include <asio/io_context.hpp>
 #include <asio/ip/basic_resolver.hpp>
 #include <asio/ip/tcp.hpp>
+#include <asio/signal_set.hpp>
 #include <csignal>
 #include <exception>
-#include <tuple>
 #include "formatters.hpp"  // NOLINT(misc-include-cleaner)
 #include "logger.hpp"
-
-// Can't use cstring currently - see
-// https://github.com/llvm/llvm-project/issues/76567
-// NOLINTNEXTLINE(modernize-deprecated-headers)
-#include <string.h>
-
-// TODO: Share signal handling
-namespace {
-
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-bool aborted = false;
-
-// ctrl-c linux signal handler
-void signal_handler(int signum) {
-  if (signum == SIGINT) {
-    zit::logger()->debug("Caught abort/ctrl-c");
-    aborted = true;
-  } else {
-    // NOLINTNEXTLINE(concurrency-mt-unsafe)
-    zit::logger()->info("Got signal '{}'", strsignal(signum));
-  }
-}
-
-// Register the signal handler
-void register_signal_handler() {
-  std::ignore = signal(SIGINT, signal_handler);
-}
-
-}  // namespace
 
 class Connection {
  public:
@@ -76,16 +46,17 @@ class Connection {
 };
 
 int main() {
-  using namespace std::chrono_literals;
   try {
-    register_signal_handler();
-    zit::logger()->info("Starting client. Press Ctrl-C to stop.");
     asio::io_context io_context;
+
+    // Ensuring ctrl-c shuts down cleanly
+    asio::signal_set signals(io_context, SIGINT, SIGTERM);
+    signals.async_wait([&io_context](auto, auto) { io_context.stop(); });
+
+    zit::logger()->info("Starting client. Press Ctrl-C to stop.");
     Connection connection(io_context);
     connection.connect();
-    while (!aborted) {
-      io_context.run_for(100ms);
-    }
+    io_context.run();
     zit::logger()->info("Shutting down client");
   } catch (const std::exception& e) {
     zit::logger()->error("Exception: {}", e.what());
