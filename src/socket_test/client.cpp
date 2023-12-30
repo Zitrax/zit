@@ -1,8 +1,10 @@
-#include <asio/error_code.hpp>
+#include <asio/awaitable.hpp>
+#include <asio/co_spawn.hpp>
+#include <asio/detached.hpp>
 #include <asio/io_context.hpp>
-#include <asio/ip/basic_resolver.hpp>
 #include <asio/ip/tcp.hpp>
 #include <asio/signal_set.hpp>
+#include <asio/use_awaitable.hpp>
 #include <csignal>
 #include <exception>
 #include "formatters.hpp"  // NOLINT(misc-include-cleaner)
@@ -16,28 +18,22 @@ class Connection {
   /**
    * Connect to server
    */
-  void connect() {
-    m_resolver.async_resolve(
-        "127.0.0.1", "8080",
-        [&](const asio::error_code& resolve_error,
-            const asio::ip::tcp::resolver::results_type& results) {
-          if (!resolve_error) {
-            m_socket.async_connect(
-                *results.begin(),
-                [results](const asio::error_code& connect_error) {
-                  if (!connect_error) {
-                    zit::logger()->info("Connected to server {}",
-                                        results.begin()->endpoint());
-                  } else {
-                    zit::logger()->error("Failed to connect to server: {}",
-                                         connect_error.message());
-                  }
-                });
-          } else {
-            zit::logger()->error("Failed to resolve server: {}",
-                                 resolve_error.message());
-          }
-        });
+  asio::awaitable<void> connect() {
+    // Unsure why clang-tidy complains here
+    // NOLINTNEXTLINE(clang-analyzer-core.CallAndMessage)
+    auto results = co_await m_resolver.async_resolve("127.0.0.1", "8080",
+                                                     asio::use_awaitable);
+
+    // FIXME: Resolve failure
+    // zit::logger()->error("Failed to resolve server: {}",
+    //                             resolve_error.message());
+
+    co_await m_socket.async_connect(*results.begin(), asio::use_awaitable);
+
+    zit::logger()->info("Connected to server {}", results.begin()->endpoint());
+
+    // zit::logger()->error("Failed to connect to server: {}",
+    //                      connect_error.message());
   }
 
  private:
@@ -55,7 +51,7 @@ int main() {
 
     zit::logger()->info("Starting client. Press Ctrl-C to stop.");
     Connection connection(io_context);
-    connection.connect();
+    co_spawn(io_context, connection.connect(), asio::detached);
     io_context.run();
     zit::logger()->info("Shutting down client");
   } catch (const std::exception& e) {
