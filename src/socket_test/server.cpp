@@ -1,7 +1,10 @@
 #include <bits/chrono.h>
-#include <asio/error_code.hpp>
+#include <asio/awaitable.hpp>
+#include <asio/co_spawn.hpp>
+#include <asio/detached.hpp>
 #include <asio/io_context.hpp>
 #include <asio/ip/tcp.hpp>
+#include <asio/use_awaitable.hpp>
 #include <csignal>
 #include <exception>
 #include <tuple>
@@ -46,29 +49,22 @@ class Connection {
 
   // Listen for incoming connections
   // Using asio start listening for incoming connections
-  void listen() {
-    zit::logger()->info("Listening for incoming connections on {}",
-                        m_acceptor.local_endpoint());
+  asio::awaitable<void> listen() {
     m_acceptor.listen();
+    while (true) {
+      zit::logger()->info("Listening for incoming connections on {}",
+                          m_acceptor.local_endpoint());
 
-    m_sockets.emplace_back(m_io_context);
-    auto& socket = m_sockets.back();
+      m_sockets.emplace_back(m_io_context);
+      auto& socket = m_sockets.back();
 
-    m_acceptor.async_accept(socket, [this,
-                                     &socket](const asio::error_code& error) {
-      if (error) {
-        zit::logger()->error("Error accepting connection: {}", error.message());
-        return;
-      }
+      // Await incoming connection
+      co_await m_acceptor.async_accept(socket, asio::use_awaitable);
+
+      // Handle incoming connection
       zit::logger()->info("Accepted connection from {}",
                           socket.remote_endpoint());
-      //  Handle the connection
-      //  ...
-
-      // TODO: Might not be so smart to call it from within the callback
-      //       Maybe queue it up instead?
-      listen();
-    });
+    }
   }
 
  private:
@@ -80,11 +76,13 @@ class Connection {
 int main() {
   using namespace std::chrono_literals;
   try {
+    // TODO: Apparently there is a simpler way by instructing asio to handle
+    // signals
     register_signal_handler();
     zit::logger()->info("Starting server. Press Ctrl-C to stop.");
     asio::io_context io_context;
     Connection connection(io_context);
-    connection.listen();
+    co_spawn(io_context, connection.listen(), asio::detached);
     while (!aborted) {
       io_context.run_for(100ms);
     }
