@@ -88,6 +88,10 @@ int main(int argc, char* argv[]) {
     for (size_t i = 0; i < num_connections; i++) {
       connections.emplace_back(
           std::make_unique<Connection>(io_context, acceptor));
+
+      // Note: asio::detached is often used in examples but it will ignore any
+      //       exceptions thrown by the coroutine. Using my own completion
+      //       handler here instead that just rethrows the exception instead.
       co_spawn(io_context, connections.back()->listen(), socket_test::rethrow);
     }
     io_context.run();
