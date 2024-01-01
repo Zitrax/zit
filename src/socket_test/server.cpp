@@ -10,8 +10,10 @@
 #include <asio/streambuf.hpp>
 #include <asio/use_awaitable.hpp>
 #include <csignal>
+#include <cstddef>
 #include <exception>
 #include <istream>
+#include <iterator>
 #include <memory>
 #include <string>
 #include <vector>
@@ -65,7 +67,7 @@ class Connection : public socket_test::ID {
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 unsigned socket_test::ID::m_counter = 0;
 
-int main() {
+int main(int argc, char* argv[]) {
   try {
     asio::io_context io_context;
 
@@ -79,8 +81,11 @@ int main() {
     asio::ip::tcp::acceptor acceptor(
         io_context, asio::ip::tcp::endpoint(asio::ip::tcp::v4(), 8080));
 
+    const auto args = std::vector<std::string>{argv, std::next(argv, argc)};
+    const size_t num_connections = argc == 2 ? std::stoul(args.at(1)) : 1UL;
     std::vector<std::unique_ptr<Connection>> connections;
-    for (int i = 0; i < 2; i++) {
+    connections.reserve(num_connections);
+    for (size_t i = 0; i < num_connections; i++) {
       connections.emplace_back(
           std::make_unique<Connection>(io_context, acceptor));
       co_spawn(io_context, connections.back()->listen(), socket_test::rethrow);
