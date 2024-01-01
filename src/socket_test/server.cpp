@@ -11,15 +11,14 @@
 #include <asio/use_awaitable.hpp>
 #include <csignal>
 #include <exception>
+#include <istream>
 #include <memory>
 #include <string>
 #include <vector>
 #include "common.hpp"  // NOLINT(misc-include-cleaner)
 #include "logger.hpp"
 
-#include <iostream>
-
-class Connection {
+class Connection : public socket_test::ID {
  public:
   explicit Connection(asio::io_context& io_context,
                       asio::ip::tcp::acceptor& acceptor)
@@ -30,14 +29,14 @@ class Connection {
   asio::awaitable<void> listen() {
     m_acceptor.listen();
     while (true) {
-      zit::logger()->info("[{}] Listening for incoming connections on {}", m_id,
+      zit::logger()->info("[{}] Listening for incoming connections on {}", id(),
                           m_acceptor.local_endpoint());
 
       // Await incoming connection
       co_await m_acceptor.async_accept(m_socket, asio::use_awaitable);
 
       // Handle incoming connection
-      zit::logger()->info("[{}] Accepted connection from {}", m_id,
+      zit::logger()->info("[{}] Accepted connection from {}", id(),
                           m_socket.remote_endpoint());
 
       // Read incoming data
@@ -52,24 +51,19 @@ class Connection {
 
       // Print message
 
-      zit::logger()->info("[{}] Received message: '{}' from {}", m_id, message,
+      zit::logger()->info("[{}] Received message: '{}' from {}", id(), message,
                           m_socket.remote_endpoint());
       m_socket.close();
     }
   }
 
  private:
-  // This is supposedly fixed in newer versions of clang-tidy (but not yet in
-  // the one I use) See https://github.com/llvm/llvm-project/issues/47384
-  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-  static unsigned m_counter;
   asio::ip::tcp::acceptor& m_acceptor;
   asio::ip::tcp::socket m_socket;
-  unsigned m_id{m_counter++};
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-unsigned Connection::m_counter = 0;
+unsigned socket_test::ID::m_counter = 0;
 
 int main() {
   try {
@@ -89,7 +83,7 @@ int main() {
     for (int i = 0; i < 2; i++) {
       connections.emplace_back(
           std::make_unique<Connection>(io_context, acceptor));
-      co_spawn(io_context, connections.back()->listen(), rethrow);
+      co_spawn(io_context, connections.back()->listen(), socket_test::rethrow);
     }
     io_context.run();
     zit::logger()->info("Shutting down server");
