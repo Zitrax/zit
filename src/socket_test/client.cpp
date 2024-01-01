@@ -1,13 +1,19 @@
+// #define ASIO_ENABLE_BUFFER_DEBUGGING
+// #define ASIO_ENABLE_HANDLER_TRACKING
+
+#include <fmt/core.h>
 #include <asio/awaitable.hpp>
+#include <asio/buffer.hpp>
 #include <asio/co_spawn.hpp>
-#include <asio/detached.hpp>
 #include <asio/io_context.hpp>
 #include <asio/ip/tcp.hpp>
 #include <asio/signal_set.hpp>
 #include <asio/use_awaitable.hpp>
 #include <csignal>
 #include <exception>
-#include "formatters.hpp"  // NOLINT(misc-include-cleaner)
+#include <memory>
+#include <vector>
+#include "common.hpp"  // NOLINT(misc-include-cleaner)
 #include "logger.hpp"
 
 class Connection {
@@ -24,22 +30,33 @@ class Connection {
     auto results = co_await m_resolver.async_resolve("127.0.0.1", "8080",
                                                      asio::use_awaitable);
 
-    // FIXME: Resolve failure
-    // zit::logger()->error("Failed to resolve server: {}",
-    //                             resolve_error.message());
+    zit::logger()->debug("[{}] resolved {}", m_id, results.begin()->endpoint());
 
-    co_await m_socket.async_connect(*results.begin(), asio::use_awaitable);
+    auto result = *results.begin();
+    co_await m_socket.async_connect(result, asio::use_awaitable);
 
-    zit::logger()->info("Connected to server {}", results.begin()->endpoint());
+    zit::logger()->info("[{}] {} connected to server {}", m_id,
+                        m_socket.local_endpoint(), result.endpoint());
 
-    // zit::logger()->error("Failed to connect to server: {}",
-    //                      connect_error.message());
+    co_await m_socket.async_write_some(
+        asio::buffer(fmt::format("Hello {}\n", m_id)), asio::use_awaitable);
+
+    zit::logger()->info("[{}] Sent hello from {}", m_id,
+                        m_socket.local_endpoint());
   }
 
  private:
+  // This is supposedly fixed in newer versions of clang-tidy (but not yet in
+  // the one I use) See https://github.com/llvm/llvm-project/issues/47384
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+  static unsigned m_counter;
   asio::ip::tcp::resolver m_resolver;
   asio::ip::tcp::socket m_socket;
+  unsigned m_id{m_counter++};
 };
+
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+unsigned Connection::m_counter = 0;
 
 int main() {
   try {
@@ -50,8 +67,15 @@ int main() {
     signals.async_wait([&io_context](auto, auto) { io_context.stop(); });
 
     zit::logger()->info("Starting client. Press Ctrl-C to stop.");
-    Connection connection(io_context);
-    co_spawn(io_context, connection.connect(), asio::detached);
+
+    std::vector<std::unique_ptr<Connection>> connections;
+    for (int i = 0; i < 2; ++i) {
+      zit::logger()->debug("Creating connection {}", i);
+      connections.emplace_back(std::make_unique<Connection>(io_context));
+      zit::logger()->debug("Spawning connection {}", i);
+      co_spawn(io_context, connections.back()->connect(), rethrow);
+      zit::logger()->debug("Spawned connection {}", i);
+    }
     io_context.run();
     zit::logger()->info("Shutting down client");
   } catch (const std::exception& e) {

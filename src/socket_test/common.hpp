@@ -16,3 +16,12 @@ struct fmt::formatter<asio::ip::tcp::endpoint> {
 };
 
 // NOLINTEND(readability-convert-member-functions-to-static)
+
+/**
+ * Completion handler rethrowing instead of ignoring exceptions
+ */
+const auto rethrow = [](const std::exception_ptr& e) {
+  if (e) {
+    std::rethrow_exception(e);
+  }
+};
