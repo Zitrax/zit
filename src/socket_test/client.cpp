@@ -16,7 +16,7 @@
 #include "common.hpp"  // NOLINT(misc-include-cleaner)
 #include "logger.hpp"
 
-class Connection {
+class Connection : public socket_test::ID {
  public:
   explicit Connection(asio::io_context& io_context)
       : m_resolver(io_context), m_socket(io_context) {}
@@ -30,33 +30,28 @@ class Connection {
     auto results = co_await m_resolver.async_resolve("127.0.0.1", "8080",
                                                      asio::use_awaitable);
 
-    zit::logger()->debug("[{}] resolved {}", m_id, results.begin()->endpoint());
+    zit::logger()->debug("[{}] resolved {}", id(), results.begin()->endpoint());
 
     auto result = *results.begin();
     co_await m_socket.async_connect(result, asio::use_awaitable);
 
-    zit::logger()->info("[{}] {} connected to server {}", m_id,
+    zit::logger()->info("[{}] {} connected to server {}", id(),
                         m_socket.local_endpoint(), result.endpoint());
 
     co_await m_socket.async_write_some(
-        asio::buffer(fmt::format("Hello {}\n", m_id)), asio::use_awaitable);
+        asio::buffer(fmt::format("Hello {}\n", id())), asio::use_awaitable);
 
-    zit::logger()->info("[{}] Sent hello from {}", m_id,
+    zit::logger()->info("[{}] Sent hello from {}", id(),
                         m_socket.local_endpoint());
   }
 
  private:
-  // This is supposedly fixed in newer versions of clang-tidy (but not yet in
-  // the one I use) See https://github.com/llvm/llvm-project/issues/47384
-  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-  static unsigned m_counter;
   asio::ip::tcp::resolver m_resolver;
   asio::ip::tcp::socket m_socket;
-  unsigned m_id{m_counter++};
 };
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-unsigned Connection::m_counter = 0;
+unsigned socket_test::ID::m_counter = 0;
 
 int main() {
   try {
@@ -73,7 +68,7 @@ int main() {
       zit::logger()->debug("Creating connection {}", i);
       connections.emplace_back(std::make_unique<Connection>(io_context));
       zit::logger()->debug("Spawning connection {}", i);
-      co_spawn(io_context, connections.back()->connect(), rethrow);
+      co_spawn(io_context, connections.back()->connect(), socket_test::rethrow);
       zit::logger()->debug("Spawned connection {}", i);
     }
     io_context.run();
