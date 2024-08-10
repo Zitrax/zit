@@ -4,7 +4,7 @@
 #include "logger.hpp"
 #include "string_utils.hpp"
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <spdlog/common.h>
 #include <spdlog/fmt/ostr.h>  // NOLINT(misc-include-cleaner) Needed due to use of operator<<
 

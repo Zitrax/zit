@@ -1,7 +1,7 @@
 // #define ASIO_ENABLE_BUFFER_DEBUGGING
 // #define ASIO_ENABLE_HANDLER_TRACKING
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <asio/awaitable.hpp>
 #include <asio/buffer.hpp>
 #include <asio/co_spawn.hpp>

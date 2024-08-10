@@ -6,7 +6,7 @@
 #ifndef _MSC_VER
 #include <bits/basic_string.h>
 #endif  // !_MSC_VER
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <algorithm>
 #include <cerrno>
 #include <cstddef>

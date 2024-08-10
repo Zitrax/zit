@@ -2,6 +2,7 @@
 
 #ifdef __linux__
 
+#include <fmt/ranges.h>
 #include <linux/prctl.h>
 #include <signal.h>
 #include <sys/prctl.h>
