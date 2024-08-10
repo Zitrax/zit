@@ -3,6 +3,9 @@
 
 #include <algorithm>
 #include <array>
+#ifndef _MSC_VER
+#include <bits/basic_string.h>
+#endif  // !_MSC_VER
 #include <cstddef>
 #include <filesystem>
 #include <fstream>
@@ -14,13 +17,16 @@
 #include <string>
 #include <vector>
 
-#include <fmt/core.h>
+#include <fmt/format.h>
+#include <openssl/evp.h>
 #include <openssl/sha.h>
 
+#include "class_utils.hpp"
 #include "string_utils.hpp"
 #include "types.hpp"
 
 using namespace std;
+using namespace std::string_literals;
 
 namespace zit {
 
@@ -63,9 +69,9 @@ zit::bytes Sha1::bytes() const {
 
 Sha1 Sha1::calculate(const unsigned char* src, size_t count) {
   Sha1 ret;
-  auto* dst = reinterpret_cast<unsigned char*>(ret.data());
 
-  if (SHA1(src, count, dst) == nullptr) {
+  if (auto* dst = reinterpret_cast<unsigned char*>(ret.data());
+      SHA1(src, count, dst) == nullptr) {
     throw runtime_error("SHA1 calculation failed");
   }
 
@@ -94,20 +100,44 @@ Sha1 Sha1::calculateFile(const std::filesystem::path& file) {
     throw invalid_argument("No such file: "s + file.string());
   }
 
-  SHA_CTX ctxt;
-  SHA1_Init(&ctxt);
-  const int BUFFER_SIZE = 1024;
+  // RAII for EVP_MD_CTX
+  struct MdCtxGuard : public DeleteCopyAndAssignment {
+    EVP_MD_CTX* ctxt{EVP_MD_CTX_new()};
+    ~MdCtxGuard() { EVP_MD_CTX_free(ctxt); }
+  };
+
+  const MdCtxGuard ctxt_guard;
+  const char* SHA1 = "SHA1";
+  const EVP_MD* md = EVP_get_digestbyname(SHA1);
+  if (!md) {
+    throw runtime_error("No such digest: "s + SHA1);
+  }
+  if (!EVP_DigestInit_ex(ctxt_guard.ctxt, md, nullptr)) {
+    throw runtime_error("EVP_DigestInit failed");
+  }
+
+  constexpr int BUFFER_SIZE{1024};
   vector<char> buffer(BUFFER_SIZE, 0);
 
   while (file_stream.read(buffer.data(), BUFFER_SIZE)) {
-    SHA1_Update(&ctxt, buffer.data(), BUFFER_SIZE);
+    if (!EVP_DigestUpdate(ctxt_guard.ctxt, buffer.data(), BUFFER_SIZE)) {
+      throw runtime_error("EVP_DigestUpdate failed (1)");
+    }
   }
 
   // Remainder
-  SHA1_Update(&ctxt, buffer.data(), numeric_cast<size_t>(file_stream.gcount()));
+  if (!EVP_DigestUpdate(ctxt_guard.ctxt, buffer.data(),
+                        numeric_cast<size_t>(file_stream.gcount()))) {
+    throw runtime_error("EVP_DigestUpdate failed (2)");
+  }
 
   Sha1 ret;
-  SHA1_Final(reinterpret_cast<unsigned char*>(ret.data()), &ctxt);
+  if (!EVP_DigestFinal_ex(ctxt_guard.ctxt,
+                          reinterpret_cast<unsigned char*>(ret.data()),
+                          nullptr)) {
+    throw runtime_error("EVP_DigestFinal failed");
+  }
+
   return ret;
 }
 

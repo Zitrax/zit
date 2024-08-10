@@ -1,7 +1,7 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "net.hpp"
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <openssl/tls1.h>
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>

@@ -9,24 +9,24 @@
   "overrides": [
     {
       "name": "openssl",
-      "version-string": "1.1.1n"
+      "version-string": "3.3.1"
     },
     {
       "name": "asio",
-      "version": "1.28.0"
+      "version": "1.30.2"
     },
     {
       "name": "gtest",
-      "version": "1.14.0"
+      "version": "1.15.0"
     },
     {
       "name": "tbb",
-      "version": "2021.9.0"
+      "version": "2021.13.0"
     },
     {
       "name": "spdlog",
-      "version": "1.12.0"
+      "version": "1.14.1"
     }
   ],
-  "builtin-baseline": "820cf6afbd87244f1728d2dd7938a7ae38cf7ecf"
+  "builtin-baseline": "8ae59b5b1329a51875abc71d528da93d9c3e8972"
 }

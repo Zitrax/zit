@@ -15,7 +15,7 @@
 #include "types.hpp"
 #include "version.hpp"
 
-#include <fmt/core.h>
+#include <fmt/format.h>
 #include <spdlog/common.h>
 
 #if __clang__
