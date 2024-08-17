@@ -3,7 +3,9 @@
 #include "gtest/gtest.h"
 #include "net.hpp"
 #include "process.hpp"
+#include "random.hpp"
 
+#include <fmt/format.h>
 #include <spdlog/common.h>
 #include <spdlog/spdlog.h>
 #include <algorithm>
@@ -131,25 +133,39 @@ TEST(net, chunkedTransfer) {
 // As long as zit::Process is Linux specific
 #ifdef __linux__
 
+/**
+ * Multiple udp tests might run in parallell processes. We are listening on
+ * random ports so there is still a slim chance of failure if the same port
+ * is picked.
+ */
 class UDP : public ::testing::Test {
+ public:
+  [[nodiscard]] auto port() const { return m_port; }
+
  protected:
   void SetUp() override {
     const auto udp_server_path =
         (std::filesystem::path(DATA_DIR) / ".." / "udp_server.py")
             .lexically_normal();
     echo_server = std::make_unique<zit::Process>(
-        "udp_echo",
-        std::vector<const char*>{"python3", udp_server_path.c_str()});
+        "udp_echo", std::vector<const char*>{"python3", udp_server_path.c_str(),
+                                             std::to_string(m_port).c_str()});
   }
 
-  void TearDown() override { echo_server->terminate(); }
+  void TearDown() override {
+    if (echo_server) {
+      echo_server->terminate();
+    }
+  }
 
  private:
   std::unique_ptr<zit::Process> echo_server{};
+  static int port_start;
+  int m_port{random_value(10000, 20000)};
 };
 
 TEST_F(UDP, request_ip) {
-  Url url("udp://127.0.0.1:12345");
+  Url url(fmt::format("udp://127.0.0.1:{}", std::to_string(port())));
 
   const bytes message{'h'_b, 'e'_b, 'l'_b, 'l'_b, 'o'_b};
   const auto reply = Net::udpRequest(url, message);
@@ -157,7 +173,7 @@ TEST_F(UDP, request_ip) {
 }
 
 TEST_F(UDP, request_named_host) {
-  Url url("udp://localhost:12345");
+  Url url(fmt::format("udp://localhost:{}", std::to_string(port())));
 
   const bytes message{'h'_b, 'e'_b, 'l'_b, 'l'_b, 'o'_b};
   const auto reply = Net::udpRequest(url, message);
