@@ -9,13 +9,16 @@
 namespace zit {
 
 /**
- * Generate a random number of type T
+ * Generate a random number of type T in a given range
  */
 template <typename T>
-inline T random_value() {
+inline T random_value(T min = std::numeric_limits<T>::min(),
+                      T max = std::numeric_limits<T>::max()) {
+  if (max <= min) {
+    throw std::out_of_range("max <= min");
+  }
   static auto engine = std::mt19937(std::random_device{}());
-  auto distribution = std::uniform_int_distribution<T>{
-      std::numeric_limits<T>::min(), std::numeric_limits<T>::max()};
+  auto distribution = std::uniform_int_distribution<T>{min, max};
   return distribution(engine);
 }
 

@@ -2,6 +2,8 @@
 #include "logger.hpp"
 #include "random.hpp"
 
+#include <algorithm>
+
 // Note - for 100% reproducibility we could fix the seed
 // but for now it should not be a big problem. I am mostly
 // just checking that the generator is not completely broken.
@@ -12,11 +14,26 @@ TEST(random, basic_value) {
 
   std::set<int> numbers;
   std::generate_n(std::inserter(numbers, numbers.begin()), 10,
-                  zit::random_value<int>);
+                  [] { return zit::random_value<int>(); });
 
   // Just a basic non-scientific check that the numbers are not completely
   // unspread. This should basically almost always return 10.
   EXPECT_GT(numbers.size(), 5);
+}
+
+TEST(random, basic_value_in_range) {
+  // Basic check that we don't throw
+  int range_min{500};
+  int range_max{550};
+  EXPECT_NO_THROW(zit::random_value<int>(range_min, range_max));
+
+  std::set<int> numbers;
+  std::generate_n(std::inserter(numbers, numbers.begin()), 10,
+                  [&] { return zit::random_value<int>(range_min, range_max); });
+
+  // Verify that all numbers are in the specified range
+  EXPECT_TRUE(std::ranges::all_of(
+      numbers, [&](auto n) { return n >= range_min && n <= range_max; }));
 }
 
 // Basic sanity checks
