@@ -1,10 +1,17 @@
 #!/usr/bin/env python3
 
 import socket
+import sys
 
-# Define the server's IP address and port
+# Get the port number from command line arguments
+if len(sys.argv) != 2:
+    print("Usage: udp_server.py <port_number>")
+    sys.exit(1)
+
+server_port = int(sys.argv[1])
+
+# Define the server's IP address
 server_ip = "127.0.0.1"
-server_port = 12345
 
 # Create a UDP socket
 server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
