@@ -64,7 +64,12 @@ if(NOT WIN32)
   endif()
 endif()
 
-gtest_discover_tests(zitest)
+gtest_discover_tests(zitest TEST_LIST allTests)
+
+# configure_file("CTestCustom.cmake.in" "${CMAKE_BINARY_DIR}/CTestCustom.cmake")
+set_property(DIRECTORY APPEND PROPERTY
+  TEST_INCLUDE_FILES ${CMAKE_CURRENT_LIST_DIR}/customTestManip.cmake
+)
 
 if(INTEGRATION_TESTS)
   target_compile_definitions(zitest PUBLIC INTEGRATION_TESTS)
