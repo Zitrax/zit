@@ -21,6 +21,9 @@ class StrongType {
   [[nodiscard]] constexpr T& get() noexcept { return m_val; }
   [[nodiscard]] constexpr const T& get() const noexcept { return m_val; }
 
+  // Comparison support for comparable types using spaceship
+  auto operator<=>(const StrongType& other) const = default;
+
  private:
   T m_val;
 };
