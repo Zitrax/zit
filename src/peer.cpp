@@ -23,6 +23,7 @@
 #include <cstdint>
 #include <exception>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -52,33 +53,40 @@ using namespace std;
 
 namespace zit {
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+std::map<ListeningPort, asio::ip::tcp::acceptor> PeerConnection::m_acceptors;
+
 // Note that since we are using asio without boost
 // we use std::bind, std::shared_ptr, etc... which
 // differs slightly from the boost examples.
 
-PeerConnection::PeerConnection(Peer& peer,
+PeerConnection::PeerConnection(IConnectionUrlProvider& peer,
                                asio::io_service& io_service,
                                ListeningPort listening_port,
                                ConnectionPort connection_port)
     : peer_(peer),
       resolver_(io_service),
-      acceptor_(io_service, tcp::v4()),
       socket_(io_service, tcp::v4()),
       m_listening_port(listening_port),
-      m_connection_port(connection_port) {
+      m_connection_port(connection_port),
+      m_io_service(io_service) {
   // Note use of socket constructor that does not bind such
   // that we can set the options before that.
 }
 
 void PeerConnection::listen() {
   logger()->info("PeerConnection listening on port={}", m_listening_port.get());
-  // if (!acceptor_.is_open()) {
-  const asio::socket_base::reuse_address option(true);
-  acceptor_.set_option(option);
-  acceptor_.bind(tcp::endpoint(tcp::v4(), m_listening_port.get()));
-  //}
-  acceptor_.listen();
-  acceptor_.async_accept(
+  if (!m_acceptors.contains(m_listening_port)) {
+    const auto& [it, inserted] = m_acceptors.emplace(
+        m_listening_port, asio::ip::tcp::acceptor{m_io_service, tcp::v4()});
+    auto& acceptor = it->second;
+    const asio::socket_base::reuse_address option(true);
+    acceptor.set_option(option);
+    acceptor.bind(tcp::endpoint(tcp::v4(), m_listening_port.get()));
+  }
+  auto& acceptor = m_acceptors.at(m_listening_port);
+  acceptor.listen();
+  acceptor.async_accept(
       [this](const asio::error_code& error, asio::ip::tcp::socket new_socket) {
         if (!error) {
           auto ip = new_socket.remote_endpoint().address().to_string();
@@ -131,6 +139,12 @@ void PeerConnection::write(const optional<Url>& url, const std::string& msg) {
         url->host(), url->service(),
         [this](auto&& ec, auto&& it) { handle_resolve(ec, it); });
   }
+}
+
+Peer& PeerConnection::peer() {
+  // In production this is always valid - but during unit testing it might not
+  // be a peer object but rather a mock.
+  return dynamic_cast<Peer&>(peer_);
 }
 
 void PeerConnection::handle_resolve(const asio::error_code& err,
@@ -244,13 +258,12 @@ void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
     logger()->error("Response failed: {}", err.message());
   } else {
     logger()->debug("handle_response EOF");
-    peer_.torrent().disconnected(&peer_);
+    peer_.disconnected();
   }
 }
 
 void PeerConnection::stop() {
   resolver_.cancel();
-  acceptor_.close();
   socket_.close();
 }
 
@@ -510,6 +523,10 @@ void Peer::listen() {
   m_listening = true;
   init_io_service();
   m_connection->listen();
+}
+
+void Peer::disconnected() {
+  m_torrent.disconnected(this);
 }
 
 void Peer::init_io_service() {

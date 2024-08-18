@@ -17,6 +17,7 @@
 #include <memory>
 #include <string>
 #include <vector>
+#include "asio_helpers.hpp"
 #include "common.hpp"  // NOLINT(misc-include-cleaner)
 #include "logger.hpp"
 

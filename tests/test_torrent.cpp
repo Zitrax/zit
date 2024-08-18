@@ -124,6 +124,13 @@ TEST(torrent, peer_id) {
   EXPECT_EQ(peer_id.size(), 20);
 }
 
+// Test that two torrents can listen at once using the same port
+TEST(torrent, multi_listen) {
+  const auto data_dir = fs::path(DATA_DIR);
+  zit::Torrent t1(data_dir / "multi_kali.torrent");
+  zit::Torrent t2(data_dir / "test.torrent");
+}
+
 #ifdef __linux__
 
 // 127.0.0.1:65535

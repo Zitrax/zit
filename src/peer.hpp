@@ -21,13 +21,24 @@ namespace zit {
 class Peer;
 class Torrent;
 
+class IConnectionUrlProvider {
+ public:
+  virtual ~IConnectionUrlProvider() = default;
+  /** URL to connect to */
+  [[nodiscard]] virtual std::optional<Url> url() const = 0;
+  /** Inform provider about disconnection */
+  virtual void disconnected() = 0;
+  /** Info string for logging */
+  [[nodiscard]] virtual std::string str() const = 0;
+};
+
 /**
  * Each Peer uses a PeerConnection to handle the network connection and
  * traffic.
  */
 class PeerConnection {
  public:
-  PeerConnection(Peer& peer,
+  PeerConnection(IConnectionUrlProvider& peer,
                  asio::io_service& io_service,
                  ListeningPort listening_port,
                  ConnectionPort connection_port);
@@ -36,7 +47,7 @@ class PeerConnection {
   void write(const std::optional<Url>& url, const std::string& msg);
   void write(const std::string& msg);
   void write(const bytes& msg);
-  [[nodiscard]] Peer& peer() { return peer_; }
+  [[nodiscard]] Peer& peer();
   [[nodiscard]] bool connected() const { return m_connected; }
 
   /**
@@ -62,9 +73,25 @@ class PeerConnection {
   void send(bool start_read = false);
 
   std::string m_msg{};
-  Peer& peer_;
+  IConnectionUrlProvider& peer_;
   asio::ip::tcp::resolver resolver_;
-  asio::ip::tcp::acceptor acceptor_;
+
+  /*
+
+  Maybe instead of this (due to the issues of lifetime) there should be one
+  active async_accept per port. When someone connects we need to hand over to
+  the correct connection. How do we determine that?
+
+  We do call Message::parse which retrieves the info_hash. This can be used to
+  determine which connection/torrent to use.
+
+  But need to figure out how to use the io_service for the listening and how
+  to do the proper handover.
+
+  */
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+  static std::map<ListeningPort, asio::ip::tcp::acceptor> m_acceptors;
+
   asio::streambuf response_{};
   asio::ip::tcp::socket socket_;
   asio::ip::tcp::resolver::iterator endpoint_{};
@@ -73,12 +100,13 @@ class PeerConnection {
   bool m_sending = false;
   ListeningPort m_listening_port;
   ConnectionPort m_connection_port;
+  asio::io_service& m_io_service;
 };
 
 /**
  * A peer that the torrent can connect to either to send to or download from.
  */
-class Peer {
+class Peer : public IConnectionUrlProvider {
  public:
   explicit Peer(Url url, Torrent& torrent)
       : m_url(std::move(url)),
@@ -90,7 +118,11 @@ class Peer {
    */
   explicit Peer(Torrent& torrent) : m_torrent(torrent) {}
 
-  [[nodiscard]] auto url() const { return m_url; }
+  /**
+   * Return the url of this peer.
+   */
+
+  [[nodiscard]] std::optional<Url> url() const override { return m_url; }
 
   /**
    * This client is choking the remote peer.
@@ -120,7 +152,7 @@ class Peer {
   /**
    * String representation of the peer.
    */
-  [[nodiscard]] auto str() const {
+  [[nodiscard]] std::string str() const override {
     return m_url ? m_url->authority() : "<no url>";
   }
 
@@ -150,6 +182,11 @@ class Peer {
    * Return true if this peer is listening to incoming connections.
    */
   [[nodiscard]] bool is_listening() const { return m_listening; }
+
+  /**
+   * Notify torrent that peer disconnected.
+   */
+  void disconnected() override;
 
   /**
    * Return next piece.

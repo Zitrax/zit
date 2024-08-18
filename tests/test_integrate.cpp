@@ -269,7 +269,7 @@ TEST_F(IntegrateF, DISABLED_download_dual_torrents) {
   // FIXME: This is not what we want in the end. Without this we currently
   //        try to start multiple listeners on the same port which will
   //        not work. One port per torrent does not scale.
-  test_config.set(IntSetting::LISTENING_PORT, 20002);
+  // test_config.set(IntSetting::LISTENING_PORT, 20002);
   zit::Torrent torrent_2(torrent_file_2, download_dir, test_config);
 
   ASSERT_FALSE(torrent_1.done());
