@@ -43,22 +43,22 @@ class TestConfig : public zit::Config {
 
 namespace {
 
-auto start_tracker() {
-  auto tracker = Process(
-      "tracker", {"/home/danielb/git/opentracker/opentracker", "-p", "8000"},
-      nullptr);
-
-  // Allow some time for the tracker to start
-  this_thread::sleep_for(1s);
-  return tracker;
-}
-
 fs::path home_dir() {
   const auto home = getenv("HOME");
   if (!home || strlen(home) < 2) {
     throw runtime_error("HOME environment variable not set or invalid");
   }
   return {home};
+}
+
+auto start_tracker() {
+  const auto opentracker = home_dir() / "git/opentracker/opentracker";
+  auto tracker =
+      Process("tracker", {opentracker.c_str(), "-p", "8000"}, nullptr);
+
+  // Allow some time for the tracker to start
+  this_thread::sleep_for(1s);
+  return tracker;
 }
 
 auto start_seeder(const fs::path& data_dir,
