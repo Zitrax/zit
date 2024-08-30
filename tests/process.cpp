@@ -41,7 +41,7 @@ Process::Process(const string& name, vector<const char*> argv, const char* cwd)
     argv.push_back(nullptr);
     execvp(argv[0], const_cast<char* const*>(argv.data()));
     cerr << "Failed launching " << argv[0] << ": " << strerror(errno) << endl;
-    exit(1);
+    _exit(1);  // Important to use _exit(1) in the child branch
   } else {
     logger()->trace("Started '{}'", fmt::join(argv, " "));
     // Slight delay to verify that process did not immediately die
