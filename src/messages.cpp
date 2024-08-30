@@ -306,6 +306,10 @@ size_t Message::parse(PeerConnection& connection) {
       logger()->warn("{}: {} is unhandled", peer.str(), id);
       return m_msg.size();
     }
+  } else {
+    logger()->warn("{}: Short message of length {} ({})", peer.str(),
+                   m_msg.size(), debugMsg(m_msg));
+    return 0;
   }
 
   logger()->warn("{}: Unknown message of length {} ({})", peer.str(),
