@@ -410,7 +410,11 @@ TEST_F(Integrate, DISABLED_upload) {
   };
 
   // Start a leecher that we will upload to
-  auto target = tmp_dir() / "upload_test";
+  const auto target = tmp_dir() / "upload_test";
+  const auto destination = target / "1MiB.dat";
+  // Be fully sure we do not have the file there yet
+  ASSERT_FALSE(fs::exists(destination));
+
   auto leecher = start_leecher(target, torrent_file);
 
   torrent.set_disconnect_callback([&](zit::Peer*) {
@@ -420,7 +424,7 @@ TEST_F(Integrate, DISABLED_upload) {
   });
 
   // FIXME: How to avoid this sleep?
-  this_thread::sleep_for(15s);
+  this_thread::sleep_for(5s);
 
   // Connects to tracker and retrieves peers
   torrent.start();
@@ -429,7 +433,7 @@ TEST_F(Integrate, DISABLED_upload) {
   torrent.run();
 
   // Transfer done - Verify content
-  verify_download(torrent, data_dir / "1MiB.dat");
+  verify_download(torrent, destination);
 }
 
 #ifdef INTEGRATION_TESTS
