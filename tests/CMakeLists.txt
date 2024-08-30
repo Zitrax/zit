@@ -64,7 +64,10 @@ if(NOT WIN32)
   endif()
 endif()
 
-gtest_discover_tests(zitest TEST_LIST allTests)
+gtest_discover_tests(zitest
+  EXTRA_ARGS --gtest_color=yes
+  TEST_LIST allTests
+)
 
 # configure_file("CTestCustom.cmake.in" "${CMAKE_BINARY_DIR}/CTestCustom.cmake")
 set_property(DIRECTORY APPEND PROPERTY
