@@ -39,13 +39,15 @@ TEST_F(FileConfigTest, CorrectFile) {
   const auto config_file = tmp_dir() / ".zit";
   write_file(config_file,
              "initiate_peer_connections=true\nlistening_port=123\nconnection_"
-             "port=321\nresolve_urls=0\npiece_verify_threads=false\n");
+             "port=321\nresolve_urls=0\npiece_verify_threads=false\nbind_"
+             "address=192.168.5.5\n");
   const auto config = FileConfig{config_file};
   EXPECT_TRUE(config.get(BoolSetting::INITIATE_PEER_CONNECTIONS));
   EXPECT_FALSE(config.get(BoolSetting::RESOLVE_URLS));
   EXPECT_FALSE(config.get(BoolSetting::PIECE_VERIFY_THREADS));
   EXPECT_EQ(config.get(IntSetting::LISTENING_PORT), 123);
   EXPECT_EQ(config.get(IntSetting::CONNECTION_PORT), 321);
+  EXPECT_EQ(config.get(StringSetting::BIND_ADDRESS), "192.168.5.5");
 }
 
 #endif  // __linux__

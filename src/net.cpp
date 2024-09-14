@@ -298,11 +298,16 @@ void addWindowsCertificates(const SSL_CTX* ctx) {
 
 // Based on example at
 // https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/overview/ssl.html
-std::tuple<std::string, std::string> httpsGet(const Url& url) {
+std::tuple<std::string, std::string> httpsGet(const Url& url,
+                                              const std::string& bind_address) {
   using ssl_socket = ssl::stream<tcp::socket>;
   // Create a context that uses the default paths for
   // finding CA certificates.
   ssl::context ctx(ssl::context::tlsv12);
+
+  if (bind_address == "") {
+    throw std::runtime_error("bind for ssl not yet supported");
+  }
 
 #ifdef _WIN32
   addWindowsCertificates(ctx.native_handle());
@@ -363,12 +368,18 @@ std::tuple<std::string, std::string> httpsGet(const Url& url) {
 }  // namespace
 
 //
+// TODO: Ensure we can make a http(s) request from the bind address
+//
+
+//
 // Implementation based on the example at:
 // https://www.boost.org/doc/libs/1_36_0/doc/html/boost_asio/example/http/client/sync_client.cpp
 //
-std::tuple<std::string, std::string> Net::httpGet(const Url& url) {
+std::tuple<std::string, std::string> Net::httpGet(
+    const Url& url,
+    const std::string& bind_address) {
   if (url.scheme() == "https" || url.port().value_or(1) == 443) {
-    return httpsGet(url);
+    return httpsGet(url, bind_address);
   }
 
   if (url.scheme() != "http") {
@@ -380,8 +391,13 @@ std::tuple<std::string, std::string> Net::httpGet(const Url& url) {
   auto endpoints = resolver.resolve(url.host(), url.service());
 
   // Try each endpoint until we successfully establish a connection.
-  // An endpoint might be IPv4 or IPv6
+  // An endpoint might be IPv4 or IPv6 (currently hardcoded to v4)
   tcp::socket socket(io_service);
+  socket.open(asio::ip::tcp::v4());
+  socket.bind(asio::ip::tcp::endpoint(asio::ip::make_address(bind_address), 0));
+  logger()->debug("Http request from {}:{}",
+                  socket.local_endpoint().address().to_string(),
+                  socket.local_endpoint().port());
   asio::error_code error = asio::error::host_not_found;
   asio::connect(socket, endpoints, error);
   if (error) {

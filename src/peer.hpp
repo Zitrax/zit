@@ -10,6 +10,7 @@
 #include "spdlog/spdlog.h"
 
 #include <asio.hpp>
+#include <asio/awaitable.hpp>
 
 #include <deque>
 #include <map>
@@ -20,6 +21,8 @@ namespace zit {
 
 class Peer;
 class Torrent;
+
+using socket_ptr = std::unique_ptr<asio::ip::tcp::socket>;
 
 class IConnectionUrlProvider {
  public:
@@ -40,8 +43,8 @@ class PeerConnection {
  public:
   PeerConnection(IConnectionUrlProvider& peer,
                  asio::io_service& io_service,
-                 ListeningPort listening_port,
-                 ConnectionPort connection_port);
+                 ConnectionPort connection_port,
+                 socket_ptr socket = nullptr);
 
   void write(const std::optional<Url>& url, const bytes& msg);
   void write(const std::optional<Url>& url, const std::string& msg);
@@ -49,11 +52,6 @@ class PeerConnection {
   void write(const bytes& msg);
   [[nodiscard]] Peer& peer();
   [[nodiscard]] bool connected() const { return m_connected; }
-
-  /**
-   * Put the connection in listen mode to accept incoming connections.
-   */
-  void listen();
 
   /**
    * Stops the peer connection.
@@ -88,19 +86,67 @@ class PeerConnection {
   But need to figure out how to use the io_service for the listening and how
   to do the proper handover.
 
+  Second thought:
+
+  The above is right - we can't reuse locals from the PeerConnection in the
+  global map. We need something independent of the existing connections.
+
+  A global or single acceptor running on port N, when we get a connection
+  we hand over (or create?) to the first free Peer/PeerConnection. If we hit the
+  limit we just reject (I assume just close the socket).
+
+  We should be able to configure the max number of incoming connections.
+
+  So the plan could be to have an PeerAcceptor class, running an io_service with
+  an acceptor on a port. When we get a new connection we create a new Peer.
+  The Peers can be managed in a list.
+
+  We can probably remove the PeerConnection::listen() method then.
+
+  No - scrap that. We already have Peers and Torrent objects, when we
+  get an incoming connection we must forward to the existing object.
+
+  I think the only way is to accept the connection and do the initial
+  communication to find out what torrent this is for and then forward
+  to that object.
+
+  1. Start with extracting the info_hash logic. Actually we can just
+     use HandshakeMsg::parse() for this.
+
   */
-  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-  static std::map<ListeningPort, asio::ip::tcp::acceptor> m_acceptors;
 
   asio::streambuf response_{};
-  asio::ip::tcp::socket socket_;
+  socket_ptr socket_;
   asio::ip::tcp::resolver::iterator endpoint_{};
   std::deque<std::string> m_send_queue{};
   bool m_connected = false;
   bool m_sending = false;
-  ListeningPort m_listening_port;
   ConnectionPort m_connection_port;
   asio::io_service& m_io_service;
+};
+
+class PeerAcceptor {
+ public:
+  explicit PeerAcceptor(ListeningPort port,
+                        asio::io_context& io_context,
+                        const std::string& bind_address);
+
+  static void AcceptOnPort(asio::io_context& io_context,
+                           ListeningPort port,
+                           const std::string& bind_address) {
+    // FIXME: Add check that already existing port use the same io_context/bind
+    m_acceptors.try_emplace(port, port, io_context, bind_address);
+  }
+
+ private:
+  asio::awaitable<void> listen();
+
+  ListeningPort m_port;
+  asio::io_context& m_io_context;
+  std::string m_bind_address;
+
+  // FIXME: For now they are staying alive indefinitely
+  static std::map<ListeningPort, PeerAcceptor> m_acceptors;
 };
 
 /**
@@ -113,10 +159,14 @@ class Peer : public IConnectionUrlProvider {
         m_torrent(torrent),
         m_last_activity(std::chrono::system_clock::now()) {}
 
+  // TODO: Remove when unused
   /**
    * A listening host does not need a url when created.
    */
-  explicit Peer(Torrent& torrent) : m_torrent(torrent) {}
+  Peer(Torrent& torrent, socket_ptr socket) : m_torrent(torrent) {
+    // FIXME: Move implementation to cpp file
+    init_io_service(std::move(socket));
+  }
 
   /**
    * Return the url of this peer.
@@ -172,11 +222,6 @@ class Peer : public IConnectionUrlProvider {
    * to run to handle the network events.
    */
   void handshake();
-
-  /**
-   * Alternative to handshake() to listen to incoming connections.
-   */
-  void listen();
 
   /**
    * Return true if this peer is listening to incoming connections.
@@ -251,7 +296,7 @@ class Peer : public IConnectionUrlProvider {
   bool m_interested = false;
   bool m_listening = false;
 
-  void init_io_service();
+  void init_io_service(socket_ptr socket = nullptr);
 
   Bitfield m_remote_pieces{};
 

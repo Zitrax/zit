@@ -50,6 +50,13 @@ enum class IntSetting {
   CONNECTION_PORT
 };
 
+enum class StringSetting {
+  /**
+   * IPv4 address to accept incoming connections on, by default 127.0.0.1
+   */
+  BIND_ADDRESS
+};
+
 /**
  * Provides a config interface along with default values for all settings
  */
@@ -67,6 +74,11 @@ class Config {
     return m_int_settings.at(setting);
   }
 
+  /** Get the value of a string setting */
+  [[nodiscard]] virtual std::string get(StringSetting setting) const {
+    return m_string_settings.at(setting);
+  }
+
  protected:
   // Default values for all settings
   std::map<BoolSetting, bool> m_bool_settings{
@@ -77,6 +89,9 @@ class Config {
   std::map<IntSetting, int> m_int_settings{
       {IntSetting::LISTENING_PORT, 20001},
       {IntSetting::CONNECTION_PORT, 20000}};
+
+  std::map<StringSetting, std::string> m_string_settings{
+      {StringSetting::BIND_ADDRESS, ""}};
 };
 
 std::ostream& operator<<(std::ostream& os, const Config& config);

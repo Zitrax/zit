@@ -130,6 +130,10 @@ const std::map<std::string, IntSetting> settings_map<IntSetting>{
     {"listening_port", IntSetting::LISTENING_PORT},
     {"connection_port", IntSetting::CONNECTION_PORT}};
 
+template <>
+const std::map<std::string, StringSetting> settings_map<StringSetting>{
+    {"bind_address", StringSetting::BIND_ADDRESS}};
+
 }  // namespace
 
 std::ostream& operator<<(std::ostream& os, const Config& config) {
@@ -197,6 +201,9 @@ void FileConfig::update_value(const std::string& key,
       logger()->debug("{} set to {}", key, *parsed);
       m_int_settings[settings_map<IntSetting>.at(key)] = *parsed;
     }
+  } else if (settings_map<StringSetting>.contains(key)) {
+    m_string_settings[settings_map<StringSetting>.at(key)] = value;
+    logger()->debug("{} set to {}", key, value);
   } else {
     logger()->warn("Unknown key '{}' in config file ignored", key);
   }

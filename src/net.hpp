@@ -154,7 +154,9 @@ class Net {
    *
    * @return A tuple with headers and response.
    */
-  static std::tuple<std::string, std::string> httpGet(const Url& url);
+  static std::tuple<std::string, std::string> httpGet(
+      const Url& url,
+      const std::string& bind_address = "");
 
   /**
    * Perform a udp request.

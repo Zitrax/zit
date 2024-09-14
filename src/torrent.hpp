@@ -25,8 +25,12 @@ using DisconnectCallback = std::function<void(Peer*)>;
 /**
  * Function taking an Url and returning the resulting Headers,Body of the
  * request. Matching Net::httpGet(const Url&).
+ * 
+ * FIXME: Make bind_address something better than a plain string
  */
-using HttpGet = std::function<std::tuple<std::string, std::string>(const Url&)>;
+using HttpGet =
+    std::function<std::tuple<std::string, std::string>(const Url&,
+                                                       const std::string&)>;
 
 /**
  * Information object for each file in the torrent.
@@ -64,6 +68,27 @@ class FileInfo {
 std::ostream& operator<<(std::ostream& os, const zit::FileInfo& file_info);
 
 /**
+ * Current each torrent has it's own run function. That results in each torrent
+ * having to run in it's own thread. That seem unnecessary and would not really
+ * scale.
+ *
+ * Also apparently new asio has deprecated io_service that is in current use,
+ * io_context should be used instead.
+ *
+ * Probably what makes most sense is to provide an io_context from the outside
+ * to the torrent, then it's up to the caller if it should be one global or
+ * more. Something like: asio::io_context io; Torrent t1(io, ...); Torrent
+ * t2(io, ...); io.run();
+ *
+ * However the torrent class currently performas some maintenance in it's run
+ * function, how should that be handled if there is no run function and run is
+ * called on the context from the outside?
+ *
+ * Could the maintenance functions could be scheduled instead of being rate
+ * limited like now?
+ */
+
+/**
  * Represents one torrent. Bookeeps all pieces and block information.
  *
  * @note About locking; implemented as suggested in
@@ -82,10 +107,15 @@ class Torrent {
    * @param http_get a http request getter function
    */
   explicit Torrent(
+      asio::io_context& io_context,
       std::filesystem::path file,
       std::filesystem::path data_dir = "",
       const Config& config = SingletonDirectoryFileConfig::getInstance(),
-      HttpGet http_get = [](const Url& url) { return Net::httpGet(url); });
+      HttpGet http_get = [](const Url& url, const std::string& bind_address) {
+        return Net::httpGet(url, bind_address);
+      });
+
+  ~Torrent();
 
   /** The tracker URL */
   [[nodiscard]] auto announce() const { return m_announce; }
@@ -345,6 +375,19 @@ class Torrent {
 
   enum class TrackerEvent { STARTED, STOPPED, COMPLETED, UNSPECIFIED };
 
+  /**
+   * Find a torrent with a specific info hash among all existing torrents.
+   *
+   * @param info_hash the info hash
+   * @return Torrent* A torrent with the provided info hash or nullptr
+   */
+  static Torrent* get(const Sha1& info_hash);
+
+  /**
+   * The total number of torrents
+   */
+  static size_t count();
+
  private:
   /**
    * Read and add peers in string form and add to the peer vector.
@@ -418,6 +461,10 @@ class Torrent {
    */
   void verify_existing_file();
 
+  void schedule_retry_pieces();
+  void schedule_retry_peers();
+
+  asio::io_context& m_io_context;
   const Config& m_config;
   std::string m_announce{};
   std::vector<std::vector<std::string>> m_announce_list{};
@@ -443,12 +490,18 @@ class Torrent {
   ConnectionPort m_connection_port;
   std::vector<std::shared_ptr<Peer>> m_peers{};
   HttpGet m_http_get;
+  asio::steady_timer m_retry_pieces_timer;
+  asio::steady_timer m_retry_peers_timer;
 
   // Piece housekeeping
   mutable std::mutex m_mutex{};
   Bitfield m_client_pieces{};
   /** Piece id -> Piece object */
   std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces{};
+
+  // This is ok and a bug in clang-tidy
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+  static std::map<Sha1, Torrent*> m_torrents;
 };
 
 std::ostream& operator<<(std::ostream& os, const zit::Torrent& torrent);
