@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <array>
+#include <asio/io_context.hpp>
 #include <regex>
 #include <stdexcept>
 #include <string>
@@ -14,6 +15,12 @@
 #include "logger.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
+
+// FIXME: Rename TestWithIOContext
+class TestWithContext {
+ public:
+  asio::io_context m_io_context;
+};
 
 class TestWithTmpDir : public ::testing::Test {
  public:

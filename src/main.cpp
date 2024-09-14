@@ -125,11 +125,13 @@ int main(int argc, const char* argv[]) noexcept {
 
     CommandLineArgs clargs{listening_port};
 
+    asio::io_context io_context;
+
     std::vector<std::unique_ptr<zit::Torrent>> torrents;
     std::ranges::transform(torrent_files, std::back_inserter(torrents),
                            [&](const auto& torrent_file) {
-                             return std::make_unique<zit::Torrent>(torrent_file,
-                                                                   "", clargs);
+                             return std::make_unique<zit::Torrent>(
+                                 io_context, torrent_file, "", clargs);
                            });
 
     if (dump_torrent || dump_config) {
@@ -154,6 +156,8 @@ int main(int argc, const char* argv[]) noexcept {
       file_writer.register_torrent(*torrent);
       zit::logger()->info("\n{}", *torrent);
     }
+
+    // FIXME: Should no longer need to create one thread per torrent
 
     std::vector<std::thread> torrent_threads;
     std::ranges::transform(torrents, std::back_inserter(torrent_threads),
