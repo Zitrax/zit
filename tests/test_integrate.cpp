@@ -13,7 +13,6 @@
  *    - sudo apt install transmission-cli
  */
 
-
 #include <file_utils.hpp>
 #include <file_writer.hpp>
 #include <torrent.hpp>
@@ -30,15 +29,23 @@ using namespace std::string_literals;
 using namespace zit;
 namespace fs = std::filesystem;
 
+constexpr auto TEST_BIND_ADDRESS{"192.168.1.10"};
+
 class TestConfig : public zit::Config {
  public:
   TestConfig() : zit::Config() {
     // As long as we use Transmission and test with all processes on localhost
     // we need to make sure we initiate the connections.
-    m_bool_settings[zit::BoolSetting::INITIATE_PEER_CONNECTIONS] = true;
+    // m_bool_settings[zit::BoolSetting::INITIATE_PEER_CONNECTIONS] = false;
+
+    // Transmission does not want to connect to localhost, so trick it
+    m_string_settings[zit::StringSetting::BIND_ADDRESS] = TEST_BIND_ADDRESS;
   }
 
   void set(IntSetting setting, int val) { m_int_settings[setting] = val; }
+  void set(StringSetting setting, std::string val) {
+    m_string_settings[setting] = val;
+  }
 };
 
 namespace {
@@ -76,9 +83,19 @@ auto start_seeder(const fs::path& data_dir,
   // Ensure to start each transmission instance on different ports
   static int transmission_port = 51413;
 
+  // FIXME: Instead of removing the users main config - can we use our own?
+  //        Seems like env var TRANSMISSION_HOME can be set for that
   fs::remove_all(home_dir() / ".config/transmission");
-  return Process(name, {"transmission-cli", "--download-dir", data_dir.c_str(),
-                        "--port", std::to_string(transmission_port++).c_str(),
+  const auto transmission =
+      home_dir() / "git/transmission/install/bin/transmission-cli";
+  return Process(name, {transmission.c_str(),
+                        // This disables encryption which we do not yet support
+                        "--encryption-tolerated",
+                        // Unsure if this one is needed ?
+                        //"--no-blocklist",
+                        // Download destination
+                        "--download-dir", data_dir.c_str(), "--port",
+                        std::to_string(transmission_port++).c_str(),
                         torrent_file.c_str()});
 }
 
@@ -157,6 +174,8 @@ void verify_download(const zit::Torrent& torrent,
                      bool clean = true) {
   const auto name = torrent.name();
 
+  logger()->info("Verifying {} and {}", source, name);
+
   if (torrent.is_single_file()) {
     auto source_sha1 = zit::Sha1::calculateFile(source).hex();
     auto target_sha1 = zit::Sha1::calculateFile(name).hex();
@@ -181,7 +200,8 @@ void verify_download(const zit::Torrent& torrent,
 
 }  // namespace
 
-class IntegrateF : public TestWithTmpDir,
+class IntegrateF : public TestWithContext,
+                   public TestWithTmpDir,
                    public ::testing::WithParamInterface<uint8_t> {};
 
 #ifdef INTEGRATION_TESTS
@@ -197,7 +217,7 @@ TEST_P(IntegrateF, DISABLED_download) {
 
   const auto download_dir = tmp_dir();
   TestConfig test_config;
-  zit::Torrent torrent(torrent_file, download_dir, test_config);
+  zit::Torrent torrent(m_io_context, torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
   download(data_dir, {torrent}, number_of_seeders);
   const auto target = torrent.name();
@@ -210,7 +230,8 @@ INSTANTIATE_TEST_SUITE_P(SeedCount,
                          IntegrateF,
                          ::testing::Values<uint8_t>(1, 2, 5, 10));
 
-class IntegrateOodF : public TestWithFilesystem<1'500'000>,
+class IntegrateOodF : public TestWithContext,
+                      public TestWithFilesystem<1'500'000>,
                       public ::testing::WithParamInterface<uint8_t> {};
 
 #ifdef INTEGRATION_TESTS
@@ -226,7 +247,7 @@ TEST_F(IntegrateOodF, DISABLED_download_ood) {
 
   const auto download_dir = mount_dir();
   TestConfig test_config;
-  zit::Torrent torrent(torrent_file, download_dir, test_config);
+  zit::Torrent torrent(m_io_context, torrent_file, download_dir, test_config);
 
   sigint_function = [&](int /*s*/) {
     logger()->warn("CTRL-C pressed. Stopping torrent...");
@@ -247,7 +268,7 @@ TEST_F(IntegrateOodF, DISABLED_download_ood) {
   verify_download(torrent, data_dir / "1MiB.dat");
 }
 
-using Integrate = TestWithTmpDir;
+class Integrate : public TestWithContext, public TestWithTmpDir {};
 
 // Verify we can download two torrents at the same time
 #ifdef INTEGRATION_TESTS
@@ -265,12 +286,14 @@ TEST_F(IntegrateF, DISABLED_download_dual_torrents) {
   const auto torrent_file_1 = data_dir / "1MiB.torrent";
   const auto torrent_file_2 = data_dir / "multi.torrent";
 
-  zit::Torrent torrent_1(torrent_file_1, download_dir, test_config);
+  zit::Torrent torrent_1(m_io_context, torrent_file_1, download_dir,
+                         test_config);
   // FIXME: This is not what we want in the end. Without this we currently
   //        try to start multiple listeners on the same port which will
   //        not work. One port per torrent does not scale.
   // test_config.set(IntSetting::LISTENING_PORT, 20002);
-  zit::Torrent torrent_2(torrent_file_2, download_dir, test_config);
+  zit::Torrent torrent_2(m_io_context, torrent_file_2, download_dir,
+                         test_config);
 
   ASSERT_FALSE(torrent_1.done());
   ASSERT_FALSE(torrent_2.done());
@@ -308,7 +331,7 @@ TEST_P(IntegrateF, DISABLED_download_part) {
   zit::write_file(fn, content);
 
   TestConfig test_config;
-  zit::Torrent torrent(torrent_file, download_dir, test_config);
+  zit::Torrent torrent(m_io_context, torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
 
   unsigned pieces_downloaded = 0;
@@ -350,7 +373,7 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
   zit::write_file(fn, content);
 
   TestConfig test_config;
-  zit::Torrent torrent(torrent_file, download_dir, test_config);
+  zit::Torrent torrent(m_io_context, torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
 
   unsigned pieces_downloaded = 0;
@@ -380,7 +403,7 @@ TEST_F(Integrate, DISABLED_download_multi_file) {
 
   const auto download_dir = tmp_dir();
   TestConfig test_config;
-  zit::Torrent torrent(torrent_file, download_dir, test_config);
+  zit::Torrent torrent(m_io_context, torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
   download(data_dir, torrent, 1);
   const auto target = torrent.name();
@@ -401,7 +424,7 @@ TEST_F(Integrate, DISABLED_upload) {
 
   // Launch zit with existing file to seed it
   TestConfig test_config;
-  zit::Torrent torrent(torrent_file, data_dir, test_config);
+  zit::Torrent torrent(m_io_context, torrent_file, data_dir, test_config);
   ASSERT_TRUE(torrent.done());
 
   sigint_function = [&](int /*s*/) {
@@ -415,22 +438,29 @@ TEST_F(Integrate, DISABLED_upload) {
   // Be fully sure we do not have the file there yet
   ASSERT_FALSE(fs::exists(destination));
 
-  auto leecher = start_leecher(target, torrent_file);
+  std::optional<zit::Process> leecher;
+  asio::steady_timer timer{m_io_context};
+  timer.expires_after(5s);
 
-  torrent.set_disconnect_callback([&](zit::Peer*) {
-    logger()->info("Peer disconnect - stopping");
-    torrent.stop();
-    leecher.terminate();
+  timer.async_wait([&](auto ec) {
+    EXPECT_FALSE(ec);
+    leecher = start_leecher(target, torrent_file);
+
+    torrent.set_disconnect_callback([&](zit::Peer*) {
+      logger()->info("Peer disconnect - stopping");
+      torrent.stop();
+      leecher->terminate();
+    });
   });
 
   // FIXME: How to avoid this sleep?
-  this_thread::sleep_for(5s);
+  // this_thread::sleep_for(5s);
 
   // Connects to tracker and retrieves peers
   torrent.start();
 
   // Run the peer connections
-  torrent.run();
+  m_io_context.run();
 
   // Transfer done - Verify content
   verify_download(torrent, destination);
@@ -448,7 +478,7 @@ TEST_F(Integrate, DISABLED_multi_upload) {
 
   // Launch zit with existing file to seed it
   TestConfig test_config;
-  zit::Torrent torrent(torrent_file, data_dir, test_config);
+  zit::Torrent torrent(m_io_context, torrent_file, data_dir, test_config);
   ASSERT_TRUE(torrent.done());
 
   // Start a leecher that we will upload to

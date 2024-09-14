@@ -14,9 +14,11 @@ namespace fs = std::filesystem;
 using namespace std::string_literals;
 using namespace bencode;
 
-TEST(torrent, construct_single) {
+struct torrent : public TestWithContext, public ::testing::Test {};
+
+TEST_F(torrent, construct_single) {
   const auto data_dir = fs::path(DATA_DIR);
-  zit::Torrent t(data_dir / "test.torrent");
+  zit::Torrent t(m_io_context, data_dir / "test.torrent");
 
   EXPECT_EQ(t.announce(), "http://torrent.ubuntu.com:6969/announce");
   const auto announce_list = t.announce_list();
@@ -43,9 +45,9 @@ TEST(torrent, construct_single) {
             "\xb6\xa4\xfb\x9b\x74\x96\x6c\x3a\xb6\x09");
 }
 
-TEST(torrent, construct_single_2) {
+TEST_F(torrent, construct_single_2) {
   const auto data_dir = fs::path(DATA_DIR);
-  zit::Torrent t(data_dir / "test2.torrent");
+  zit::Torrent t(m_io_context, data_dir / "test2.torrent");
 
   EXPECT_EQ(t.announce(), "https://torrent.ubuntu.com/announce");
   const auto announce_list = t.announce_list();
@@ -67,9 +69,9 @@ TEST(torrent, construct_single_2) {
             "\x8F\xC8\xB4\xC0\x97\xC7\xF3\x1A\x8B\x85");
 }
 
-TEST(torrent, construct_multi) {
+TEST_F(torrent, construct_multi) {
   const auto data_dir = fs::path(DATA_DIR);
-  zit::Torrent t(data_dir / "multi_kali.torrent");
+  zit::Torrent t(m_io_context, data_dir / "multi_kali.torrent");
 
   EXPECT_EQ(t.announce(), "http://tracker.kali.org:6969/announce");
   const auto& announce_list = t.announce_list();
@@ -103,19 +105,30 @@ TEST(torrent, construct_multi) {
   EXPECT_EQ(file2.path(), "kali-linux-2018.3a-amd64.iso.txt.sha256sum");
 }
 
-TEST(torrent, construct_fail) {
-  EXPECT_THROW(zit::Torrent t("FOO"), std::runtime_error);
+TEST_F(torrent, construct_fail) {
+  EXPECT_THROW(zit::Torrent t(m_io_context, "FOO"), std::runtime_error);
 
   const auto data_dir = fs::path(DATA_DIR);
-  EXPECT_THROW(zit::Torrent t(data_dir / "empty.torrent"),
+  EXPECT_THROW(zit::Torrent t(m_io_context, data_dir / "empty.torrent"),
                std::invalid_argument);
-  EXPECT_THROW(zit::Torrent t(data_dir / "invalid.torrent"),
+  EXPECT_THROW(zit::Torrent t(m_io_context, data_dir / "invalid.torrent"),
                std::invalid_argument);
 }
 
-TEST(torrent, peer_id) {
+TEST_F(torrent, construct_map) {
   const auto data_dir = fs::path(DATA_DIR);
-  zit::Torrent torrent(data_dir / "test2.torrent");
+  EXPECT_EQ(zit::Torrent::count(), 0);
+  {
+    zit::Torrent t(m_io_context, data_dir / "test.torrent");
+    EXPECT_EQ(zit::Torrent::count(), 1);
+    EXPECT_NE(zit::Torrent::get(t.info_hash()), nullptr);
+  }
+  EXPECT_EQ(zit::Torrent::count(), 0);
+}
+
+TEST_F(torrent, peer_id) {
+  const auto data_dir = fs::path(DATA_DIR);
+  zit::Torrent torrent(m_io_context, data_dir / "test2.torrent");
 
   const auto peer_id = torrent.peer_id();
 
@@ -125,10 +138,10 @@ TEST(torrent, peer_id) {
 }
 
 // Test that two torrents can listen at once using the same port
-TEST(torrent, multi_listen) {
+TEST_F(torrent, multi_listen) {
   const auto data_dir = fs::path(DATA_DIR);
-  zit::Torrent t1(data_dir / "multi_kali.torrent");
-  zit::Torrent t2(data_dir / "test.torrent");
+  zit::Torrent t1(m_io_context, data_dir / "multi_kali.torrent");
+  zit::Torrent t2(m_io_context, data_dir / "test.torrent");
 }
 
 #ifdef __linux__
@@ -136,7 +149,7 @@ TEST(torrent, multi_listen) {
 // 127.0.0.1:65535
 const auto FAKE_URL = "\x7F\x00\x00\x01\xFF\xFF"s;
 
-using torrent_with_tmp_dir = TestWithTmpDir;
+class torrent_with_tmp_dir : public TestWithTmpDir, public TestWithContext {};
 
 TEST_F(torrent_with_tmp_dir, tracker_requests_announce) {
   // Create a torrent file with a known announce config
@@ -155,14 +168,15 @@ TEST_F(torrent_with_tmp_dir, tracker_requests_announce) {
 
   std::vector<std::string> requests;
 
-  zit::Torrent t(
-      torrent_file, tmp_dir(), zit::SingletonDirectoryFileConfig::getInstance(),
-      [&](const zit::Url& url) {
-        requests.push_back(url.host());
-        BeDict peers;
-        peers["peers"] = Element::build(FAKE_URL);  // Fake binary url (6 bytes)
-        return std::make_pair("", encode(peers));
-      });
+  zit::Torrent t(m_io_context, torrent_file, tmp_dir(),
+                 zit::SingletonDirectoryFileConfig::getInstance(),
+                 [&](const zit::Url& url, const std::string&) {
+                   requests.push_back(url.host());
+                   BeDict peers;
+                   peers["peers"] =
+                       Element::build(FAKE_URL);  // Fake binary url (6 bytes)
+                   return std::make_pair("", encode(peers));
+                 });
 
   t.start();
 
@@ -197,17 +211,18 @@ TEST_F(torrent_with_tmp_dir, tracker_requests_announce_list) {
 
   std::vector<std::string> requests;
 
-  zit::Torrent t(torrent_file, tmp_dir(),
-                 zit::SingletonDirectoryFileConfig::getInstance(),
-                 // Keep track of the requests and make only the last one pass
-                 [&, call = 0](const zit::Url& url) mutable {
-                   requests.push_back(url.host());
-                   BeDict peers;
-                   peers["peers"] = Element::build(
-                       call == 2 ? FAKE_URL : "");  // Fake binary url (6 bytes)
-                   call++;
-                   return std::make_pair("", encode(peers));
-                 });
+  zit::Torrent t(
+      m_io_context, torrent_file, tmp_dir(),
+      zit::SingletonDirectoryFileConfig::getInstance(),
+      // Keep track of the requests and make only the last one pass
+      [&, call = 0](const zit::Url& url, const std::string&) mutable {
+        requests.push_back(url.host());
+        BeDict peers;
+        peers["peers"] = Element::build(
+            call == 2 ? FAKE_URL : "");  // Fake binary url (6 bytes)
+        call++;
+        return std::make_pair("", encode(peers));
+      });
 
   t.start();
 

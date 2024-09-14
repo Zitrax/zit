@@ -9,12 +9,14 @@
 #include "piece.hpp"
 #include "random.hpp"
 #include "retry.hpp"
+#include "scope_guard.hpp"
 #include "sha1.hpp"
 #include "string_utils.hpp"
 #include "timer.hpp"
 #include "types.hpp"
 #include "version.hpp"
 
+#include <fmt/chrono.h>
 #include <fmt/format.h>
 #include <spdlog/common.h>
 
@@ -41,6 +43,7 @@
 #include <numeric>
 #include <optional>
 #include <random>
+#include <ranges>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -99,13 +102,19 @@ auto beDictToFileInfo(const Element& element) {
 
 }  // namespace
 
+// This is ok and a bug in clang-tidy
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+std::map<Sha1, Torrent*> Torrent::m_torrents{};
+
 // Could possibly be grouped in a struct
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-Torrent::Torrent(filesystem::path file,
+Torrent::Torrent(asio::io_context& io_context,
+                 filesystem::path file,
                  std::filesystem::path data_dir,
                  const Config& config,
                  HttpGet http_get)
-    : m_config(config),
+    : m_io_context(io_context),
+      m_config(config),
       m_data_dir(std::move(data_dir)),
       m_torrent_file(std::move(file)),
       // Peer-ID Azureus style
@@ -119,7 +128,9 @@ Torrent::Torrent(filesystem::path file,
       m_connection_port(
           numeric_cast<unsigned short>(config.get(IntSetting::CONNECTION_PORT),
                                        "connection port out of range")),
-      m_http_get(std::move(http_get)) {
+      m_http_get(std::move(http_get)),
+      m_retry_pieces_timer(m_io_context),
+      m_retry_peers_timer(m_io_context) {
   auto root = bencode::decode(read_file(m_torrent_file));
 
   const auto& root_dict = root->to<TypedElement<BeDict>>()->val();
@@ -205,6 +216,12 @@ Torrent::Torrent(filesystem::path file,
 
   // If we already have a file - scan it and mark what pieces we already have
   verify_existing_file();
+
+  m_torrents.insert({m_info_hash, this});
+}
+
+Torrent::~Torrent() {
+  m_torrents.erase(m_info_hash);
 }
 
 uint32_t Torrent::piece_length(uint32_t id) const {
@@ -413,10 +430,6 @@ std::string format_as(const Torrent::TrackerEvent& te) {
 
 namespace {
 
-auto now() {
-  return std::chrono::system_clock::now();
-}
-
 bool is_local(const auto& purl, auto port) {
   return purl.host() == "127.0.0.1" && purl.port() == port.get();
 }
@@ -444,7 +457,8 @@ Torrent::http_tracker_request(const Url& announce_url, TrackerEvent event) {
     logger()->info("Tracker request: {}", url.str());
   }
 
-  auto [headers, body] = m_http_get(url);
+  auto [headers, body] =
+      m_http_get(url, m_config.get(StringSetting::BIND_ADDRESS));
 
   std::vector<std::shared_ptr<Peer>> peers;
 
@@ -799,12 +813,11 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
   std::random_device rd;
   std::mt19937 g(rd());
   for (auto tier : local_announce_list) {
-    shuffle(tier.begin(), tier.end(), g);
+    std::ranges::shuffle(tier, g);
     for (const auto& announce_url : tier) {
       try {
-        auto ret = do_tracker_request(announce_url);
-        success = ret.first;
-        peers_from_tracker = ret.second;
+        std::tie(success, peers_from_tracker) =
+            do_tracker_request(announce_url);
         thrown = nullptr;
         break;
       } catch (const std::exception& ex) {
@@ -820,6 +833,17 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
   if (thrown) {
     std::rethrow_exception(thrown);
   }
+
+  // To avoid connecting to our own listening peer
+  const auto is_local_peer = [&](const auto& peer) {
+    const auto& url = peer->url();
+    return url && url->host() == "localhost" &&
+           url->port().value_or(0) == m_listening_port.get();
+  };
+
+  peers_from_tracker.erase(
+      ranges::begin(ranges::remove_if(peers_from_tracker, is_local_peer)),
+      ranges::end(peers_from_tracker));
 
   return peers_from_tracker;
 }
@@ -838,15 +862,52 @@ void Torrent::start() {
     p->handshake();
   }
 
+  // FIXME: Use PeerAcceptor instead
   // Add listening peer for incoming connections
-  logger()->info("Adding listening peer");
-  try {
-    m_peers.emplace_back(make_shared<Peer>(*this))->listen();
-  } catch (const std::exception& ex) {
-    logger()->warn("Could not start listening peer: {}", ex.what());
-  }
+  // logger()->info("Adding listening peer");
+  // try {
+  //  m_peers.emplace_back(make_shared<Peer>(*this))->listen();
+  //} catch (const std::exception& ex) {
+  //  logger()->warn("Could not start listening peer: {}", ex.what());
+  //}
+
+  PeerAcceptor::AcceptOnPort(m_io_context, m_listening_port,
+                             m_config.get(StringSetting::BIND_ADDRESS));
+
+  // Schedule maintenance functions
+  schedule_retry_pieces();
+  schedule_retry_peers();
 }
 
+void Torrent::schedule_retry_pieces() {
+  m_retry_pieces_timer.expires_after(1min);
+  logger()->debug("Scheduling next retry_pieces in {}",
+                  std::chrono::duration_cast<std::chrono::seconds>(
+                      m_retry_pieces_timer.expires_from_now()));
+  m_retry_pieces_timer.async_wait([this](const asio::error_code& ec) {
+    if (!ec) {
+      retry_pieces();
+    } else {
+      logger()->warn("Timer error: {}", ec.message());
+    }
+  });
+}
+
+void Torrent::schedule_retry_peers() {
+  m_retry_peers_timer.expires_after(2min);
+  logger()->debug("Scheduling next retry_peers in {}",
+                  std::chrono::duration_cast<std::chrono::seconds>(
+                      m_retry_peers_timer.expires_from_now()));
+  m_retry_peers_timer.async_wait([this](const asio::error_code& ec) {
+    if (!ec) {
+      retry_peers();
+    } else {
+      logger()->warn("Timer error: {}", ec.message());
+    }
+  });
+}
+
+// FIXME: Remove this function
 void Torrent::run() {
   logger()->debug("Run loop start");
   while (!all_of(m_peers.begin(), m_peers.end(),
@@ -877,6 +938,17 @@ void Torrent::stop() {
     peer->stop();
   }
   tracker_request(TrackerEvent::STOPPED);
+}
+
+Torrent* Torrent::get(const Sha1& info_hash) {
+  if (auto match = m_torrents.find(info_hash); match != m_torrents.end()) {
+    return match->second;
+  }
+  return nullptr;
+}
+
+size_t Torrent::count() {
+  return m_torrents.size();
 }
 
 void Torrent::read_peers_string_list(
@@ -917,59 +989,47 @@ void Torrent::read_peers_binary_form(
 }
 
 void Torrent::retry_pieces() {
-  // Do not need to call this too frequently so rate limit it
-  static std::chrono::system_clock::time_point last_call{now() + 1min};
+  ScopeGuard scope_guard([this]() { schedule_retry_pieces(); });
 
-  // False positive
-  // NOLINTNEXTLINE(hicpp-use-nullptr,modernize-use-nullptr)
-  if (now() - last_call > 30s) {
-    last_call = now();
-    logger()->debug("Checking pieces for retry");
-    std::size_t retry = 0;
-    for (auto& [id, piece] : m_active_pieces) {
-      retry += piece->retry_blocks();
-    }
-    logger()->trace("retry count = {}", retry);
-    if (!retry) {
-      return;
-    }
-    logger()->info("Marked {} blocks for retry", retry);
+  logger()->debug("Checking pieces for retry");
+  std::size_t retry = 0;
+  for (auto& [id, piece] : m_active_pieces) {
+    retry += piece->retry_blocks();
+  }
+  logger()->trace("retry count = {}", retry);
+  if (!retry) {
+    return;
+  }
+  logger()->info("Marked {} blocks for retry", retry);
 
-    // To hit different peers for each invocation - shuffle the list
-    std::random_device rd;
-    std::mt19937 g(rd());
-    shuffle(m_peers.begin(), m_peers.end(), g);
+  // To hit different peers for each invocation - shuffle the list
+  std::random_device rd;
+  std::mt19937 g(rd());
+  shuffle(m_peers.begin(), m_peers.end(), g);
 
-    auto it = m_peers.begin();
+  auto it = m_peers.begin();
+  if (it == m_peers.end()) {
+    logger()->warn("No peers available for retrying");
+    return;
+  }
+  auto start_count = retry;
+  while (retry > 0) {
+    retry -= (*it)->request_next_block(1);
+    it++;
     if (it == m_peers.end()) {
-      logger()->warn("No peers available for retrying");
-      return;
-    }
-    auto start_count = retry;
-    while (retry > 0) {
-      retry -= (*it)->request_next_block(1);
-      it++;
-      if (it == m_peers.end()) {
-        if (retry == start_count) {
-          logger()->warn("Could not retry all blocks.");
-          break;
-        }
-        start_count = retry;
-        it = m_peers.begin();
+      if (retry == start_count) {
+        logger()->warn("Could not retry all blocks.");
+        break;
       }
+      start_count = retry;
+      it = m_peers.begin();
     }
   }
 }
 
 void Torrent::retry_peers() {
-  // Do not need to call this too frequently so rate limit it
-  static std::chrono::system_clock::time_point last_call{now() + 2min};
+  ScopeGuard scope_guard([this]() { schedule_retry_peers(); });
 
-  if (now() - last_call <= 2min) {
-    return;
-  }
-
-  last_call = now();
   logger()->debug("Checking peers for retry");
 
   // Find and disconnect inactive peers

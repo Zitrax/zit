@@ -13,7 +13,6 @@
 #include <sstream>
 #include <stdexcept>
 #include <string>
-#include <utility>
 
 #include "bitfield.hpp"
 #include "logger.hpp"
@@ -119,80 +118,66 @@ string debugMsg(const bytes& msg, size_t len = 100) {
 
 }  // namespace
 
-/**
- * BitTorrent handshake message.
- */
-class HandshakeMsg {
- public:
-  HandshakeMsg(bytes reserved,
-               Sha1 info_hash,
-               string peer_id,
-               size_t consumed,
-               Bitfield bf = {})
-      : m_reserved(std::move(reserved)),
-        m_info_hash(info_hash),
-        m_peer_id(std::move(peer_id)),
-        m_bitfield(std::move(bf)),
-        m_consumed(consumed) {}
-
-  [[nodiscard]] auto getReserved() const { return m_reserved; }
-  [[nodiscard]] auto getInfoHash() const { return m_info_hash; }
-  [[nodiscard]] auto getPeerId() const { return m_peer_id; }
-  [[nodiscard]] auto getBitfield() const { return m_bitfield; }
-  [[nodiscard]] auto getConsumed() const { return m_consumed; }
-
-  /**
-   * Parse bytes and return handshake message if it is one.
-   */
-  static optional<HandshakeMsg> parse(const bytes& msg) {
-    if (msg.size() < 68) {  // BitTorrent messages are minimum 68 bytes long
-      return {};
-    }
-    if (memcmp("\x13"
-               "BitTorrent protocol",
-               msg.data(), 20) != 0) {
-      return {};
-    }
-    bytes reserved(&msg[20], &msg[28]);
-    Sha1 info_hash = Sha1::fromBuffer(msg, 28);
-    string peer_id = from_bytes(msg, 48, 68);
-
-    if (msg.size() > 68) {
-      if (msg.size() < 73) {
-        logger()->error("Invalid handshake length: {}", msg.size());
-        return {};
-      }
-      if (to_peer_wire_id(msg[72]) != peer_wire_id::BITFIELD) {
-        logger()->error("Expected bitfield id ({}) but got: {}",
-                        static_cast<pwid_t>(peer_wire_id::BITFIELD),
-                        static_cast<uint8_t>(msg[72]));
-        return {};
-      }
-      // 4-byte big endian
-      auto len = from_big_endian<uint32_t>(msg, 68);
-      auto end = 73 + len - 1;
-      if (end > msg.size()) {
-        logger()->debug("Wait for more handshake data...");
-        return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, 0);
-      }
-      Bitfield bf(
-          bytes(std::next(msg.begin(), 73), std::next(msg.begin(), end)));
-      logger()->debug("Handshake: {}", bf);
-      // Consume the parsed part, the caller have to deal with the rest
-      return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, end, bf);
-    }
-
-    return make_optional<HandshakeMsg>(reserved, info_hash, peer_id,
-                                       msg.size());
+optional<HandshakeMsg> HandshakeMsg::parse(const bytes& msg) {
+  if (msg.size() < MIN_BT_MSG_LENGTH) {
+    return {};
   }
 
- private:
-  bytes m_reserved;
-  Sha1 m_info_hash;
-  string m_peer_id;
-  Bitfield m_bitfield;
-  size_t m_consumed;
-};
+  constexpr std::array<byte, 20> BT_START{
+      byte{0x13}, 'B'_b, 'i'_b, 't'_b, 'T'_b, 'o'_b, 'r'_b,
+      'r'_b,      'e'_b, 'n'_b, 't'_b, ' '_b, 'P'_b, 'r'_b,
+      'o'_b,      't'_b, 'o'_b, 'c'_b, 'o'_b, 'l'_b};
+
+  auto it =
+      std::search(msg.begin(), msg.end(), BT_START.begin(), BT_START.end());
+  if(it == msg.end()) {
+    logger()->debug("No handshake match: {}", debugMsg(msg, msg.size()));
+    return {};
+  }
+
+  if(it != msg.begin()) {
+    logger()->debug("Found BT start at {}", std::distance(msg.begin(), it));
+    return HandshakeMsg::parse(bytes{it, msg.end()});
+  }
+
+  if (memcmp("\x13"
+             "BitTorrent protocol",
+             msg.data(), 20) != 0) {
+    // debug log bytes
+    logger()->debug("MSG: {}", debugMsg(msg));
+    return {};
+  }
+  bytes reserved(&msg[20], &msg[28]);
+  Sha1 info_hash = Sha1::fromBuffer(msg, 28);
+  string peer_id = from_bytes(msg, 48, 68);
+
+  // Handle optional bitfield
+  if (msg.size() > MIN_BT_MSG_LENGTH) {
+    if (msg.size() < 73) {
+      logger()->error("Invalid handshake length: {}", msg.size());
+      return {};
+    }
+    if (to_peer_wire_id(msg[72]) != peer_wire_id::BITFIELD) {
+      logger()->error("Expected bitfield id ({}) but got: {}",
+                      static_cast<pwid_t>(peer_wire_id::BITFIELD),
+                      static_cast<uint8_t>(msg[72]));
+      return {};
+    }
+    // 4-byte big endian
+    auto len = from_big_endian<uint32_t>(msg, 68);
+    auto end = 73 + len - 1;
+    if (end > msg.size()) {
+      logger()->debug("Wait for more handshake data...");
+      return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, 0);
+    }
+    Bitfield bf(bytes(std::next(msg.begin(), 73), std::next(msg.begin(), end)));
+    logger()->debug("Handshake: {}", bf);
+    // Consume the parsed part, the caller have to deal with the rest
+    return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, end, bf);
+  }
+
+  return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, msg.size());
+}
 
 size_t Message::parse(PeerConnection& connection) {
   auto handshake = HandshakeMsg::parse(m_msg);
@@ -296,8 +281,8 @@ size_t Message::parse(PeerConnection& connection) {
         // pieces.
         case peer_wire_id::CANCEL:
         // The port message is sent by newer versions of the Mainline that
-        // implements a DHT tracker. The listen port is the port this peer's DHT
-        // node is listening on. This peer should be inserted in the local
+        // implements a DHT tracker. The listen port is the port this peer's
+        // DHT node is listening on. This peer should be inserted in the local
         // routing table (if DHT tracker is supported).
         case peer_wire_id::PORT:
         case peer_wire_id::UNKNOWN:
@@ -307,8 +292,8 @@ size_t Message::parse(PeerConnection& connection) {
       return m_msg.size();
     }
   } else {
-    logger()->warn("{}: Short message of length {} ({})", peer.str(),
-                   m_msg.size(), debugMsg(m_msg));
+    logger()->debug("{}: Short message of length {} ({})", peer.str(),
+                    m_msg.size(), debugMsg(m_msg));
     return 0;
   }
 

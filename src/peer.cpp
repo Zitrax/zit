@@ -1,6 +1,7 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "peer.hpp"
 
+#include <asio/awaitable.hpp>
 #include <asio/buffer.hpp>
 #include <asio/completion_condition.hpp>
 #include <asio/error.hpp>
@@ -10,6 +11,7 @@
 #include <asio/read.hpp>
 #include <asio/socket_base.hpp>
 #include <asio/system_error.hpp>
+#include <asio/use_awaitable.hpp>
 #include <asio/write.hpp>
 
 #ifndef _MSC_VER
@@ -23,7 +25,6 @@
 #include <cstdint>
 #include <exception>
 #include <iostream>
-#include <map>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -53,57 +54,22 @@ using namespace std;
 
 namespace zit {
 
-// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
-std::map<ListeningPort, asio::ip::tcp::acceptor> PeerConnection::m_acceptors;
-
 // Note that since we are using asio without boost
 // we use std::bind, std::shared_ptr, etc... which
 // differs slightly from the boost examples.
 
 PeerConnection::PeerConnection(IConnectionUrlProvider& peer,
                                asio::io_service& io_service,
-                               ListeningPort listening_port,
-                               ConnectionPort connection_port)
+                               ConnectionPort connection_port,
+                               socket_ptr socket)
     : peer_(peer),
       resolver_(io_service),
-      socket_(io_service, tcp::v4()),
-      m_listening_port(listening_port),
+      socket_(socket ? std::move(socket)
+                     : make_unique<tcp::socket>(io_service, tcp::v4())),
       m_connection_port(connection_port),
       m_io_service(io_service) {
   // Note use of socket constructor that does not bind such
   // that we can set the options before that.
-}
-
-void PeerConnection::listen() {
-  logger()->info("PeerConnection listening on port={}", m_listening_port.get());
-  if (!m_acceptors.contains(m_listening_port)) {
-    const auto& [it, inserted] = m_acceptors.emplace(
-        m_listening_port, asio::ip::tcp::acceptor{m_io_service, tcp::v4()});
-    auto& acceptor = it->second;
-    const asio::socket_base::reuse_address option(true);
-    acceptor.set_option(option);
-    acceptor.bind(tcp::endpoint(tcp::v4(), m_listening_port.get()));
-  }
-  auto& acceptor = m_acceptors.at(m_listening_port);
-  acceptor.listen();
-  acceptor.async_accept(
-      [this](const asio::error_code& error, asio::ip::tcp::socket new_socket) {
-        if (!error) {
-          auto ip = new_socket.remote_endpoint().address().to_string();
-          auto port = new_socket.remote_endpoint().port();
-          logger()->warn("Accepted new connection from {}:{}", ip, port);
-          socket_ = std::move(new_socket);
-          m_connected = true;
-          asio::async_read(
-              socket_, response_, asio::transfer_at_least(1),
-              [this](const auto& ec, auto s) { handle_response(ec, s); });
-        } else {
-          logger()->error("Listen errored: {}", error.message());
-          listen();
-        }
-
-        // FIXME: Call listen again to accept further connections?
-      });
 }
 
 void PeerConnection::write(const optional<Url>& url, const bytes& msg) {
@@ -157,10 +123,12 @@ void PeerConnection::handle_resolve(const asio::error_code& err,
     // FIXME: Should set this after connection ok instead
     endpoint_ = endpoint_iterator;
     const asio::socket_base::reuse_address option(true);
-    socket_.set_option(option);
-    socket_.bind(tcp::endpoint(tcp::v4(), m_connection_port.get()));
-    socket_.async_connect(endpoint, [this, it = ++endpoint_iterator](
-                                        auto&& ec) { handle_connect(ec, it); });
+    socket_->set_option(option);
+    socket_->bind(tcp::endpoint(tcp::v4(), m_connection_port.get()));
+    socket_->async_connect(endpoint,
+                           [this, it = ++endpoint_iterator](auto&& ec) {
+                             handle_connect(ec, it);
+                           });
   } else {
     logger()->error("Resolve failed for {}: {}", peer().str(), err.message());
   }
@@ -175,7 +143,7 @@ void PeerConnection::send(bool start_read) {
     const string msg(m_msg);
     m_msg.clear();
     asio::async_write(
-        socket_, asio::buffer(msg.c_str(), msg.size()),
+        *socket_, asio::buffer(msg.c_str(), msg.size()),
         [this, start_read](auto err, auto len) {
           if (!err) {
             logger()->debug("{}: Data of len {} sent", peer_.str(), len);
@@ -215,14 +183,14 @@ void PeerConnection::handle_connect(const asio::error_code& err,
   } else if (endpoint_iterator != tcp::resolver::iterator()) {
     logger()->debug("Trying next endpoint");
     // The connection failed. Try the next endpoint in the list.
-    socket_.close();
+    socket_->close();
     const tcp::endpoint endpoint = *endpoint_iterator;
     // FIXME: Should set this after connection ok instead
     endpoint_ = endpoint_iterator;
-    socket_.async_connect(endpoint,
-                          [this, it = ++endpoint_iterator](const auto& ec) {
-                            handle_connect(ec, it);
-                          });
+    socket_->async_connect(endpoint,
+                           [this, it = ++endpoint_iterator](const auto& ec) {
+                             handle_connect(ec, it);
+                           });
   } else {
     endpoint_ = {};
     // No need to spam about this. Quite normal.
@@ -252,7 +220,7 @@ void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
     //       mentions that maybe socket.async_read_some is better to read > 512
     //       bytes at a time
     asio::async_read(
-        socket_, response_, asio::transfer_at_least(1),
+        *socket_, response_, asio::transfer_at_least(1),
         [this](const auto& ec, auto s) { handle_response(ec, s); });
   } else if (err != asio::error::eof) {
     logger()->error("Response failed: {}", err.message());
@@ -264,7 +232,66 @@ void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
 
 void PeerConnection::stop() {
   resolver_.cancel();
-  socket_.close();
+  socket_->close();
+}
+
+std::map<ListeningPort, PeerAcceptor> PeerAcceptor::m_acceptors;
+
+PeerAcceptor::PeerAcceptor(ListeningPort port,
+                           asio::io_context& io_context,
+                           const std::string& bind_address)
+    : m_port(port), m_io_context(io_context), m_bind_address(bind_address) {
+  logger()->trace(PRETTY_FUNCTION);
+  // For now rethrowing - can consider asio::detached later?
+  co_spawn(m_io_context, listen(), [](auto e) { std::rethrow_exception(e); });
+}
+
+asio::awaitable<void> PeerAcceptor::listen() {
+  logger()->trace(PRETTY_FUNCTION);
+  // FIXME: We need to be able to bind to a different IP than the default
+  // localhost
+  //        For testing we can setup a new local ip with
+  //        sudo ip addr add 192.168.1.10/32 dev lo
+
+  asio::ip::tcp::acceptor acceptor{m_io_context, tcp::v4()};
+  const asio::socket_base::reuse_address option(true);
+  acceptor.set_option(option);
+  acceptor.bind(asio::ip::tcp::endpoint(asio::ip::make_address(m_bind_address),
+                                        m_port.get()));
+  acceptor.listen();
+
+  logger()->info("Listening for incoming connections on {}:{}",
+                 acceptor.local_endpoint().address().to_string(), m_port.get());
+
+  while (true) {
+    try {
+      auto socket = co_await acceptor.async_accept(asio::use_awaitable);
+      auto ip = socket.remote_endpoint().address().to_string();
+      auto port = socket.remote_endpoint().port();
+      logger()->info("Accepted new connection from {}:{}", ip, port);
+
+      // Read data from socket
+      bytes buffer;
+      // TODO: Check how timeout for this works - does it wait forever?
+      co_await asio::async_read(socket, asio::dynamic_buffer(buffer),
+                                asio::transfer_at_least(MIN_BT_MSG_LENGTH),
+                                asio::use_awaitable);
+      auto handshake = HandshakeMsg::parse(buffer);
+      if (!handshake) {
+        logger()->warn("PeerAcceptor: Invalid handshake");
+        continue;
+      }
+      Torrent* torrent = Torrent::get(handshake->getInfoHash());
+      if (!torrent) {
+        logger()->warn("PeerAcceptor: Unknown info_hash {}",
+                       handshake->getInfoHash());
+        continue;
+      }
+      // Now add a new listening peer for this torrent and hand over the socket
+    } catch (const std::system_error& error) {
+      logger()->error("Listen errored: {}", error.what());
+    }
+  }
 }
 
 void Peer::request(uint32_t index, uint32_t begin, uint32_t length) {
@@ -519,17 +546,11 @@ void Peer::handshake() {
   m_connection->write(m_url, hs.str());
 }
 
-void Peer::listen() {
-  m_listening = true;
-  init_io_service();
-  m_connection->listen();
-}
-
 void Peer::disconnected() {
   m_torrent.disconnected(this);
 }
 
-void Peer::init_io_service() {
+void Peer::init_io_service(socket_ptr socket) {
   if (m_io_service) {
     return;
   }
@@ -541,9 +562,8 @@ void Peer::init_io_service() {
   // the remaining events.
   m_work = make_unique<asio::io_service::work>(*m_io_service);
   try {
-    m_connection = make_unique<PeerConnection>(*this, *m_io_service,
-                                               m_torrent.listening_port(),
-                                               m_torrent.connection_port());
+    m_connection = make_unique<PeerConnection>(
+        *this, *m_io_service, m_torrent.connection_port(), std::move(socket));
   } catch (const asio::system_error& err) {
     throw_with_nested(
         runtime_error("Creating peer connection to " + str() + err.what()));

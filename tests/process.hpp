@@ -23,9 +23,16 @@ class Process {
   // forbid copying and assignment.
   Process(const Process&) = delete;
   Process& operator=(const Process&) = delete;
+
   // But allow moving
   Process(Process&& rhs) : m_pid(rhs.m_pid), m_name(rhs.m_name) {
     rhs.m_pid = 0;  // Ensure we wont kill the moved from process
+  }
+  Process& operator=(Process&& rhs) {
+    m_pid = rhs.m_pid;
+    m_name = rhs.m_name;
+    rhs.m_pid = 0;  // Ensure we wont kill the moved from process
+    return *this;
   }
 
   /**
