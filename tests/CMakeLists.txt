@@ -24,7 +24,8 @@ endif()
 # The test code
 include_directories("../src")
 add_executable(zitest
-  process.cpp
+  $<$<PLATFORM_ID:Windows>:process_windows.cpp>
+  $<$<PLATFORM_ID:Linux>:process_linux.cpp>
   test_arg_parser.cpp
   test_bencode.cpp
   test_bitfield.cpp
