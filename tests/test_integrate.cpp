@@ -1,8 +1,7 @@
 /**
- * Currently using linux programs for integration testing and
- * linux system call to launch them.
+ * Currently using linux programs for integration testing
+ * but inside docker containers.
  */
-#ifdef __linux__
 
 /**
  * Note that the integration tests depend on a third party tracker and seeder:
@@ -39,7 +38,7 @@ class TestConfig : public zit::Config {
     // m_bool_settings[zit::BoolSetting::INITIATE_PEER_CONNECTIONS] = false;
 
     // Transmission does not want to connect to localhost, so trick it
-    m_string_settings[zit::StringSetting::BIND_ADDRESS] = TEST_BIND_ADDRESS;
+    //m_string_settings[zit::StringSetting::BIND_ADDRESS] = TEST_BIND_ADDRESS;
   }
 
   void set(IntSetting setting, int val) { m_int_settings[setting] = val; }
@@ -58,19 +57,30 @@ fs::path home_dir() {
   return {home};
 }
 
-auto start_tracker() {
-  const auto opentracker = home_dir() / "git/opentracker/opentracker";
+// FIXME: Document that "host" network has to be enabled in Docker Desktop.
+
+auto start_tracker(const fs::path& data_dir) {
   auto tracker =
-      Process("tracker", {opentracker.c_str(), "-p", "8000"}, nullptr);
+      Process("tracker",
+              {"docker", "run", "--rm", "--name", "zit-opentracker", "--volume",
+               fmt::format("{}:{}", data_dir.generic_string(), "/data").c_str(),
+               //"--network", "host",
+               "--publish", "8000:8000", "opentracker", "-p", "8000",
+               // The default opentracker build seem to be compiled in closed
+               // mode such that all torrent must be explicitly listed in a
+               // whitelist. It would be possible to recompile it without that
+               // but for now lets just use it like this.
+               "-w", "/data/opentracker.whitelist"},
+              nullptr, {"docker", "stop", "zit-opentracker"});
 
   // Allow some time for the tracker to start
   this_thread::sleep_for(1s);
   return tracker;
 }
 
-auto start_seeder(const fs::path& data_dir,
-                  const fs::path& torrent_file,
-                  const std::string& name = "seeder") {
+auto start_seeder_transmission(const fs::path& data_dir,
+                               const fs::path& torrent_file,
+                               const std::string& name = "seeder") {
   // FIXME: A downside of Transmission is that it refuses to connect to
   // localhost addresses which make it trickier to test properly. We either have
   // to find a way to ensure that Zit and Transmission operate on different IP
@@ -83,20 +93,72 @@ auto start_seeder(const fs::path& data_dir,
   // Ensure to start each transmission instance on different ports
   static int transmission_port = 51413;
 
+  // For docker we need to share a directory with the container
+  constexpr auto* container_data_dir = "/data";
+  constexpr auto* container_torrent_dir = "/torrents";
+
   // FIXME: Instead of removing the users main config - can we use our own?
   //        Seems like env var TRANSMISSION_HOME can be set for that
-  fs::remove_all(home_dir() / ".config/transmission");
-  const auto transmission =
-      home_dir() / "git/transmission/install/bin/transmission-cli";
-  return Process(name, {transmission.c_str(),
-                        // This disables encryption which we do not yet support
-                        "--encryption-tolerated",
-                        // Unsure if this one is needed ?
-                        //"--no-blocklist",
-                        // Download destination
-                        "--download-dir", data_dir.c_str(), "--port",
-                        std::to_string(transmission_port++).c_str(),
-                        torrent_file.c_str()});
+#ifdef __linux__
+  // fs::remove_all(home_dir() / ".config/transmission");
+#endif  // __linux__
+  const auto port = std::to_string(transmission_port);
+  return Process(
+      name,
+      {"docker", "run", "--rm", "--name", "zit-transmission", "--publish",
+       fmt::format("{}:{}", port, port).c_str(),  // "--network", "host",
+       "--volume",
+       fmt::format("{}:{}", data_dir.generic_string(), container_data_dir)
+           .c_str(),
+       "--volume",
+       fmt::format("{}:{}", torrent_file.parent_path().generic_string(),
+                   container_torrent_dir)
+           .c_str(),
+       "transmission",
+       // This disables encryption which we do not yet support
+       "--encryption-tolerated",
+       // Unsure if this one is needed ?
+       //"--no-blocklist",
+       // Download destination
+       "--download-dir", container_data_dir, "--port",
+       std::to_string(transmission_port++).c_str(),
+       // Torrent file
+       fmt::format("{}/{}", container_torrent_dir, torrent_file.filename())
+           .c_str()},
+      nullptr, {"docker", "stop", "zit-transmission"});
+}
+
+auto start_seeder(const fs::path& data_dir,
+                  const fs::path& torrent_file,
+                  const std::string& name = "seeder") {
+  // Ensure to start each webtorrent instance on different ports
+  static int webtorrent_seeding_port = 51413;
+  static int webtorrent_http_port = 61413;
+
+  // For docker we need to share a directory with the container
+  constexpr auto* container_data_dir = "/data";
+  constexpr auto* container_torrent_dir = "/torrents";
+
+  const auto port = std::to_string(webtorrent_seeding_port);
+  return Process(
+      name,
+      {"docker", "run", "--rm", "--name", "zit-webtorrent", "--publish",
+       fmt::format("{}:{}", port, port).c_str(),  //"--network", "host",
+       "--volume",
+       fmt::format("{}:{}", data_dir.generic_string(), container_data_dir)
+           .c_str(),
+       "--volume",
+       fmt::format("{}:{}", torrent_file.parent_path().generic_string(),
+                   container_torrent_dir)
+           .c_str(),
+       "webtorrent", "seed",
+       // Torrent file
+       fmt::format("{}/{}", container_torrent_dir, torrent_file.filename())
+           .c_str(),
+       "--out", container_data_dir, "--torrent-port",
+       std::to_string(webtorrent_seeding_port++).c_str(), "--port",
+       std::to_string(webtorrent_http_port++).c_str(), "--keep-seeding"},
+      nullptr, {"docker", "stop", "zit-webtorrent"});
 }
 
 /**
@@ -152,7 +214,8 @@ void download(const fs::path& data_dir,
           try {
             start(torrent);
           } catch (const std::exception& ex) {
-            zit::logger()->error("Exception in thread: {}", ex.what());
+            zit::logger()->error(
+                "test_integrate::download: Exception in thread: {}", ex.what());
           }
         });
       });
@@ -209,11 +272,11 @@ TEST_P(IntegrateF, download) {
 #else
 TEST_P(IntegrateF, DISABLED_download) {
 #endif  // INTEGRATION_TESTS
-  auto tracker = start_tracker();
-
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = data_dir / "1MiB.torrent";
   const uint8_t number_of_seeders = GetParam();
+
+  auto tracker = start_tracker(data_dir);
 
   const auto download_dir = tmp_dir();
   TestConfig test_config;
@@ -239,11 +302,11 @@ TEST_F(IntegrateOodF, download_ood) {
 #else
 TEST_F(IntegrateOodF, DISABLED_download_ood) {
 #endif  // INTEGRATION_TESTS
-  auto tracker = start_tracker();
-
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = data_dir / "1MiB.torrent";
   constexpr uint8_t number_of_seeders = 1;
+
+  auto tracker = start_tracker(data_dir);
 
   const auto download_dir = mount_dir();
   TestConfig test_config;
@@ -276,8 +339,6 @@ TEST_F(IntegrateF, download_dual_torrents) {
 #else
 TEST_F(IntegrateF, DISABLED_download_dual_torrents) {
 #endif  // INTEGRATION_TESTS
-  auto tracker = start_tracker();
-
   const auto data_dir = fs::path(DATA_DIR);
   constexpr uint8_t number_of_seeders = 1;
   const auto download_dir = tmp_dir();
@@ -285,6 +346,8 @@ TEST_F(IntegrateF, DISABLED_download_dual_torrents) {
 
   const auto torrent_file_1 = data_dir / "1MiB.torrent";
   const auto torrent_file_2 = data_dir / "multi.torrent";
+
+  auto tracker = start_tracker(data_dir);
 
   zit::Torrent torrent_1(m_io_context, torrent_file_1, download_dir,
                          test_config);
@@ -314,11 +377,11 @@ TEST_F(Integrate, download_part) {
 #else
 TEST_P(IntegrateF, DISABLED_download_part) {
 #endif  // INTEGRATION_TESTS
-  auto tracker = start_tracker();
-
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = data_dir / "1MiB.torrent";
   const auto download_dir = tmp_dir();
+
+  auto tracker = start_tracker(data_dir);
 
   // Copy ready file to download_dir and modify a piece
   // such that it will be retransferred.
@@ -354,11 +417,11 @@ TEST_F(Integrate, download_multi_part) {
 #else
 TEST_F(Integrate, DISABLED_download_multi_part) {
 #endif  // INTEGRATION_TESTS
-  auto tracker = start_tracker();
-
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = data_dir / "multi.torrent";
   const auto download_dir = tmp_dir();
+
+  auto tracker = start_tracker(data_dir);
 
   // Copy ready files to download_dir and modify one
   // such that it will be retranfered.
@@ -396,10 +459,10 @@ TEST_F(Integrate, download_multi_file) {
 #else
 TEST_F(Integrate, DISABLED_download_multi_file) {
 #endif  // INTEGRATION_TESTS
-  auto tracker = start_tracker();
-
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = data_dir / "multi.torrent";
+
+  auto tracker = start_tracker(data_dir);
 
   const auto download_dir = tmp_dir();
   TestConfig test_config;
@@ -417,10 +480,10 @@ TEST_F(Integrate, upload) {
 #else
 TEST_F(Integrate, DISABLED_upload) {
 #endif  // INTEGRATION_TESTS
-  auto tracker = start_tracker();
-
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = data_dir / "1MiB.torrent";
+
+  auto tracker = start_tracker(data_dir);
 
   // Launch zit with existing file to seed it
   TestConfig test_config;
@@ -471,10 +534,10 @@ TEST_F(Integrate, multi_upload) {
 #else
 TEST_F(Integrate, DISABLED_multi_upload) {
 #endif  // INTEGRATION_TESTS
-  auto tracker = start_tracker();
-
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = data_dir / "multi.torrent";
+
+  auto tracker = start_tracker(data_dir);
 
   // Launch zit with existing file to seed it
   TestConfig test_config;
@@ -503,5 +566,3 @@ TEST_F(Integrate, DISABLED_multi_upload) {
   // Transfer done - Verify content
   verify_download(torrent, data_dir / torrent.name(), false);
 }
-
-#endif  // __linux__
