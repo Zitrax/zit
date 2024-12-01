@@ -404,7 +404,7 @@ std::tuple<std::string, std::string> Net::httpGet(
     }
   } catch (const std::exception&) {
     throw_with_nested(std::runtime_error(
-        std::format("Could not bind to address: '{}'", bind_address)));
+        fmt::format("Could not bind to address: '{}'", bind_address)));
   }
   asio::error_code error = asio::error::host_not_found;
   asio::connect(socket, endpoints, error);

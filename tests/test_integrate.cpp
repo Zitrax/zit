@@ -28,7 +28,7 @@ using namespace std::string_literals;
 using namespace zit;
 namespace fs = std::filesystem;
 
-constexpr auto TEST_BIND_ADDRESS{"192.168.0.18"};
+//constexpr auto TEST_BIND_ADDRESS{"192.168.0.18"};
 
 class TestConfig : public zit::Config {
  public:
@@ -49,7 +49,7 @@ class TestConfig : public zit::Config {
 
 namespace {
 
-fs::path home_dir() {
+[[maybe_unused]] fs::path home_dir() {
   const auto home = getenv("HOME");
   if (!home || strlen(home) < 2) {
     throw runtime_error("HOME environment variable not set or invalid");
@@ -76,56 +76,6 @@ auto start_tracker(const fs::path& data_dir) {
   // Allow some time for the tracker to start
   this_thread::sleep_for(1s);
   return tracker;
-}
-
-auto start_seeder_transmission(const fs::path& data_dir,
-                               const fs::path& torrent_file,
-                               const std::string& name = "seeder") {
-  // FIXME: A downside of Transmission is that it refuses to connect to
-  // localhost addresses which make it trickier to test properly. We either have
-  // to find a way to ensure that Zit and Transmission operate on different IP
-  // addresses or somehow convince transmission to connect to localhost
-  // addresses. Or even use yet another client. On the upside, Transmission does
-  // work fine with localhost if we initiate the connection, but that does not
-  // give us the correct coverage. KTorrent is a tool that does seem to work
-  // nicely with localhost addresses, but it seems to be GUI only :(
-
-  // Ensure to start each transmission instance on different ports
-  static int transmission_port = 51413;
-
-  // For docker we need to share a directory with the container
-  constexpr auto* container_data_dir = "/data";
-  constexpr auto* container_torrent_dir = "/torrents";
-
-  // FIXME: Instead of removing the users main config - can we use our own?
-  //        Seems like env var TRANSMISSION_HOME can be set for that
-#ifdef __linux__
-  // fs::remove_all(home_dir() / ".config/transmission");
-#endif  // __linux__
-  const auto port = std::to_string(transmission_port);
-  return Process(
-      name,
-      {"docker", "run", "--rm", "--name", "zit-transmission", "--publish",
-       fmt::format("{}:{}", port, port).c_str(),  // "--network", "host",
-       "--volume",
-       fmt::format("{}:{}", data_dir.generic_string(), container_data_dir)
-           .c_str(),
-       "--volume",
-       fmt::format("{}:{}", torrent_file.parent_path().generic_string(),
-                   container_torrent_dir)
-           .c_str(),
-       "transmission",
-       // This disables encryption which we do not yet support
-       "--encryption-tolerated",
-       // Unsure if this one is needed ?
-       //"--no-blocklist",
-       // Download destination
-       "--download-dir", container_data_dir, "--port",
-       std::to_string(transmission_port++).c_str(),
-       // Torrent file
-       fmt::format("{}/{}", container_torrent_dir, torrent_file.filename())
-           .c_str()},
-      nullptr, {"docker", "stop", "zit-transmission"});
 }
 
 auto start_seeder(const fs::path& data_dir,
