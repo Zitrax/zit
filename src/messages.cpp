@@ -2,7 +2,9 @@
 #include "messages.hpp"
 
 #include <algorithm>
+#include <array>
 #include <cassert>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <iomanip>
@@ -10,6 +12,7 @@
 #include <iterator>
 #include <optional>
 #include <ostream>
+#include <span>
 #include <sstream>
 #include <stdexcept>
 #include <string>

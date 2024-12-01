@@ -129,9 +129,9 @@ class PeerAcceptor {
  public:
   explicit PeerAcceptor(ListeningPort port,
                         asio::io_context& io_context,
-                        const std::string& bind_address);
+                        std::string bind_address);
 
-  static void AcceptOnPort(asio::io_context& io_context,
+  static void acceptOnPort(asio::io_context& io_context,
                            ListeningPort port,
                            const std::string& bind_address) {
     // FIXME: Add check that already existing port use the same io_context/bind
@@ -146,6 +146,7 @@ class PeerAcceptor {
   std::string m_bind_address;
 
   // FIXME: For now they are staying alive indefinitely
+  // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
   static std::map<ListeningPort, PeerAcceptor> m_acceptors;
 };
 

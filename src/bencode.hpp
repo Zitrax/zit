@@ -118,7 +118,7 @@ class Element : public std::enable_shared_from_this<Element> {
   Element& operator=(const Element& rhs) = default;
   Element& operator=(Element&& other) noexcept = default;
 
-  virtual std::string encode() const = 0;
+  [[nodiscard]] virtual std::string encode() const = 0;
 
   template <typename T>
   [[nodiscard]] auto to() const {
@@ -168,7 +168,8 @@ class TypedElement : public Element {
    */
   explicit TypedElement(std::add_rvalue_reference_t<T> data)
       : m_data(std::forward<T>(data)) {}
-  std::string encode() const override { return bencode::encode(m_data); }
+
+  [[nodiscard]] std::string encode() const override { return bencode::encode(m_data); }
 
   [[nodiscard]] auto val() const { return m_data; }
 

@@ -305,7 +305,7 @@ std::tuple<std::string, std::string> httpsGet(const Url& url,
   // finding CA certificates.
   ssl::context ctx(ssl::context::tlsv12);
 
-  if (bind_address == "") {
+  if (bind_address.empty()) {
     throw std::runtime_error("bind for ssl not yet supported");
   }
 
@@ -549,7 +549,7 @@ void Url::resolve() {
 
   // Skip resolving if this is an ip address already
   // using simple regex
-  if (regex_match(m_host, regex("^(\\d+\\.){3}\\d+$"))) {
+  if (regex_match(m_host, regex(R"(^(\d+\.){3}\d+$)"))) {
     logger()->trace("{} does not need resolving", str());
     return;
   }

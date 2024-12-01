@@ -16,7 +16,8 @@
 #include "types.hpp"
 #include "version.hpp"
 
-#include <fmt/chrono.h>
+#include <asio/error_code.hpp>
+#include <asio/io_context.hpp>
 #include <fmt/format.h>
 #include <spdlog/common.h>
 
@@ -880,7 +881,7 @@ void Torrent::start() {
   //  logger()->warn("Could not start listening peer: {}", ex.what());
   //}
 
-  PeerAcceptor::AcceptOnPort(m_io_context, m_listening_port,
+  PeerAcceptor::acceptOnPort(m_io_context, m_listening_port,
                              m_config.get(StringSetting::BIND_ADDRESS));
 
   // Schedule maintenance functions
@@ -1002,7 +1003,7 @@ void Torrent::read_peers_binary_form(
 }
 
 void Torrent::retry_pieces() {
-  ScopeGuard scope_guard([this]() { schedule_retry_pieces(); });
+  const ScopeGuard scope_guard([this]() { schedule_retry_pieces(); });
 
   logger()->debug("Checking pieces for retry");
   std::size_t retry = 0;
@@ -1041,7 +1042,7 @@ void Torrent::retry_pieces() {
 }
 
 void Torrent::retry_peers() {
-  ScopeGuard scope_guard([this]() { schedule_retry_peers(); });
+  const ScopeGuard scope_guard([this]() { schedule_retry_peers(); });
 
   logger()->debug("Checking peers for retry");
 

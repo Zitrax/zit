@@ -3,10 +3,13 @@
 
 #include <asio/awaitable.hpp>
 #include <asio/buffer.hpp>
+#include <asio/co_spawn.hpp>
 #include <asio/completion_condition.hpp>
-#include <asio/error.hpp>
 #include <asio/error_code.hpp>
+#include <asio/error.hpp>
+#include <asio/io_context.hpp>
 #include <asio/io_service.hpp>
+#include <asio/ip/address.hpp>
 #include <asio/ip/tcp.hpp>
 #include <asio/read.hpp>
 #include <asio/socket_base.hpp>
@@ -25,6 +28,7 @@
 #include <cstdint>
 #include <exception>
 #include <iostream>
+#include <map>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -235,12 +239,13 @@ void PeerConnection::stop() {
   socket_->close();
 }
 
+// NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::map<ListeningPort, PeerAcceptor> PeerAcceptor::m_acceptors;
 
 PeerAcceptor::PeerAcceptor(ListeningPort port,
                            asio::io_context& io_context,
-                           const std::string& bind_address)
-    : m_port(port), m_io_context(io_context), m_bind_address(bind_address) {
+                           std::string bind_address)
+    : m_port(port), m_io_context(io_context), m_bind_address(std::move(bind_address)) {
   logger()->trace(PRETTY_FUNCTION);
   // For now rethrowing - can consider asio::detached later?
   co_spawn(m_io_context, listen(), [](auto e) { std::rethrow_exception(e); });

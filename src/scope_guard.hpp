@@ -5,7 +5,7 @@ namespace zit {
 class ScopeGuard {
  public:
   template <typename Callable>
-  ScopeGuard(Callable&& onExit) : m_exit_fn(std::forward<Callable>(onExit)) {}
+  explicit ScopeGuard(Callable&& onExit) : m_exit_fn(std::forward<Callable>(onExit)) {}
 
   ScopeGuard(const ScopeGuard&) = delete;
   ScopeGuard& operator=(const ScopeGuard&) = delete;

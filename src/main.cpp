@@ -1,5 +1,13 @@
+#include "arg_parser.hpp"
+#include "file_writer.hpp"
+#include "global_config.hpp"
+#include "logger.hpp"
+#include "torrent.hpp"
+
+#include <asio/io_context.hpp>
 #include <fmt/format.h>
 #include <spdlog/common.h>
+
 #include <algorithm>
 #include <cstdlib>
 #include <exception>
@@ -11,12 +19,6 @@
 #include <string>
 #include <thread>
 #include <vector>
-
-#include "arg_parser.hpp"
-#include "file_writer.hpp"
-#include "global_config.hpp"
-#include "logger.hpp"
-#include "torrent.hpp"
 
 #ifndef WIN32
 #include <csignal>
