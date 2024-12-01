@@ -125,7 +125,7 @@ optional<HandshakeMsg> HandshakeMsg::parse(const bytes& msg) {
 
   constexpr std::array<byte, 20> BT_START{
       byte{0x13}, 'B'_b, 'i'_b, 't'_b, 'T'_b, 'o'_b, 'r'_b,
-      'r'_b,      'e'_b, 'n'_b, 't'_b, ' '_b, 'P'_b, 'r'_b,
+      'r'_b,      'e'_b, 'n'_b, 't'_b, ' '_b, 'p'_b, 'r'_b,
       'o'_b,      't'_b, 'o'_b, 'c'_b, 'o'_b, 'l'_b};
 
   auto it =
