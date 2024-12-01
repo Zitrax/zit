@@ -14,8 +14,11 @@ namespace zit {
 
 using namespace std;
 
-Process::Process(const string& name, vector<const char*> argv, const char* cwd)
-    : m_pid(0), m_name(name) {
+Process::Process(const string& name,
+                 vector<const char*> argv,
+                 const char* cwd,
+                 vector<const char*> stop_cmd)
+    : m_pid(0), m_name(name), m_stop_cmd(move(stop_cmd)) {
   pid_t ppid = getpid();
   m_pid = fork();
 
@@ -54,6 +57,10 @@ Process::Process(const string& name, vector<const char*> argv, const char* cwd)
     }
     logger()->info("Process {} started", m_name);
   }
+}
+
+bool wait_for_exit(chrono::seconds timeout) {
+  throw std::runtime_error("Not implemented");
 }
 
 void Process::terminate() {
