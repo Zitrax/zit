@@ -18,7 +18,7 @@ Process::Process(const string& name,
                  vector<const char*> argv,
                  const char* cwd,
                  vector<const char*> stop_cmd)
-    : m_pid(0), m_name(name), m_stop_cmd(move(stop_cmd)) {
+    : m_pid(0), m_name(name), m_stop_cmd(std::move(stop_cmd)) {
   pid_t ppid = getpid();
   m_pid = fork();
 
@@ -59,7 +59,7 @@ Process::Process(const string& name,
   }
 }
 
-bool wait_for_exit(chrono::seconds timeout) {
+bool Process::wait_for_exit(chrono::seconds /*timeout*/) {
   throw std::runtime_error("Not implemented");
 }
 
