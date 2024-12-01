@@ -18,14 +18,12 @@
 // FIXME: Rename TestWithIOContext
 class TestWithContext {
  public:
-  asio::io_context m_io_context;
+  asio::io_context m_io_context{};
 };
 
 class TestWithTmpDir : public ::testing::Test {
  public:
   TestWithTmpDir() {
-    m_dirname = std::filesystem::temp_directory_path() /
-                ("zit_" + zit::random_string(10));
     if (!std::filesystem::create_directory(m_dirname)) {
       throw std::runtime_error("Could not create temporary directory: " +
                                m_dirname.string());
@@ -51,7 +49,8 @@ class TestWithTmpDir : public ::testing::Test {
 
  private:
   bool m_created = false;
-  std::filesystem::path m_dirname;
+  std::filesystem::path m_dirname = std::filesystem::temp_directory_path() /
+                ("zit_" + zit::random_string(10));
 };
 
 inline std::string exec(const std::string& cmd) {
