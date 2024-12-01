@@ -479,6 +479,12 @@ Torrent::http_tracker_request(const Url& announce_url, TrackerEvent event) {
     logger()->debug("=====HEADER=====\n{}\n=====BODY=====\n{}", headers, reply);
 
     auto reply_dict = reply->to<TypedElement<BeDict>>()->val();
+    if (reply_dict.find("failure reason") != reply_dict.end()) {
+      throw runtime_error(
+          "Tracker request failed: " +
+          reply_dict["failure reason"]->to<TypedElement<string>>()->val());
+    }
+
     if (reply_dict.find("peers") == reply_dict.end()) {
       throw runtime_error("Invalid tracker reply, no peer list");
     }
@@ -821,7 +827,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
         thrown = nullptr;
         break;
       } catch (const std::exception& ex) {
-        logger()->warn("{}: {}", announce_url, ex.what());
+        logger()->warn("tracker_request: {}: {}", announce_url, ex.what());
         thrown = std::current_exception();
       }
     }
