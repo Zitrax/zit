@@ -843,7 +843,10 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
   // To avoid connecting to our own listening peer
   const auto is_local_peer = [&](const auto& peer) {
     const auto& url = peer->url();
-    return url && url->host() == "localhost" &&
+    // FIXME: Get hold of the ip automatically?
+    return url &&
+           (url->host() == "localhost" || url->host() == "172.17.0.1" ||
+            url->host() == "192.168.0.18") &&
            url->port().value_or(0) == m_listening_port.get();
   };
 
@@ -923,9 +926,12 @@ void Torrent::run() {
     for (auto& p : m_peers) {
       ran += p->io_service().poll_one();
     }
-    retry_pieces();
-    retry_peers();
-    // If no handlers ran, then sleep.
+    // TODO: Investigate why these were needed originally. They can
+    //       not be called like commented out here at least since it
+    //       will spam calls in every loop iteration of the run loop.
+    // retry_pieces();
+    // retry_peers();
+    //  If no handlers ran, then sleep.
     if (!ran) {
 #ifdef WIN32
       this_thread::sleep_for(10ms);

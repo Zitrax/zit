@@ -28,7 +28,7 @@ using namespace std::string_literals;
 using namespace zit;
 namespace fs = std::filesystem;
 
-constexpr auto TEST_BIND_ADDRESS{"192.168.1.10"};
+constexpr auto TEST_BIND_ADDRESS{"192.168.0.18"};
 
 class TestConfig : public zit::Config {
  public:

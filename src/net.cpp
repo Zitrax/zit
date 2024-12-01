@@ -537,6 +537,23 @@ Url::Url(const string& url, Binary binary, Resolve resolve) {
 }
 
 void Url::resolve() {
+  // On docker we get addresses in the 172.17.0 range. The host on win/mac can't
+  // directly connect to that range and have to use the exposed ports on the
+  // host. Lets just try to translate it here.
+  if (m_host.starts_with("172.17.")) {
+    // FIXME: localhost?
+    m_host = "192.168.0.18";
+    logger()->debug("Translated docker address to localhost");
+    return;
+  }
+
+  // Skip resolving if this is an ip address already
+  // using simple regex
+  if (regex_match(m_host, regex("^(\\d+\\.){3}\\d+$"))) {
+    logger()->trace("{} does not need resolving", str());
+    return;
+  }
+
   logger()->trace("Trying to resolve {}", str());
 
   asio::error_code err;

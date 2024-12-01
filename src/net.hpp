@@ -156,7 +156,7 @@ class Net {
    */
   static std::tuple<std::string, std::string> httpGet(
       const Url& url,
-      const std::string& bind_address = "");
+      const std::string& bind_address = "127.0.0.1");
 
   /**
    * Perform a udp request.
