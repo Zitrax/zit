@@ -205,7 +205,7 @@ void download(const fs::path& data_dir,
 
   // Allow some time for the seeders to start
   // FIXME: Avoid this sleep
-  this_thread::sleep_for(15s);
+  this_thread::sleep_for(3s);
 
   std::vector<std::thread> torrent_threads;
   std::ranges::transform(
