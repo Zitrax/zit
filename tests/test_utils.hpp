@@ -1,8 +1,6 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
-#ifdef __linux__
-
 #include <filesystem>
 
 #include <stdio.h>
@@ -13,6 +11,7 @@
 #include <string>
 #include "gtest/gtest.h"
 #include "logger.hpp"
+#include "random.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
 
@@ -25,8 +24,11 @@ class TestWithContext {
 class TestWithTmpDir : public ::testing::Test {
  public:
   TestWithTmpDir() {
-    if (!mkdtemp(m_dirname.data())) {
-      throw std::runtime_error("Could not create temporary directory");
+    m_dirname = std::filesystem::temp_directory_path() /
+                ("zit_" + zit::random_string(10));
+    if (!std::filesystem::create_directory(m_dirname)) {
+      throw std::runtime_error("Could not create temporary directory: " +
+                               m_dirname.string());
     }
     m_created = true;
   }
@@ -34,9 +36,9 @@ class TestWithTmpDir : public ::testing::Test {
   ~TestWithTmpDir() override {
     if (m_created) {
       try {
-        std::filesystem::remove_all(m_dirname.data());
+        std::filesystem::remove_all(m_dirname);
       } catch (const std::exception& ex) {
-        std::cerr << "WARN: Could not cleanup " << m_dirname.data() << ": "
+        std::cerr << "WARN: Could not cleanup " << m_dirname << ": "
                   << ex.what() << "\n";
       }
     }
@@ -45,21 +47,19 @@ class TestWithTmpDir : public ::testing::Test {
   /**
    * The temporary directory when running the test.
    */
-  [[nodiscard]] std::filesystem::path tmp_dir() const {
-    return m_dirname.data();
-  }
+  [[nodiscard]] std::filesystem::path tmp_dir() const { return m_dirname; }
 
  private:
   bool m_created = false;
-  std::array<char, 16> m_dirname{'/', 't', 'm', 'p', '/', 'z', 'i', 't',
-                                 '_', 'X', 'X', 'X', 'X', 'X', 'X', '\0'};
+  std::filesystem::path m_dirname;
 };
 
-/**
- * Helper for running a command and capturing the output.
- * Modified version of https://stackoverflow.com/a/52165057/11722
- */
 inline std::string exec(const std::string& cmd) {
+#ifdef WIN32
+#define popen _popen
+#define pclose _pclose
+#endif  // WIN32
+
   zit::logger()->debug("Running: {}", cmd);
   const auto pipe = popen(cmd.c_str(), "r");
   if (!pipe) {
@@ -82,6 +82,11 @@ inline std::string exec(const std::string& cmd) {
         fmt::format("Command '{}' failed with exit status {}", cmd, rc));
   }
   return result;
+
+#ifdef WIN32
+#undef popen
+#undef pclose
+#endif  // WIN32
 }
 
 /**
@@ -177,5 +182,3 @@ class TestWithFilesystem : public TestWithTmpDir {
   std::filesystem::path m_mount_dir{};
   std::string m_loop_device{};
 };
-
-#endif  // __linux__

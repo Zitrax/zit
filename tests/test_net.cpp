@@ -130,9 +130,6 @@ TEST(net, chunkedTransfer) {
   EXPECT_EQ(expected.str(), response);
 }
 
-// As long as zit::Process is Linux specific
-#ifdef __linux__
-
 /**
  * Multiple udp tests might run in parallell processes. We are listening on
  * random ports so there is still a slim chance of failure if the same port
@@ -148,7 +145,7 @@ class UDP : public ::testing::Test {
         (std::filesystem::path(DATA_DIR) / ".." / "udp_server.py")
             .lexically_normal();
     echo_server = std::make_unique<zit::Process>(
-        "udp_echo", std::vector<const char*>{"python3", udp_server_path.c_str(),
+        "udp_echo", std::vector<const char*>{"python", udp_server_path.generic_string().c_str(),
                                              std::to_string(m_port).c_str()});
   }
 
@@ -180,4 +177,3 @@ TEST_F(UDP, request_named_host) {
   ASSERT_THAT(message, ElementsAreArray(reply));
 }
 
-#endif  // __linux__
