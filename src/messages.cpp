@@ -106,12 +106,12 @@ peer_wire_id to_peer_wire_id(const T& t) {
 }
 
 // Print start of buffer in hex format
-string debugMsg(const bytes& msg, size_t len = 100) {
+string debugMsg(span<const byte> msg) {
   stringstream ss;
   ss.fill('0');
   ss << hex;
-  for (decltype(len) i = 0; i < min(msg.size(), len); ++i) {
-    ss << setw(2) << int(msg[i]) << " ";
+  for (auto b : msg) {
+    ss << setw(2) << int(b) << " ";
   }
   return ss.str();
 }
@@ -130,12 +130,14 @@ optional<HandshakeMsg> HandshakeMsg::parse(const bytes& msg) {
 
   auto it =
       std::search(msg.begin(), msg.end(), BT_START.begin(), BT_START.end());
-  if(it == msg.end()) {
-    logger()->debug("No handshake match: {}", debugMsg(msg, msg.size()));
+  if (it == msg.end()) {
+    logger()->debug("No handshake match:\nGot: {}\nExp: {}",
+                    debugMsg(span(msg.begin(), BT_START.size())),
+                    debugMsg(BT_START));
     return {};
   }
 
-  if(it != msg.begin()) {
+  if (it != msg.begin()) {
     logger()->debug("Found BT start at {}", std::distance(msg.begin(), it));
     return HandshakeMsg::parse(bytes{it, msg.end()});
   }
