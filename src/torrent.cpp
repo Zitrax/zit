@@ -983,10 +983,11 @@ void Torrent::read_peers_binary_form(
     throw runtime_error("Peer list is empty");
   }
 
-  const int THREE_HEX_BYTES = 6;
-  for (unsigned long i = 0; i < binary_peers.length(); i += THREE_HEX_BYTES) {
+  const size_t BINARY_PEER_LENGTH{6};
+  for (unsigned long i = 0; i < binary_peers.length();
+       i += BINARY_PEER_LENGTH) {
     const auto purl =
-        Url(binary_peers.substr(i, THREE_HEX_BYTES), Url::Binary{true},
+        Url(binary_peers.substr(i, BINARY_PEER_LENGTH), Url::Binary{true},
             Url::Resolve{m_config.get(BoolSetting::RESOLVE_URLS)});
     if (!is_local(purl, listening_port())) {
       peers.emplace_back(make_shared<Peer>(purl, *this));
