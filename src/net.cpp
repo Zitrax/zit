@@ -393,11 +393,19 @@ std::tuple<std::string, std::string> Net::httpGet(
   // Try each endpoint until we successfully establish a connection.
   // An endpoint might be IPv4 or IPv6 (currently hardcoded to v4)
   tcp::socket socket(io_service);
-  socket.open(asio::ip::tcp::v4());
-  socket.bind(asio::ip::tcp::endpoint(asio::ip::make_address(bind_address), 0));
-  logger()->debug("Http request from {}:{}",
-                  socket.local_endpoint().address().to_string(),
-                  socket.local_endpoint().port());
+  try {
+    if (!bind_address.empty()) {
+      socket.open(asio::ip::tcp::v4());
+      socket.bind(
+          asio::ip::tcp::endpoint(asio::ip::make_address(bind_address), 0));
+      logger()->debug("Http request from {}:{}",
+                      socket.local_endpoint().address().to_string(),
+                      socket.local_endpoint().port());
+    }
+  } catch (const std::exception&) {
+    throw_with_nested(std::runtime_error(
+        std::format("Could not bind to address: '{}'", bind_address)));
+  }
   asio::error_code error = asio::error::host_not_found;
   asio::connect(socket, endpoints, error);
   if (error) {
