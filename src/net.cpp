@@ -547,13 +547,6 @@ void Url::resolve() {
     return;
   }
 
-  // Skip resolving if this is an ip address already
-  // using simple regex
-  if (regex_match(m_host, regex(R"(^(\d+\.){3}\d+$)"))) {
-    logger()->trace("{} does not need resolving", str());
-    return;
-  }
-
   logger()->trace("Trying to resolve {}", str());
 
   asio::error_code err;
