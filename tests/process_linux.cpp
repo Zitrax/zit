@@ -7,6 +7,7 @@
 #include <signal.h>
 #include <sys/prctl.h>
 #include <sys/wait.h>
+#include <algorithm>
 
 #include "logger.hpp"
 
@@ -15,9 +16,9 @@ namespace zit {
 using namespace std;
 
 Process::Process(const string& name,
-                 vector<const char*> argv,
+                 vector<string> argv,
                  const char* cwd,
-                 vector<const char*> stop_cmd)
+                 vector<string> stop_cmd)
     : m_pid(0), m_name(name), m_stop_cmd(std::move(stop_cmd)) {
   pid_t ppid = getpid();
   m_pid = fork();
@@ -41,8 +42,12 @@ Process::Process(const string& name,
       perror("chdir failed");
       exit(1);
     }
-    argv.push_back(nullptr);
-    execvp(argv[0], const_cast<char* const*>(argv.data()));
+    vector<char*> argv_c;
+    argv_c.reserve(argv.size() + 1);
+    std::ranges::transform(argv, back_inserter(argv_c),
+                           [](const string& s)  { return const_cast<char*>(s.data()); });
+    argv_c.push_back(nullptr);
+    execvp(argv_c[0], argv_c.data());
     cerr << "Failed launching " << argv[0] << ": " << strerror(errno) << endl;
     _exit(1);  // Important to use _exit(1) in the child branch
   } else {
