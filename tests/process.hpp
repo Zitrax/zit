@@ -20,9 +20,9 @@ namespace zit {
 class Process {
  public:
   Process(const std::string& name,
-          std::vector<const char*> argv,
+          std::vector<std::string> argv,
           const char* cwd = nullptr,
-          std::vector<const char*> stop_cmd = {});
+          std::vector<std::string> stop_cmd = {});
 
   // Since this should be created and deleted only once
   // forbid copying and assignment.
@@ -74,7 +74,7 @@ class Process {
  private:
   pid_t m_pid;
   std::string m_name;
-  std::vector<const char*> m_stop_cmd;
+  std::vector<std::string> m_stop_cmd;
 };
 
 }  // namespace zit

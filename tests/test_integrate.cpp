@@ -28,7 +28,7 @@ using namespace std::string_literals;
 using namespace zit;
 namespace fs = std::filesystem;
 
-//constexpr auto TEST_BIND_ADDRESS{"192.168.0.18"};
+// constexpr auto TEST_BIND_ADDRESS{"192.168.0.18"};
 
 class TestConfig : public zit::Config {
  public:
@@ -38,7 +38,7 @@ class TestConfig : public zit::Config {
     // m_bool_settings[zit::BoolSetting::INITIATE_PEER_CONNECTIONS] = false;
 
     // Transmission does not want to connect to localhost, so trick it
-    //m_string_settings[zit::StringSetting::BIND_ADDRESS] = TEST_BIND_ADDRESS;
+    // m_string_settings[zit::StringSetting::BIND_ADDRESS] = TEST_BIND_ADDRESS;
   }
 
   void set(IntSetting setting, int val) { m_int_settings[setting] = val; }
@@ -63,7 +63,7 @@ auto start_tracker(const fs::path& data_dir) {
   auto tracker =
       Process("tracker",
               {"docker", "run", "--rm", "--name", "zit-opentracker", "--volume",
-               fmt::format("{}:{}", data_dir.generic_string(), "/data").c_str(),
+               fmt::format("{}:{}", data_dir.generic_string(), "/data"),
                //"--network", "host",
                "--publish", "8000:8000", "opentracker", "-p", "8000",
                // The default opentracker build seem to be compiled in closed
@@ -89,26 +89,25 @@ auto start_seeder(const fs::path& data_dir,
   constexpr auto* container_data_dir = "/data";
   constexpr auto* container_torrent_dir = "/torrents";
 
+  static int seeder_count{0};
+  const auto container_name = fmt::format("zit-webtorrent-{}", seeder_count++);
+
   const auto port = std::to_string(webtorrent_seeding_port);
   return Process(
       name,
-      {"docker", "run", "--rm", "--name", "zit-webtorrent", "--publish",
-       fmt::format("{}:{}", port, port).c_str(),  //"--network", "host",
-       "--volume",
-       fmt::format("{}:{}", data_dir.generic_string(), container_data_dir)
-           .c_str(),
+      {"docker", "run", "--rm", "--name", container_name, "--publish",
+       fmt::format("{}:{}", port, port), "--volume",
+       fmt::format("{}:{}", data_dir.generic_string(), container_data_dir),
        "--volume",
        fmt::format("{}:{}", torrent_file.parent_path().generic_string(),
-                   container_torrent_dir)
-           .c_str(),
+                   container_torrent_dir),
        "webtorrent", "seed",
        // Torrent file
-       fmt::format("{}/{}", container_torrent_dir, torrent_file.filename())
-           .c_str(),
+       fmt::format("{}/{}", container_torrent_dir, torrent_file.filename()),
        "--out", container_data_dir, "--torrent-port",
-       std::to_string(webtorrent_seeding_port++).c_str(), "--port",
-       std::to_string(webtorrent_http_port++).c_str(), "--keep-seeding"},
-      nullptr, {"docker", "stop", "zit-webtorrent"});
+       std::to_string(webtorrent_seeding_port++), "--port",
+       std::to_string(webtorrent_http_port++), "--keep-seeding"},
+      nullptr, {"docker", "stop", container_name});
 }
 
 /**
