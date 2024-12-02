@@ -15,9 +15,9 @@ namespace zit {
 using namespace std;
 
 Process::Process(const string& name,
-                 vector<const char*> argv,
+                 vector<string> argv,
                  const char* cwd,
-                 vector<const char*> stop_cmd)
+                 vector<string> stop_cmd)
     : m_pid(0), m_name(name), m_stop_cmd(move(stop_cmd)) {
   STARTUPINFO si;
   PROCESS_INFORMATION pi;

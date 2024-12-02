@@ -145,8 +145,9 @@ class UDP : public ::testing::Test {
         (std::filesystem::path(DATA_DIR) / ".." / "udp_server.py")
             .lexically_normal();
     echo_server = std::make_unique<zit::Process>(
-        "udp_echo", std::vector<const char*>{"python", udp_server_path.generic_string().c_str(),
-                                             std::to_string(m_port).c_str()});
+        "udp_echo",
+        std::vector<std::string>{"python", udp_server_path.generic_string(),
+                                 std::to_string(m_port)});
   }
 
   void TearDown() override {
@@ -176,4 +177,3 @@ TEST_F(UDP, request_named_host) {
   const auto reply = Net::udpRequest(url, message);
   ASSERT_THAT(message, ElementsAreArray(reply));
 }
-
