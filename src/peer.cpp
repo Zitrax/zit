@@ -5,8 +5,8 @@
 #include <asio/buffer.hpp>
 #include <asio/co_spawn.hpp>
 #include <asio/completion_condition.hpp>
-#include <asio/error_code.hpp>
 #include <asio/error.hpp>
+#include <asio/error_code.hpp>
 #include <asio/io_context.hpp>
 #include <asio/io_service.hpp>
 #include <asio/ip/address.hpp>
@@ -245,7 +245,9 @@ std::map<ListeningPort, PeerAcceptor> PeerAcceptor::m_acceptors;
 PeerAcceptor::PeerAcceptor(ListeningPort port,
                            asio::io_context& io_context,
                            std::string bind_address)
-    : m_port(port), m_io_context(io_context), m_bind_address(std::move(bind_address)) {
+    : m_port(port),
+      m_io_context(io_context),
+      m_bind_address(std::move(bind_address)) {
   logger()->trace(PRETTY_FUNCTION);
   // For now rethrowing - can consider asio::detached later?
   co_spawn(m_io_context, listen(), [](auto e) { std::rethrow_exception(e); });
