@@ -113,7 +113,7 @@ string debugMsg(span<const byte> msg) {
   stringstream ss;
   ss.fill('0');
   ss << hex;
-  for (auto b : msg) {
+  for (const auto b : msg) {
     ss << setw(2) << int(b) << " ";
   }
   return ss.str();
@@ -131,11 +131,11 @@ optional<HandshakeMsg> HandshakeMsg::parse(const bytes& msg) {
       'r'_b,      'e'_b, 'n'_b, 't'_b, ' '_b, 'p'_b, 'r'_b,
       'o'_b,      't'_b, 'o'_b, 'c'_b, 'o'_b, 'l'_b};
 
-  auto it =
+  const auto it =
       std::search(msg.begin(), msg.end(), BT_START.begin(), BT_START.end());
   if (it == msg.end()) {
     logger()->debug("No handshake match:\nGot: {}\nExp: {}",
-                    debugMsg(span(msg.begin(), BT_START.size())),
+                    debugMsg(span(msg.begin(), std::min(msg.size(), BT_START.size()))),
                     debugMsg(BT_START));
     return {};
   }
@@ -145,16 +145,9 @@ optional<HandshakeMsg> HandshakeMsg::parse(const bytes& msg) {
     return HandshakeMsg::parse(bytes{it, msg.end()});
   }
 
-  if (memcmp("\x13"
-             "BitTorrent protocol",
-             msg.data(), 20) != 0) {
-    // debug log bytes
-    logger()->debug("MSG: {}", debugMsg(msg));
-    return {};
-  }
-  bytes reserved(&msg[20], &msg[28]);
-  Sha1 info_hash = Sha1::fromBuffer(msg, 28);
-  string peer_id = from_bytes(msg, 48, 68);
+  const bytes reserved(&msg[20], &msg[28]);
+  const Sha1 info_hash = Sha1::fromBuffer(msg, 28);
+  const string peer_id = from_bytes(msg, 48, 68);
 
   // Handle optional bitfield
   if (msg.size() > MIN_BT_MSG_LENGTH) {
