@@ -88,6 +88,8 @@ inline std::string exec(const std::string& cmd) {
 #endif  // WIN32
 }
 
+#ifndef WIN32
+
 /**
  * Creates a file backed filesystem with a specific size intially aimed at
  * testing OOD situations.
@@ -99,6 +101,8 @@ inline std::string exec(const std::string& cmd) {
  *
  * For now this implementation is linux specific and use std::system to run
  * commands.
+ *
+ * @note TestWithFilesystem is currently linux only by using mkfs.ext4 and udisksctl
  */
 template <size_t FS_SIZE_IN_BYTES>
 class TestWithFilesystem : public TestWithTmpDir {
@@ -181,3 +185,5 @@ class TestWithFilesystem : public TestWithTmpDir {
   std::filesystem::path m_mount_dir{};
   std::string m_loop_device{};
 };
+
+#endif  // !WIN32

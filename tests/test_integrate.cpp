@@ -242,6 +242,9 @@ INSTANTIATE_TEST_SUITE_P(SeedCount,
                          IntegrateF,
                          ::testing::Values<uint8_t>(1, 2, 5, 10));
 
+// OOD test is linux only at the moment
+#ifndef WIN32
+
 class IntegrateOodF : public TestWithContext,
                       public TestWithFilesystem<1'500'000>,
                       public ::testing::WithParamInterface<uint8_t> {};
@@ -279,6 +282,8 @@ TEST_F(IntegrateOodF, DISABLED_download_ood) {
   // Transfer done - Verify content
   verify_download(torrent, data_dir / "1MiB.dat");
 }
+
+#endif  // WIN32
 
 class Integrate : public TestWithContext, public TestWithTmpDir {};
 
