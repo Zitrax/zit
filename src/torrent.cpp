@@ -1196,6 +1196,7 @@ ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
     os << "Encoding:      " << torrent.encoding() << "\n";
   }
   os << "Piece length:  " << torrent.piece_length() << "\n";
+  os << "Info hash:     " << torrent.info_hash() << "\n";
   os << "Private:       " << (torrent.is_private() ? "Yes" : "No") << "\n";
   if (torrent.is_single_file()) {
     os << "Name:          " << torrent.name() << "\n";
