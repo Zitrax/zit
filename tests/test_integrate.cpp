@@ -378,7 +378,7 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
   auto tracker = start_tracker(data_dir);
 
   // Copy ready files to download_dir and modify one
-  // such that it will be retranfered.
+  // such that it will be retransferred.
   fs::copy(data_dir / "multi", download_dir / "multi");
   zit::write_file(download_dir / "multi" += zit::Torrent::tmpfileExtension(),
                   "");
