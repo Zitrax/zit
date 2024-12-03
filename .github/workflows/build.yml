@@ -37,7 +37,15 @@ jobs:
 
     - name: Build
       run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
-    
+
+      # For some reason the UDP tests does not run in Github actions
+      # locally they run fine however
+    - name: Windows-Tests
+      working-directory: ${{github.workspace}}/build
+      if: runner.os == 'Windows'
+      run: ctest --output-on-failure --no-tests=error -E UDP.request
+
     - name: Tests
       working-directory: ${{github.workspace}}/build
+      if: runner.os != 'Windows'
       run: ctest --output-on-failure --no-tests=error
