@@ -305,7 +305,7 @@ std::tuple<std::string, std::string> httpsGet(const Url& url,
   // finding CA certificates.
   ssl::context ctx(ssl::context::tlsv12);
 
-  if (bind_address.empty()) {
+  if (!bind_address.empty() && bind_address != "127.0.0.1") {
     throw std::runtime_error("bind for ssl not yet supported");
   }
 
@@ -537,17 +537,17 @@ Url::Url(const string& url, Binary binary, Resolve resolve) {
 }
 
 void Url::resolve() {
+  logger()->trace("Trying to resolve {}", str());
+
   // On docker we get addresses in the 172.17.0 range. The host on win/mac can't
   // directly connect to that range and have to use the exposed ports on the
   // host. Lets just try to translate it here.
-  if (m_host.starts_with("172.17.")) {
-    // FIXME: localhost?
-    m_host = "192.168.0.18";
-    logger()->debug("Translated docker address to localhost");
+  constexpr auto DOCKER_IP_PREFIX{"172.17."};
+  if (m_host.starts_with(DOCKER_IP_PREFIX)) {
+    logger()->debug("Translated docker address {} to localhost", m_host);
+    m_host = "localhost";
     return;
   }
-
-  logger()->trace("Trying to resolve {}", str());
 
   asio::error_code err;
   asio::ip::make_address(m_host, err);

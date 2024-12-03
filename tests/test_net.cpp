@@ -106,6 +106,10 @@ TEST(net, httpGetHTTPS) {
   const auto reply = Net::httpGet(url);
   Url url2("https://www.google.com:443");
   const auto reply2 = Net::httpGet(url2);
+
+  // Since bind for https has not yet been implemented
+  // verify that it throws on a non-default bind address
+  EXPECT_THROW(Net::httpGet(url, "192.168.0.1"), std::runtime_error);
 }
 
 TEST(net, chunkedTransfer) {
