@@ -277,7 +277,6 @@ asio::awaitable<void> PeerAcceptor::listen() {
 
       // Read data from socket
       bytes buffer;
-      // TODO: Check how timeout for this works - does it wait forever?
       co_await asio::async_read(socket, asio::dynamic_buffer(buffer),
                                 asio::transfer_at_least(MIN_BT_MSG_LENGTH),
                                 asio::use_awaitable);
