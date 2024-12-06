@@ -979,6 +979,10 @@ void Torrent::read_peers_string_list(
                         peer.at("port")->to<TypedElement<int64_t>>()->val()),
             Url::Binary{false},
             Url::Resolve{m_config.get(BoolSetting::RESOLVE_URLS)});
+    if (purl.is_ipv6()) {
+      logger()->trace("Skipping IPv6 peer: {}", purl.str());
+      continue;
+    }
     if (!is_local(purl, listening_port())) {
       peers.emplace_back(make_shared<Peer>(purl, *this));
     }
@@ -999,6 +1003,10 @@ void Torrent::read_peers_binary_form(
     const auto purl =
         Url(binary_peers.substr(i, BINARY_PEER_LENGTH), Url::Binary{true},
             Url::Resolve{m_config.get(BoolSetting::RESOLVE_URLS)});
+    if (purl.is_ipv6()) {
+      logger()->trace("Skipping IPv6 peer: {}", purl.str());
+      continue;
+    }
     if (!is_local(purl, listening_port())) {
       peers.emplace_back(make_shared<Peer>(purl, *this));
     }
