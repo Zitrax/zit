@@ -110,13 +110,6 @@ auto start_seeder(const fs::path& data_dir,
       nullptr, {"docker", "stop", container_name});
 }
 
-/**
- * With transmission-cli leeching need to be done like this:
- *  - Start tracker
- *  - rm -rf ~/.config/transmission
- *  - rm eventual old file
- *  - seed with zit
- */
 auto start_leecher(const fs::path& target, const fs::path& torrent_file) {
   fs::remove(target);
   return start_seeder(target, torrent_file, "leecher");
