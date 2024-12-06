@@ -25,7 +25,7 @@ using DisconnectCallback = std::function<void(Peer*)>;
 /**
  * Function taking an Url and returning the resulting Headers,Body of the
  * request. Matching Net::httpGet(const Url&).
- * 
+ *
  * FIXME: Make bind_address something better than a plain string
  */
 using HttpGet =
@@ -249,6 +249,13 @@ class Torrent {
    * List of connected peers
    */
   [[nodiscard]] auto& peers() { return m_peers; }
+
+  /**
+   * Add a peer to the list of connected peers.
+   *
+   * @return true if the peer was added
+   */
+  bool add_peer(std::shared_ptr<Peer> peer);
 
   /**
    * Callback that will be called whenever a piece has finished downloading.

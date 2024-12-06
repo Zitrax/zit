@@ -298,7 +298,18 @@ asio::awaitable<void> PeerAcceptor::listen() {
                        handshake->getInfoHash());
         continue;
       }
-      // Now add a new listening peer for this torrent and hand over the socket
+      // Now add a new listening peer for this torrent
+      const auto accept_port = [&]() -> decltype(port) {
+        // FIXME: Remove hardcoded ip
+        if (ip == "192.168.0.18") {
+          logger()->info("Translating port for Docker testing");
+          return 51413;
+        } else {
+          return port;
+        }
+      }();
+      torrent->add_peer(make_shared<Peer>(
+          Url{fmt::format("http://{}:{}", ip, accept_port)}, *torrent));
     } catch (const std::system_error& error) {
       logger()->error("Listen errored: {}", error.what());
     }
