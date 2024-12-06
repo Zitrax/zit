@@ -5,8 +5,8 @@ jobs:
     strategy:
       matrix:
         compiler:
-          - { os: ubuntu-22.04, bin: clang++-17 }
-          - { os: ubuntu-22.04, bin: g++-12 }
+          - { os: ubuntu-24.04, bin: clang++-17 }
+          - { os: ubuntu-24.04, bin: g++-13 }
           - { os: windows-2022, bin: cl.exe }
 
     runs-on: ${{ matrix.compiler.os }}
@@ -26,7 +26,7 @@ jobs:
       if: runner.os == 'Linux'
       run: |
         wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-        sudo add-apt-repository -y -S deb http://apt.llvm.org/jammy/ llvm-toolchain-jammy-17 main
+        sudo add-apt-repository -y -S deb http://apt.llvm.org/noble/ llvm-toolchain-noble main
 
     - name: Apt install
       if: runner.os == 'Linux'
