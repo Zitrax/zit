@@ -263,12 +263,17 @@ asio::awaitable<void> PeerAcceptor::listen() {
   asio::ip::tcp::acceptor acceptor{m_io_context, tcp::v4()};
   const asio::socket_base::reuse_address option(true);
   acceptor.set_option(option);
-  acceptor.bind(asio::ip::tcp::endpoint(asio::ip::make_address(m_bind_address),
-                                        m_port.get()));
+  if (m_bind_address.empty()) {
+    acceptor.bind(asio::ip::tcp::endpoint(asio::ip::tcp::v4(), m_port.get()));
+  } else {
+    acceptor.bind(asio::ip::tcp::endpoint(
+        asio::ip::make_address(m_bind_address), m_port.get()));
+  }
   acceptor.listen();
 
   logger()->info("Listening for incoming connections on {}:{}",
-                 acceptor.local_endpoint().address().to_string(), m_port.get());
+                 acceptor.local_endpoint().address().to_string(),
+                 acceptor.local_endpoint().port());
 
   while (true) {
     try {
