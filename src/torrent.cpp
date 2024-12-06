@@ -827,6 +827,9 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
             do_tracker_request(announce_url);
         thrown = nullptr;
         break;
+      } catch (const HttpException& ex) {
+        // Non-fatal issue, just ignore this tracker and move on
+        logger()->debug("tracker_request: {}: {}", announce_url, ex.what());
       } catch (const std::exception& ex) {
         logger()->warn("tracker_request: {}: {}", announce_url, ex.what());
         thrown = std::current_exception();
