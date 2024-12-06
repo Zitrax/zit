@@ -449,7 +449,11 @@ Torrent::http_tracker_request(const Url& announce_url, TrackerEvent event) {
   url.add_param("downloaded=" + to_string(downloaded()));
   url.add_param("left=" + to_string(left()));
   // FIXME: No one calls this with COMPLETED and STOPPED (we should)
-  url.add_param("event=" + fmt::format("{}", event));
+  // Was originally sent with an empty string - but it seem that some trackers
+  // do not accept that, so skip it completely for unspecified.
+  if (event != TrackerEvent::UNSPECIFIED) {
+    url.add_param("event=" + fmt::format("{}", event));
+  }
   url.add_param("compact=1");
 
   if (logger()->should_log(spdlog::level::debug)) {
