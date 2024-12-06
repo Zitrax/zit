@@ -502,7 +502,7 @@ string Net::urlEncode(const string& value) {
 
 Url::Url(const string& url, Binary binary, Resolve resolve) {
   if (!binary.get()) {
-    const regex ur("^(udp|https?)://([^:/]*)(?::(\\d+))?(.*?)$");
+    const regex ur("^(udp|https?)://([^/\n]*?)(?::(\\d+))?(/.*)?$");
     smatch match;
     if (!regex_match(url, match, ur) || match.size() != 5) {
       throw runtime_error("Invalid URL: '" + url + "'");
@@ -534,6 +534,14 @@ Url::Url(const string& url, Binary binary, Resolve resolve) {
 
   if (resolve.get()) {
     this->resolve();
+  }
+}
+
+bool Url::is_ipv6() const {
+  try {
+    return asio::ip::address::from_string(host()).is_v6();
+  } catch (const std::exception&) {
+    return false;
   }
 }
 

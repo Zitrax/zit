@@ -86,6 +86,9 @@ class Url {
     return m_port ? std::to_string(*m_port) : m_scheme;
   }
 
+  /** Return true if this is an ipv6 url else false */
+  [[nodiscard]] bool is_ipv6() const;
+
   /**
    * If the host part is an ip, it will be replaced by the resolved DNS name if
    * available.
