@@ -16,10 +16,10 @@
 #include "types.hpp"
 #include "version.hpp"
 
-#include <asio/error_code.hpp>
-#include <asio/io_context.hpp>
 #include <fmt/format.h>
 #include <spdlog/common.h>
+#include <asio/error_code.hpp>
+#include <asio/io_context.hpp>
 
 #if __clang__
 #include <bits/chrono.h>
@@ -1052,22 +1052,38 @@ void Torrent::retry_pieces() {
   }
 }
 
+bool Torrent::add_peer(shared_ptr<Peer> peer) {
+  const bool in_use =
+      std::find_if(m_peers.begin(), m_peers.end(),
+                   [&peer](auto& existing_peer) {
+                     const auto& lurl = peer->url();
+                     const auto& rurl = existing_peer->url();
+                     return lurl.has_value() && rurl.has_value() &&
+                            peer->url().value().str() ==
+                                existing_peer->url().value().str();
+                   }) != m_peers.end();
+  logger()->debug("Candidate {} was inactive: {}", peer->str(), in_use);
+  if (!in_use) {
+    peer->handshake();
+    return true;
+  }
+  return false;
+}
+
 void Torrent::retry_peers() {
   const ScopeGuard scope_guard([this]() { schedule_retry_peers(); });
 
   logger()->debug("Checking peers for retry");
 
   // Find and disconnect inactive peers
-  // TODO: Nicer to use ranges, however for clang we need to wait for clang16
-  const auto it = std::partition(m_peers.begin(), m_peers.end(), [](auto& p) {
-    return p->is_inactive() && !p->is_listening();
-  });
+  const auto [it_active, it_end] = ranges::partition(
+      m_peers, [](auto& p) { return p->is_inactive() && !p->is_listening(); });
 
-  const auto inactive = std::distance(m_peers.begin(), it);
+  const auto inactive = std::distance(m_peers.begin(), it_active);
 
   if (inactive) {
     logger()->info("Stopping {} inactive peers", inactive);
-    std::for_each(m_peers.begin(), it, [](auto& p) { p->stop(); });
+    std::for_each(it_active, it_end, [](auto& p) { p->stop(); });
   }
 
   // Connect to new peers (discarding the ones we just dropped or active ones)
@@ -1076,19 +1092,7 @@ void Torrent::retry_peers() {
   std::vector<std::shared_ptr<Peer>> new_peers;
 
   for (const auto& tracker_peer : tracker_peers) {
-    const bool in_use =
-        std::find_if(m_peers.begin(), m_peers.end(),
-                     [&tracker_peer](auto& existing_peer) {
-                       const auto& lurl = tracker_peer->url();
-                       const auto& rurl = existing_peer->url();
-                       return lurl.has_value() && rurl.has_value() &&
-                              tracker_peer->url().value().str() ==
-                                  existing_peer->url().value().str();
-                     }) != m_peers.end();
-    logger()->debug("Candidate {} was inactive: {}", tracker_peer->str(),
-                    in_use);
-    if (!in_use) {
-      tracker_peer->handshake();
+    if (add_peer(tracker_peer)) {
       new_peers.push_back(tracker_peer);
     }
   }
@@ -1098,7 +1102,7 @@ void Torrent::retry_peers() {
   }
 
   if (inactive) {
-    m_peers.erase(m_peers.begin(), it);
+    m_peers.erase(m_peers.begin(), it_active);
   }
 
   m_peers.insert(m_peers.end(), new_peers.begin(), new_peers.end());

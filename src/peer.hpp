@@ -160,15 +160,6 @@ class Peer : public IConnectionUrlProvider {
         m_torrent(torrent),
         m_last_activity(std::chrono::system_clock::now()) {}
 
-  // TODO: Remove when unused
-  /**
-   * A listening host does not need a url when created.
-   */
-  Peer(Torrent& torrent, socket_ptr socket) : m_torrent(torrent) {
-    // FIXME: Move implementation to cpp file
-    init_io_service(std::move(socket));
-  }
-
   /**
    * Return the url of this peer.
    */
