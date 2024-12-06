@@ -499,6 +499,7 @@ class Torrent {
   HttpGet m_http_get;
   asio::steady_timer m_retry_pieces_timer;
   asio::steady_timer m_retry_peers_timer;
+  bool m_stopped = false;
 
   // Piece housekeeping
   mutable std::mutex m_mutex{};
