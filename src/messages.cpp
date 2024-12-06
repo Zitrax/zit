@@ -134,7 +134,7 @@ optional<HandshakeMsg> HandshakeMsg::parse(const bytes& msg) {
   const auto it =
       std::search(msg.begin(), msg.end(), BT_START.begin(), BT_START.end());
   if (it == msg.end()) {
-    logger()->debug("No handshake match:\nGot: {}\nExp: {}",
+    logger()->trace("No handshake match:\nGot: {}\nExp: {}",
                     debugMsg(span(msg.begin(), std::min(msg.size(), BT_START.size()))),
                     debugMsg(BT_START));
     return {};
