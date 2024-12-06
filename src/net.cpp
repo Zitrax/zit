@@ -467,9 +467,10 @@ bytes Net::udpRequest(const Url& url,
   socket.send_to(asio::buffer(data), receiver_endpoint);
 
   io_service.run_for(timeout);
+  io_service.stop();
 
   if (reply.empty()) {
-    logger()->warn("udp request got no reply");
+    logger()->debug("udp request got no reply");
   }
 
   return reply;
