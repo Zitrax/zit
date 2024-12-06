@@ -153,8 +153,9 @@ std::tuple<std::string, std::string> request(Sock& sock, const Url& url) {
                                          Net::m_http_status_found,
                                          Net::m_http_status_moved};
   if (ranges::find(VALID_STATUSES, status_code) == VALID_STATUSES.end()) {
-    throw runtime_error(fmt::format("{}: response returned with status code {}",
-                                    url.str(), status_code));
+    throw HttpException(fmt::format("{}: response returned with status code {}",
+                                    url.str(), status_code),
+                        status_code);
   }
 
   // Read the response headers, which are terminated by a blank line.

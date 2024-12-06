@@ -16,6 +16,18 @@ namespace zit {
 using string_list = std::vector<std::string>;
 using namespace std::string_literals;
 
+class HttpException : public std::runtime_error {
+ public:
+  HttpException(const std::string& what_arg, unsigned int status_code)
+      : std::runtime_error(what_arg), m_status_code(status_code) {}
+
+  /** Http status code */
+  [[nodiscard]] auto status_code() const { return m_status_code; }
+
+ private:
+  unsigned int m_status_code;
+};
+
 /**
  * Simplified URL parsing that covers cases we are interested in
  */
