@@ -82,22 +82,22 @@ TEST(net, url_string) {
   EXPECT_EQ(url3.authority(), "torrent.ubuntu.com");
   EXPECT_FALSE(url3.is_ipv6());
 
-  Url url4("http://1a00:1678:2470:2a:5b7c:f79c:87e:7314");
+  Url url4("http://1a03:6880:1014:1e00:c0ab:72ff:febd:274a:7314");
   EXPECT_EQ(url4.scheme(), "http");
-  EXPECT_EQ(url4.host(), "1a00:1678:2470:2a:5b7c:f79c:87e");
+  EXPECT_EQ(url4.host(), "1a03:6880:1014:1e00:c0ab:72ff:febd:274a");
   EXPECT_EQ(url4.port(), 7314);
   EXPECT_EQ(url4.service(), "7314");
   EXPECT_EQ(url4.path(), "/");
-  EXPECT_EQ(url4.authority(), "1a00:1678:2470:2a:5b7c:f79c:87e:7314");
+  EXPECT_EQ(url4.authority(), "1a03:6880:1014:1e00:c0ab:72ff:febd:274a:7314");
   EXPECT_TRUE(url4.is_ipv6());
 
-  Url url5("http://1a00:1678:2470:2a:5b7c:f79c:87e:7314/test");
+  Url url5("http://1a03:6880:1014:1e00:c0ab:72ff:febd:274a:7314/test");
   EXPECT_EQ(url5.scheme(), "http");
-  EXPECT_EQ(url5.host(), "1a00:1678:2470:2a:5b7c:f79c:87e");
+  EXPECT_EQ(url5.host(), "1a03:6880:1014:1e00:c0ab:72ff:febd:274a");
   EXPECT_EQ(url5.port(), 7314);
   EXPECT_EQ(url5.service(), "7314");
   EXPECT_EQ(url5.path(), "/test");
-  EXPECT_EQ(url5.authority(), "1a00:1678:2470:2a:5b7c:f79c:87e:7314");
+  EXPECT_EQ(url5.authority(), "1a03:6880:1014:1e00:c0ab:72ff:febd:274a:7314");
   EXPECT_TRUE(url5.is_ipv6());
 }
 
