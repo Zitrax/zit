@@ -927,18 +927,13 @@ void Torrent::schedule_retry_peers() {
 // FIXME: Remove this function
 void Torrent::run() {
   logger()->debug("Run loop start");
-  while (!all_of(m_peers.begin(), m_peers.end(),
-                 [](auto& p) { return p->io_service().stopped(); })) {
-    // logger()->debug("Run loop");
+  const auto is_stopped = [](auto& p) { return p->io_service().stopped(); };
+  while (!m_stopped && (!done() || !ranges::all_of(m_peers, is_stopped))) {
     std::size_t ran = 0;
     for (auto& p : m_peers) {
       ran += p->io_service().poll_one();
     }
-    // TODO: Investigate why these were needed originally. They can
-    //       not be called like commented out here at least since it
-    //       will spam calls in every loop iteration of the run loop.
-    // retry_pieces();
-    // retry_peers();
+    ran += m_io_context.poll_one();
     //  If no handlers ran, then sleep.
     if (!ran) {
 #ifdef WIN32
@@ -958,6 +953,7 @@ void Torrent::stop() {
     peer->stop();
   }
   tracker_request(TrackerEvent::STOPPED);
+  m_stopped = true;
 }
 
 Torrent* Torrent::get(const Sha1& info_hash) {
@@ -1018,6 +1014,10 @@ void Torrent::read_peers_binary_form(
 }
 
 void Torrent::retry_pieces() {
+  if (m_stopped) {
+    return;
+  }
+
   const ScopeGuard scope_guard([this]() { schedule_retry_pieces(); });
 
   logger()->debug("Checking pieces for retry");
@@ -1075,6 +1075,10 @@ bool Torrent::add_peer(shared_ptr<Peer> peer) {
 }
 
 void Torrent::retry_peers() {
+  if (m_stopped) {
+    return;
+  }
+
   const ScopeGuard scope_guard([this]() { schedule_retry_peers(); });
 
   logger()->debug("Checking peers for retry");
