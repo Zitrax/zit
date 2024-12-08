@@ -73,48 +73,6 @@ class PeerConnection {
   std::string m_msg{};
   IConnectionUrlProvider& peer_;
   asio::ip::tcp::resolver resolver_;
-
-  /*
-
-  Maybe instead of this (due to the issues of lifetime) there should be one
-  active async_accept per port. When someone connects we need to hand over to
-  the correct connection. How do we determine that?
-
-  We do call Message::parse which retrieves the info_hash. This can be used to
-  determine which connection/torrent to use.
-
-  But need to figure out how to use the io_service for the listening and how
-  to do the proper handover.
-
-  Second thought:
-
-  The above is right - we can't reuse locals from the PeerConnection in the
-  global map. We need something independent of the existing connections.
-
-  A global or single acceptor running on port N, when we get a connection
-  we hand over (or create?) to the first free Peer/PeerConnection. If we hit the
-  limit we just reject (I assume just close the socket).
-
-  We should be able to configure the max number of incoming connections.
-
-  So the plan could be to have an PeerAcceptor class, running an io_service with
-  an acceptor on a port. When we get a new connection we create a new Peer.
-  The Peers can be managed in a list.
-
-  We can probably remove the PeerConnection::listen() method then.
-
-  No - scrap that. We already have Peers and Torrent objects, when we
-  get an incoming connection we must forward to the existing object.
-
-  I think the only way is to accept the connection and do the initial
-  communication to find out what torrent this is for and then forward
-  to that object.
-
-  1. Start with extracting the info_hash logic. Actually we can just
-     use HandshakeMsg::parse() for this.
-
-  */
-
   asio::streambuf response_{};
   socket_ptr socket_;
   asio::ip::tcp::resolver::iterator endpoint_{};

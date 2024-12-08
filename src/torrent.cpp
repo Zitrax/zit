@@ -879,15 +879,6 @@ void Torrent::start() {
     p->handshake();
   }
 
-  // FIXME: Use PeerAcceptor instead
-  // Add listening peer for incoming connections
-  // logger()->info("Adding listening peer");
-  // try {
-  //  m_peers.emplace_back(make_shared<Peer>(*this))->listen();
-  //} catch (const std::exception& ex) {
-  //  logger()->warn("Could not start listening peer: {}", ex.what());
-  //}
-
   PeerAcceptor::acceptOnPort(m_io_context, m_listening_port,
                              m_config.get(StringSetting::BIND_ADDRESS));
 

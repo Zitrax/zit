@@ -255,11 +255,6 @@ PeerAcceptor::PeerAcceptor(ListeningPort port,
 
 asio::awaitable<void> PeerAcceptor::listen() {
   logger()->trace(PRETTY_FUNCTION);
-  // FIXME: We need to be able to bind to a different IP than the default
-  // localhost
-  //        For testing we can setup a new local ip with
-  //        sudo ip addr add 192.168.1.10/32 dev lo
-
   asio::ip::tcp::acceptor acceptor{m_io_context, tcp::v4()};
   const asio::socket_base::reuse_address option(true);
   acceptor.set_option(option);
