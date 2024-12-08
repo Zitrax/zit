@@ -47,7 +47,17 @@ enum class IntSetting {
   /**
    * Port on which the Zit client is making outgoing peer connections.
    */
-  CONNECTION_PORT
+  CONNECTION_PORT,
+
+  /*
+   * Interval in seconds between retrying to download pieces from peers.
+   */
+  RETRY_PIECES_INTERVAL_SECONDS,
+
+  /*
+   * Interval in seconds between retrying to connect to peers.
+   */
+  RETRY_PEERS_INTERVAL_SECONDS
 };
 
 enum class StringSetting {
@@ -88,7 +98,9 @@ class Config {
 
   std::map<IntSetting, int> m_int_settings{
       {IntSetting::LISTENING_PORT, 20001},
-      {IntSetting::CONNECTION_PORT, 20000}};
+      {IntSetting::CONNECTION_PORT, 20000},
+      {IntSetting::RETRY_PIECES_INTERVAL_SECONDS, 60},
+      {IntSetting::RETRY_PEERS_INTERVAL_SECONDS, 120}};
 
   std::map<StringSetting, std::string> m_string_settings{
       {StringSetting::BIND_ADDRESS, ""}};

@@ -897,7 +897,8 @@ void Torrent::start() {
 }
 
 void Torrent::schedule_retry_pieces() {
-  m_retry_pieces_timer.expires_after(1min);
+  const auto interval_seconds = m_config.get(IntSetting::RETRY_PIECES_INTERVAL_SECONDS);
+  m_retry_pieces_timer.expires_after(std::chrono::seconds(interval_seconds));
   logger()->debug("Scheduling next retry_pieces in {}",
                   std::chrono::duration_cast<std::chrono::seconds>(
                       m_retry_pieces_timer.expires_from_now()));
@@ -911,7 +912,8 @@ void Torrent::schedule_retry_pieces() {
 }
 
 void Torrent::schedule_retry_peers() {
-  m_retry_peers_timer.expires_after(2min);
+  const auto interval_seconds = m_config.get(IntSetting::RETRY_PEERS_INTERVAL_SECONDS);
+  m_retry_peers_timer.expires_after(std::chrono::seconds(interval_seconds));
   logger()->debug("Scheduling next retry_peers in {}",
                   std::chrono::duration_cast<std::chrono::seconds>(
                       m_retry_peers_timer.expires_from_now()));

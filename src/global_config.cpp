@@ -128,7 +128,10 @@ const std::map<std::string, BoolSetting> settings_map<BoolSetting>{
 template <>
 const std::map<std::string, IntSetting> settings_map<IntSetting>{
     {"listening_port", IntSetting::LISTENING_PORT},
-    {"connection_port", IntSetting::CONNECTION_PORT}};
+    {"connection_port", IntSetting::CONNECTION_PORT},
+    {"retry_pieces_interval_seconds",
+     IntSetting::RETRY_PIECES_INTERVAL_SECONDS},
+    {"retry_peers_interval_seconds", IntSetting::RETRY_PEERS_INTERVAL_SECONDS}};
 
 template <>
 const std::map<std::string, StringSetting> settings_map<StringSetting>{
