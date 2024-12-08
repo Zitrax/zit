@@ -26,6 +26,8 @@ TEST_F(FileConfigTest, EmptyFile) {
   EXPECT_TRUE(config.get(BoolSetting::PIECE_VERIFY_THREADS));
   EXPECT_EQ(config.get(IntSetting::LISTENING_PORT), 20001);
   EXPECT_EQ(config.get(IntSetting::CONNECTION_PORT), 20000);
+  EXPECT_EQ(config.get(IntSetting::RETRY_PIECES_INTERVAL_SECONDS), 60);
+  EXPECT_EQ(config.get(IntSetting::RETRY_PEERS_INTERVAL_SECONDS), 120);
 }
 
 TEST_F(FileConfigTest, InvalidFile) {
@@ -40,7 +42,8 @@ TEST_F(FileConfigTest, CorrectFile) {
   write_file(config_file,
              "initiate_peer_connections=true\nlistening_port=123\nconnection_"
              "port=321\nresolve_urls=0\npiece_verify_threads=false\nbind_"
-             "address=192.168.5.5\n");
+             "address=192.168.5.5\retry_pieces_interval_seconds=10,retry_peers_"
+             "interval_seconds=20\n");
   const auto config = FileConfig{config_file};
   EXPECT_TRUE(config.get(BoolSetting::INITIATE_PEER_CONNECTIONS));
   EXPECT_FALSE(config.get(BoolSetting::RESOLVE_URLS));
@@ -48,6 +51,8 @@ TEST_F(FileConfigTest, CorrectFile) {
   EXPECT_EQ(config.get(IntSetting::LISTENING_PORT), 123);
   EXPECT_EQ(config.get(IntSetting::CONNECTION_PORT), 321);
   EXPECT_EQ(config.get(StringSetting::BIND_ADDRESS), "192.168.5.5");
+  EXPECT_EQ(config.get(IntSetting::RETRY_PIECES_INTERVAL_SECONDS), 10);
+  EXPECT_EQ(config.get(IntSetting::RETRY_PEERS_INTERVAL_SECONDS), 20);
 }
 
 #endif  // __linux__
