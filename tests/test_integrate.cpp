@@ -57,14 +57,14 @@ namespace {
   return {home};
 }
 
-// FIXME: Document that "host" network has to be enabled in Docker Desktop.
-
 auto start_tracker(const fs::path& data_dir) {
   auto tracker =
       Process("tracker",
               {"docker", "run", "--rm", "--name", "zit-opentracker", "--volume",
                fmt::format("{}:{}", data_dir.generic_string(), "/data"),
-               //"--network", "host",
+               // Needed to be able to run iptables in the container
+               "--cap-add", "NET_ADMIN",
+               //
                "--publish", "8000:8000", "opentracker", "-p", "8000",
                // The default opentracker build seem to be compiled in closed
                // mode such that all torrent must be explicitly listed in a
@@ -101,6 +101,11 @@ auto start_seeder(const fs::path& data_dir,
        "--volume",
        fmt::format("{}:{}", torrent_file.parent_path().generic_string(),
                    container_torrent_dir),
+       // Needed to be able to run iptables in the container
+       "--cap-add", "NET_ADMIN",
+       // For verbose output
+       "--env", "DEBUG=*",
+       //
        "webtorrent", "seed",
        // Torrent file
        fmt::format("{}/{}", container_torrent_dir, torrent_file.filename()),
