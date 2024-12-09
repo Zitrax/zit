@@ -106,6 +106,7 @@ auto beDictToFileInfo(const Element& element) {
 // This is ok and a bug in clang-tidy
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 std::map<Sha1, Torrent*> Torrent::m_torrents{};
+mutex Torrent::m_torrents_mutex{};
 
 // Could possibly be grouped in a struct
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
@@ -218,10 +219,18 @@ Torrent::Torrent(asio::io_context& io_context,
   // If we already have a file - scan it and mark what pieces we already have
   verify_existing_file();
 
-  m_torrents.insert({m_info_hash, this});
+  {
+    scoped_lock lock(m_torrents_mutex);
+    if (m_torrents.contains(m_info_hash)) {
+      throw runtime_error("Torrent already exists");
+    }
+
+    m_torrents.insert({m_info_hash, this});
+  }
 }
 
 Torrent::~Torrent() {
+  scoped_lock lock(m_torrents_mutex);
   m_torrents.erase(m_info_hash);
 }
 
@@ -888,7 +897,8 @@ void Torrent::start() {
 }
 
 void Torrent::schedule_retry_pieces() {
-  const auto interval_seconds = m_config.get(IntSetting::RETRY_PIECES_INTERVAL_SECONDS);
+  const auto interval_seconds =
+      m_config.get(IntSetting::RETRY_PIECES_INTERVAL_SECONDS);
   m_retry_pieces_timer.expires_after(std::chrono::seconds(interval_seconds));
   logger()->debug("Scheduling next retry_pieces in {}",
                   std::chrono::duration_cast<std::chrono::seconds>(
@@ -903,7 +913,8 @@ void Torrent::schedule_retry_pieces() {
 }
 
 void Torrent::schedule_retry_peers() {
-  const auto interval_seconds = m_config.get(IntSetting::RETRY_PEERS_INTERVAL_SECONDS);
+  const auto interval_seconds =
+      m_config.get(IntSetting::RETRY_PEERS_INTERVAL_SECONDS);
   m_retry_peers_timer.expires_after(std::chrono::seconds(interval_seconds));
   logger()->debug("Scheduling next retry_peers in {}",
                   std::chrono::duration_cast<std::chrono::seconds>(
@@ -950,6 +961,7 @@ void Torrent::stop() {
 }
 
 Torrent* Torrent::get(const Sha1& info_hash) {
+  scoped_lock lock(m_torrents_mutex);
   if (auto match = m_torrents.find(info_hash); match != m_torrents.end()) {
     return match->second;
   }
@@ -957,6 +969,7 @@ Torrent* Torrent::get(const Sha1& info_hash) {
 }
 
 size_t Torrent::count() {
+  scoped_lock lock(m_torrents_mutex);
   return m_torrents.size();
 }
 

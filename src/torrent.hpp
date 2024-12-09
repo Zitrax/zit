@@ -509,6 +509,7 @@ class Torrent {
 
   // This is ok and a bug in clang-tidy
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
+  static std::mutex m_torrents_mutex;
   static std::map<Sha1, Torrent*> m_torrents;
 };
 
