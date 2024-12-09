@@ -14,7 +14,7 @@ namespace fs = std::filesystem;
 using namespace std::string_literals;
 using namespace bencode;
 
-struct torrent : public TestWithContext, public ::testing::Test {};
+struct torrent : public TestWithIOContext, public ::testing::Test {};
 
 TEST_F(torrent, construct_single) {
   const auto data_dir = fs::path(DATA_DIR);
@@ -149,7 +149,7 @@ TEST_F(torrent, multi_listen) {
 // 127.0.0.1:65535
 const auto FAKE_URL = "\x7F\x00\x00\x01\xFF\xFF"s;
 
-class torrent_with_tmp_dir : public TestWithTmpDir, public TestWithContext {};
+class torrent_with_tmp_dir : public TestWithTmpDir, public TestWithIOContext {};
 
 TEST_F(torrent_with_tmp_dir, tracker_requests_announce) {
   // Create a torrent file with a known announce config

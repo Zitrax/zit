@@ -15,8 +15,7 @@
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
 
-// FIXME: Rename TestWithIOContext
-class TestWithContext {
+class TestWithIOContext {
  public:
   asio::io_context m_io_context{};
 };
@@ -50,7 +49,7 @@ class TestWithTmpDir : public ::testing::Test {
  private:
   bool m_created = false;
   std::filesystem::path m_dirname = std::filesystem::temp_directory_path() /
-                ("zit_" + zit::random_string(10));
+                                    ("zit_" + zit::random_string(10));
 };
 
 inline std::string exec(const std::string& cmd) {
@@ -102,7 +101,8 @@ inline std::string exec(const std::string& cmd) {
  * For now this implementation is linux specific and use std::system to run
  * commands.
  *
- * @note TestWithFilesystem is currently linux only by using mkfs.ext4 and udisksctl
+ * @note TestWithFilesystem is currently linux only by using mkfs.ext4 and
+ * udisksctl
  */
 template <size_t FS_SIZE_IN_BYTES>
 class TestWithFilesystem : public TestWithTmpDir {
