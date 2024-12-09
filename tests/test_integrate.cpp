@@ -210,7 +210,7 @@ void verify_download(const zit::Torrent& torrent,
 
 }  // namespace
 
-class IntegrateF : public TestWithContext,
+class IntegrateF : public TestWithIOContext,
                    public TestWithTmpDir,
                    public ::testing::WithParamInterface<uint8_t> {};
 
@@ -243,7 +243,7 @@ INSTANTIATE_TEST_SUITE_P(SeedCount,
 // OOD test is linux only at the moment
 #ifndef WIN32
 
-class IntegrateOodF : public TestWithContext,
+class IntegrateOodF : public TestWithIOContext,
                       public TestWithFilesystem<1'500'000>,
                       public ::testing::WithParamInterface<uint8_t> {};
 
@@ -283,7 +283,7 @@ TEST_F(IntegrateOodF, DISABLED_download_ood) {
 
 #endif  // WIN32
 
-class Integrate : public TestWithContext, public TestWithTmpDir {};
+class Integrate : public TestWithIOContext, public TestWithTmpDir {};
 
 // Verify we can download two torrents at the same time
 #ifdef INTEGRATION_TESTS
