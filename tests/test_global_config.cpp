@@ -13,8 +13,6 @@ TEST(FileConfigSingleton, SingletonDirectoryFileConfigConstruct) {
       SingletonDirectoryFileConfig::getInstance();
 }
 
-#ifdef __linux__
-
 using FileConfigTest = TestWithTmpDir;
 
 TEST_F(FileConfigTest, EmptyFile) {
@@ -39,11 +37,12 @@ TEST_F(FileConfigTest, InvalidFile) {
 
 TEST_F(FileConfigTest, CorrectFile) {
   const auto config_file = tmp_dir() / ".zit";
-  write_file(config_file,
-             "initiate_peer_connections=true\nlistening_port=123\nconnection_"
-             "port=321\nresolve_urls=0\npiece_verify_threads=false\nbind_"
-             "address=192.168.5.5\retry_pieces_interval_seconds=10,retry_peers_"
-             "interval_seconds=20\n");
+  write_file(
+      config_file,
+      "initiate_peer_connections=true\nlistening_port=123\nconnection_"
+      "port=321\nresolve_urls=0\npiece_verify_threads=false\nbind_"
+      "address=192.168.5.5\nretry_pieces_interval_seconds=10\nretry_peers_"
+      "interval_seconds=20\n");
   const auto config = FileConfig{config_file};
   EXPECT_TRUE(config.get(BoolSetting::INITIATE_PEER_CONNECTIONS));
   EXPECT_FALSE(config.get(BoolSetting::RESOLVE_URLS));
@@ -54,5 +53,3 @@ TEST_F(FileConfigTest, CorrectFile) {
   EXPECT_EQ(config.get(IntSetting::RETRY_PIECES_INTERVAL_SECONDS), 10);
   EXPECT_EQ(config.get(IntSetting::RETRY_PEERS_INTERVAL_SECONDS), 20);
 }
-
-#endif  // __linux__
