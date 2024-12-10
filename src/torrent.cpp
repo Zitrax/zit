@@ -548,9 +548,10 @@ class UDPTrackerRequest {
   std::pair<bool, std::vector<std::shared_ptr<Peer>>> announce(
       Torrent::TrackerEvent event) {
     if (logger()->should_log(spdlog::level::debug)) {
-      logger()->debug("Tracker request:\n{}", m_announce_url);
+      logger()->debug("UDP Tracker request ({}):\n{}", event, m_announce_url);
     } else {
-      logger()->info("Tracker request: {}", m_announce_url.str());
+      logger()->info("UDP Tracker request ({}): {}", event,
+                     m_announce_url.str());
     }
 
     connect();
