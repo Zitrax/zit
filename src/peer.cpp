@@ -454,8 +454,13 @@ std::size_t Peer::request_next_block(unsigned short count) {
 }
 
 bool Peer::is_inactive() const {
+  const auto time_since_last_activity =
+      std::chrono::system_clock::now() - m_last_activity;
+  logger()->trace(
+      "Time since last activity: {}s",
+      duration_cast<chrono::seconds>(time_since_last_activity).count());
   // 2min suggested in torrent spec
-  return std::chrono::system_clock::now() - m_last_activity >= 2min;
+  return time_since_last_activity >= 2min;
 }
 
 void Peer::set_choking(bool choking) {
