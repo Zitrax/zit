@@ -25,6 +25,8 @@ TEST(string_utils, to_hex) {
   EXPECT_EQ(to_hex("\x05\x06\x07\x08"), "05060708");
   EXPECT_EQ(to_hex("\x09\x0A\x0B\x0C"), "090A0B0C");
   EXPECT_EQ(to_hex("\x0D\x0E\x0F\x10"), "0D0E0F10");
+
+  EXPECT_EQ(to_hex(bytes{1_b, 2_b, 3_b, 4_b}), "01020304");
 }
 
 TEST(string_utils, to_lower) {

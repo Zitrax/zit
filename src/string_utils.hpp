@@ -59,6 +59,20 @@ inline std::string to_hex(const std::string& str) {
   return ss.str();
 }
 
+/**
+ * Convert bytes to hexadecimal byte representation.
+ */
+inline std::string to_hex(const bytes& data) {
+  std::stringstream ss;
+  ss << std::setfill('0') << std::hex << std::uppercase;
+
+  for (auto b : data) {
+    ss << std::setw(2) << static_cast<int>(static_cast<unsigned char>(b));
+  }
+
+  return ss.str();
+}
+
 // trim functions below from https://stackoverflow.com/a/217605/11722
 
 // trim from start (in place)
