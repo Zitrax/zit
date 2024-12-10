@@ -554,7 +554,9 @@ class UDPTrackerRequest {
                      m_announce_url.str());
     }
 
-    connect();
+    if (!connect()) {
+      return {};
+    }
 
     if (!m_connection_id) {
       throw std::runtime_error(
