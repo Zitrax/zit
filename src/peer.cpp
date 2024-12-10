@@ -495,6 +495,8 @@ void Peer::set_remote_pieces(Bitfield bf) {
 
 void Peer::have(uint32_t id) {
   m_remote_pieces[id] = true;
+  m_torrent.init_client_pieces(m_remote_pieces.size());
+  request_next_block();
 }
 
 void Peer::set_block(uint32_t piece_id, uint32_t offset, bytes_span data) {
