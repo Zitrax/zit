@@ -176,6 +176,10 @@ int main(int argc, const char* argv[]) noexcept {
 
 #ifdef WIN32
     // Windows ctrl-handler
+    // Note as mentioned in https://stackoverflow.com/q/7404163/11722
+    // that this in contrast to Linux will run in a new thread, thus
+    // we will just call stop on the torrents which should be thread
+    // safe and then let main fall out when the join is done.
 
     ctrl_function = [&](DWORD fdwCtrlType) -> BOOL {
       if (fdwCtrlType == CTRL_C_EVENT) {
@@ -183,10 +187,7 @@ int main(int argc, const char* argv[]) noexcept {
         for (auto& torrent : torrents) {
           torrent->stop();
         }
-        for (auto& torrent_thread : torrent_threads) {
-          torrent_thread.join();
-        }
-        ExitProcess(0);
+        return TRUE;
       }
       return FALSE;
     };
