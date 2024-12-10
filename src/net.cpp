@@ -464,6 +464,7 @@ bytes Net::udpRequest(const Url& url,
   asio::ip::udp::resolver resolver(io_service);
   const auto receiver_endpoint =
       *resolver.resolve(asio::ip::udp::v4(), url.host(), url.service()).begin();
+  logger()->trace("Sending: {}", to_hex(data));
   socket.send_to(asio::buffer(data), receiver_endpoint);
 
   io_service.run_for(timeout);
