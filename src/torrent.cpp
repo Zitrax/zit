@@ -839,6 +839,9 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
     std::ranges::shuffle(tier, g);
     for (const auto& announce_url : tier) {
       try {
+        if (m_stopped && event != TrackerEvent::STOPPED) {
+          break;
+        }
         std::tie(success, peers_from_tracker) =
             do_tracker_request(announce_url);
         thrown = nullptr;
