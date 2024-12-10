@@ -251,11 +251,17 @@ class Torrent {
   [[nodiscard]] auto& peers() { return m_peers; }
 
   /**
-   * Add a peer to the list of connected peers.
+   * Add peer if there is no other peer handling the same url.
+   *
+   * @parm peer The peer to add
+   * @parm peers The vector to add the peer to, defaults to m_peers
    *
    * @return true if the peer was added
    */
-  bool add_peer(std::shared_ptr<Peer> peer);
+  bool add_peer(
+      std::shared_ptr<Peer> peer,
+      std::optional<std::reference_wrapper<std::vector<std::shared_ptr<Peer>>>>
+          peers = {});
 
   /**
    * Callback that will be called whenever a piece has finished downloading.
@@ -495,6 +501,7 @@ class Torrent {
   std::string m_peer_id{};
   ListeningPort m_listening_port;
   ConnectionPort m_connection_port;
+  std::mutex m_peers_mutex{};
   std::vector<std::shared_ptr<Peer>> m_peers{};
   HttpGet m_http_get;
   asio::steady_timer m_retry_pieces_timer;
