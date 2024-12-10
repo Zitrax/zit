@@ -130,6 +130,7 @@ int main(int argc, const char* argv[]) noexcept {
     asio::io_context io_context;
 
     std::vector<std::unique_ptr<zit::Torrent>> torrents;
+
     std::ranges::transform(torrent_files, std::back_inserter(torrents),
                            [&](const auto& torrent_file) {
                              return std::make_unique<zit::Torrent>(
