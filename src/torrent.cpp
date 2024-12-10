@@ -594,14 +594,13 @@ class UDPTrackerRequest {
 
     const auto maybe_announce_response = retry_call(
         [&]() -> std::optional<bytes> {
-          auto response =
-              Net::udpRequest(m_announce_url, announce_request, 15s);
+          auto response = Net::udpRequest(m_announce_url, announce_request, 3s);
           if (response.empty()) {
             return {};
           }
           return response;
         },
-        4, 15s);
+        2, 3s);
     if (!maybe_announce_response) {
       logger()->debug("UDP Tracker request: empty announce response");
       return {true, {}};
@@ -711,13 +710,13 @@ class UDPTrackerRequest {
 
     const auto maybe_connect_response = retry_call(
         [&]() -> std::optional<bytes> {
-          auto response = Net::udpRequest(m_announce_url, connect_request, 15s);
+          auto response = Net::udpRequest(m_announce_url, connect_request, 3s);
           if (response.empty()) {
             return {};
           }
           return response;
         },
-        4, 15s);
+        2, 3s);
 
     if (!maybe_connect_response) {
       logger()->debug("UDP Tracker request: empty connect response");
