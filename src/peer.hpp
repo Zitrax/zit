@@ -93,6 +93,8 @@ class PeerAcceptor {
                            ListeningPort port,
                            const std::string& bind_address) {
     // FIXME: Add check that already existing port use the same io_context/bind
+    // FIXME: Since we are using the io_context of the torrent, it should also
+    //        be removed/replaced when the torrent is stopped.
     m_acceptors.try_emplace(port, port, io_context, bind_address);
   }
 

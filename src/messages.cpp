@@ -248,6 +248,7 @@ size_t Message::parse(PeerConnection& connection) {
         case peer_wire_id::HAVE: {
           try {
             auto have_id = from_big_endian<uint32_t>(m_msg, 5);
+            logger()->trace("{}: Have {}", peer.str(), have_id);
             peer.have(have_id);
           } catch (const std::out_of_range&) {
             // Seen cases of too short messages here, for when it happen again

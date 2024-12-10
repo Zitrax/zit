@@ -466,9 +466,9 @@ Torrent::http_tracker_request(const Url& announce_url, TrackerEvent event) {
   url.add_param("compact=1");
 
   if (logger()->should_log(spdlog::level::debug)) {
-    logger()->debug("Tracker request:\n{}", url);
+    logger()->debug("HTTP Tracker request ({}):\n{}", event, url);
   } else {
-    logger()->info("Tracker request: {}", url.str());
+    logger()->info("HTTP Tracker request ({}): {}", event, url.str());
   }
 
   auto [headers, body] =
