@@ -104,7 +104,9 @@ auto start_seeder(const fs::path& data_dir,
        // Needed to be able to run iptables in the container
        "--cap-add", "NET_ADMIN",
        // For verbose output
-       "--env", "DEBUG=*",
+       "--env",
+       fmt::format("DEBUG={}",
+                   logger()->should_log(spdlog::level::debug) ? "*" : ""),
        //
        "webtorrent", "seed",
        // Torrent file

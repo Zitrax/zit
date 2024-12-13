@@ -1,5 +1,5 @@
 cmake_minimum_required (VERSION 3.24)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 23)
 project(zit CXX)
 
 option(USE_CLANG_TIDY "Use clang-tidy when building" ON)

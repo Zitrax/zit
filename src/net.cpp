@@ -69,6 +69,28 @@ namespace ssl = asio::ssl;
 
 namespace zit {
 
+vector<string> get_host_ip_addresses() {
+  vector<string> ip_addresses;
+  asio::io_context io_context;
+  asio::ip::tcp::resolver resolver(io_context);
+  asio::ip::tcp::resolver::query query(asio::ip::host_name(), "");
+  asio::ip::tcp::resolver::iterator it = resolver.resolve(query);
+
+  while (it != asio::ip::tcp::resolver::iterator()) {
+    asio::ip::tcp::endpoint endpoint = *it++;
+    ip_addresses.push_back(endpoint.address().to_string());
+  }
+
+  if (logger()->should_log(spdlog::level::debug)) {
+    logger()->debug("IP addresses for host '{}':", asio::ip::host_name());
+    for (const auto& ip : ip_addresses) {
+      logger()->debug("  {}", ip);
+    }
+  }
+
+  return ip_addresses;
+}
+
 /**
  * When using asio::read_until we need to match multiple markers to handle non
  * standard responses.
