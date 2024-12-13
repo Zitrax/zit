@@ -906,9 +906,7 @@ void Torrent::schedule_retry_pieces() {
   const auto interval_seconds =
       m_config.get(IntSetting::RETRY_PIECES_INTERVAL_SECONDS);
   m_retry_pieces_timer.expires_after(std::chrono::seconds(interval_seconds));
-  logger()->debug("Scheduling next retry_pieces in {}",
-                  std::chrono::duration_cast<std::chrono::seconds>(
-                      m_retry_pieces_timer.expires_from_now()));
+  logger()->debug("Scheduling next retry_pieces in {}s", interval_seconds);
   m_retry_pieces_timer.async_wait([this](const asio::error_code& ec) {
     if (!ec) {
       retry_pieces();
@@ -922,9 +920,7 @@ void Torrent::schedule_retry_peers() {
   const auto interval_seconds =
       m_config.get(IntSetting::RETRY_PEERS_INTERVAL_SECONDS);
   m_retry_peers_timer.expires_after(std::chrono::seconds(interval_seconds));
-  logger()->debug("Scheduling next retry_peers in {}",
-                  std::chrono::duration_cast<std::chrono::seconds>(
-                      m_retry_peers_timer.expires_from_now()));
+  logger()->debug("Scheduling next retry_peers in {}s", interval_seconds);
   m_retry_peers_timer.async_wait([this](const asio::error_code& ec) {
     if (!ec) {
       retry_peers();
