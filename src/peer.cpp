@@ -494,8 +494,18 @@ void Peer::set_remote_pieces(Bitfield bf) {
 }
 
 void Peer::have(uint32_t id) {
-  m_remote_pieces[id] = true;
-  m_torrent.init_client_pieces(m_remote_pieces.size());
+  if (m_remote_pieces.count() == 0) {
+    // If we get a have message before a bitfield, we assume that the remote
+    // has all pieces. This does not really seem to help, might remove or make
+    // configurable later.
+    logger()->warn("Remote never sent bitfield - assuming it has all pieces");
+    const auto [pieces_downloaded, number_of_pieces] = m_torrent.piece_status();
+    m_torrent.init_client_pieces(number_of_pieces);
+    m_remote_pieces = Bitfield(number_of_pieces);
+    m_remote_pieces.fill(number_of_pieces, true);
+  } else {
+    m_remote_pieces[id] = true;
+  }
   request_next_block();
 }
 
