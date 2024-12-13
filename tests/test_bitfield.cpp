@@ -423,3 +423,152 @@ TEST(Bitfield, const_bitfield) {
   const Bitfield& cbf = bf;
   EXPECT_TRUE(cbf[7]);
 }
+
+TEST(Bitfield, fill) {
+  Bitfield bf;
+
+  // Pointless - but should be allowed and not crash
+  bf.fill(0, true);
+
+  // Should throw since we have no size
+  EXPECT_THROW(bf.fill(1, true), std::invalid_argument);
+  EXPECT_THROW(bf.fill(8, true), std::invalid_argument);
+  EXPECT_THROW(bf.fill(9, true), std::invalid_argument);
+
+  // Test single byte fill
+  bf = Bitfield(8);
+  bf.fill(1, true);
+  EXPECT_EQ(bf.count(), 1);
+  EXPECT_TRUE(bf[0]);
+  EXPECT_FALSE(bf[1]);
+  EXPECT_FALSE(bf[2]);
+  EXPECT_FALSE(bf[3]);
+  EXPECT_FALSE(bf[4]);
+  EXPECT_FALSE(bf[5]);
+  EXPECT_FALSE(bf[6]);
+  EXPECT_FALSE(bf[7]);
+
+  bf.fill(8, true);
+  EXPECT_EQ(bf.count(), 8);
+  EXPECT_TRUE(bf[0]);
+  EXPECT_TRUE(bf[1]);
+  EXPECT_TRUE(bf[2]);
+  EXPECT_TRUE(bf[3]);
+  EXPECT_TRUE(bf[4]);
+  EXPECT_TRUE(bf[5]);
+  EXPECT_TRUE(bf[6]);
+  EXPECT_TRUE(bf[7]);
+
+  // Partial fill single byte
+  bf = Bitfield(8);
+  bf.fill(3, true, 3);
+  EXPECT_EQ(bf.count(), 3);
+  EXPECT_FALSE(bf[0]);
+  EXPECT_FALSE(bf[1]);
+  EXPECT_FALSE(bf[2]);
+  EXPECT_TRUE(bf[3]);
+  EXPECT_TRUE(bf[4]);
+  EXPECT_TRUE(bf[5]);
+  EXPECT_FALSE(bf[6]);
+  EXPECT_FALSE(bf[7]);
+
+  // Partial fill with offset
+  bf = Bitfield(8 * 3);
+  // This should result in: 00000011 11111111 10000000
+  bf.fill(11, true, 6);
+  EXPECT_EQ(bf.count(), 11);
+  EXPECT_FALSE(bf[0]);
+  EXPECT_FALSE(bf[1]);
+  EXPECT_FALSE(bf[2]);
+  EXPECT_FALSE(bf[3]);
+  EXPECT_FALSE(bf[4]);
+  EXPECT_FALSE(bf[5]);
+  EXPECT_TRUE(bf[6]);
+  EXPECT_TRUE(bf[7]);
+  EXPECT_TRUE(bf[8]);
+  EXPECT_TRUE(bf[9]);
+  EXPECT_TRUE(bf[10]);
+  EXPECT_TRUE(bf[11]);
+  EXPECT_TRUE(bf[12]);
+  EXPECT_TRUE(bf[13]);
+  EXPECT_TRUE(bf[14]);
+  EXPECT_TRUE(bf[15]);
+  EXPECT_TRUE(bf[16]);
+  EXPECT_FALSE(bf[17]);
+  EXPECT_FALSE(bf[18]);
+  EXPECT_FALSE(bf[19]);
+  EXPECT_FALSE(bf[20]);
+  EXPECT_FALSE(bf[21]);
+  EXPECT_FALSE(bf[22]);
+  EXPECT_FALSE(bf[23]);
+
+  // Reverse previous tests - fill with zeroes instead
+
+  bf = Bitfield(8);
+  bf.fill(8, true);
+  bf.fill(1, false);
+  EXPECT_EQ(bf.count(), 7);
+  EXPECT_FALSE(bf[0]);
+  EXPECT_TRUE(bf[1]);
+  EXPECT_TRUE(bf[2]);
+  EXPECT_TRUE(bf[3]);
+  EXPECT_TRUE(bf[4]);
+  EXPECT_TRUE(bf[5]);
+  EXPECT_TRUE(bf[6]);
+  EXPECT_TRUE(bf[7]);
+
+  bf.fill(8, false);
+  EXPECT_EQ(bf.count(), 0);
+  EXPECT_FALSE(bf[0]);
+  EXPECT_FALSE(bf[1]);
+  EXPECT_FALSE(bf[2]);
+  EXPECT_FALSE(bf[3]);
+  EXPECT_FALSE(bf[4]);
+  EXPECT_FALSE(bf[5]);
+  EXPECT_FALSE(bf[6]);
+  EXPECT_FALSE(bf[7]);
+
+  // Partial fill single byte
+  bf = Bitfield(8);
+  bf.fill(8, true);
+  bf.fill(3, false, 3);
+  EXPECT_EQ(bf.count(), 5);
+  EXPECT_TRUE(bf[0]);
+  EXPECT_TRUE(bf[1]);
+  EXPECT_TRUE(bf[2]);
+  EXPECT_FALSE(bf[3]);
+  EXPECT_FALSE(bf[4]);
+  EXPECT_FALSE(bf[5]);
+  EXPECT_TRUE(bf[6]);
+  EXPECT_TRUE(bf[7]);
+
+  // Partial fill with offset
+  bf = Bitfield(8 * 3);
+  bf.fill(24, true);
+  bf.fill(11, false, 6);
+  EXPECT_EQ(bf.count(), 13);
+  EXPECT_TRUE(bf[0]);
+  EXPECT_TRUE(bf[1]);
+  EXPECT_TRUE(bf[2]);
+  EXPECT_TRUE(bf[3]);
+  EXPECT_TRUE(bf[4]);
+  EXPECT_TRUE(bf[5]);
+  EXPECT_FALSE(bf[6]);
+  EXPECT_FALSE(bf[7]);
+  EXPECT_FALSE(bf[8]);
+  EXPECT_FALSE(bf[9]);
+  EXPECT_FALSE(bf[10]);
+  EXPECT_FALSE(bf[11]);
+  EXPECT_FALSE(bf[12]);
+  EXPECT_FALSE(bf[13]);
+  EXPECT_FALSE(bf[14]);
+  EXPECT_FALSE(bf[15]);
+  EXPECT_FALSE(bf[16]);
+  EXPECT_TRUE(bf[17]);
+  EXPECT_TRUE(bf[18]);
+  EXPECT_TRUE(bf[19]);
+  EXPECT_TRUE(bf[20]);
+  EXPECT_TRUE(bf[21]);
+  EXPECT_TRUE(bf[22]);
+  EXPECT_TRUE(bf[23]);
+}

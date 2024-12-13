@@ -75,6 +75,65 @@ Bitfield::Proxy Bitfield::operator[](bytes::size_type i) {
   return {*this, i};
 }
 
+void Bitfield::fill(bytes::size_type count, bool val, bytes::size_type start) {
+  std::cerr << fmt::format("Fill: {} {} {} {}", count, val, start,
+                           m_bytes.size())
+            << "\n";
+  if (count == 0) {
+    return;
+  }
+
+  const auto bit_end = start + count;
+  auto byte_start = start / 8;
+  auto byte_end = (bit_end - 1) / 8;
+
+  if (byte_end >= m_bytes.size()) {
+    throw std::invalid_argument("Bitfield::fill: Out of range");
+  }
+
+  if (byte_start == byte_end) {
+    for (auto i = start; i < bit_end; ++i) {
+      operator[](i) = val;
+    }
+    return;
+  }
+
+  // Fill the first byte with the remaining bits
+  if (start % 8) {
+    // Mask for the first byte, for example if we start at 3 we want to set
+    // the first 5 bits to 1, i.e. 0b00011111
+    const auto mask = static_cast<uint8_t>(0xFF >> start % 8);
+    m_bytes[byte_start] =
+        val ? std::byte{static_cast<uint8_t>(
+                  static_cast<uint8_t>(m_bytes[byte_start]) | mask)}
+            : std::byte{static_cast<uint8_t>(
+                  static_cast<uint8_t>(m_bytes[byte_start]) & ~mask)};
+    byte_start++;
+  }
+  // Fill the last byte with the remaining bits
+  if (bit_end % 8) {
+    // Mask for the end byte, for example if we end at 10 we want to set
+    // the last 2 bits to 1, i.e. 0b11000000
+    const auto mask = static_cast<uint8_t>(0xFF << (8 - (bit_end % 8)));
+    m_bytes[byte_end] =
+        val ? std::byte{static_cast<uint8_t>(
+                  static_cast<uint8_t>(m_bytes[byte_end]) | mask)}
+            : std::byte{static_cast<uint8_t>(
+                  static_cast<uint8_t>(m_bytes[byte_end]) & ~mask)};
+    byte_end--;
+  }
+
+  // Fill the rest of the bytes
+  const auto byte_val = val ? std::byte{0xFF} : std::byte{0x00};
+  std::cerr << fmt::format("FillX: {} {} {} {}", byte_start, byte_end, byte_val,
+                           m_bytes.size())
+            << "\n";
+  if (byte_start <= byte_end) {
+    std::fill(m_bytes.begin() + byte_start, m_bytes.begin() + byte_end + 1,
+              byte_val);
+  }
+}
+
 Bitfield Bitfield::operator-(const Bitfield& other) const {
   auto len = std::min(size_bytes(), other.size_bytes());
   Bitfield ret;
