@@ -865,10 +865,14 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
   // To avoid connecting to our own listening peer
   const auto is_local_peer = [&](const auto& peer) {
     const auto& url = peer->url();
-    // FIXME: Get hold of the ip automatically?
-    return url &&
-           (url->host() == "localhost" || url->host() == "172.17.0.1" ||
-            url->host() == "192.168.0.18") &&
+    static const auto local_ips = [] {
+      auto resolved = get_host_ip_addresses();
+      resolved.emplace_back("localhost");
+      static auto docker_ip{"172.17.0.1"};
+      resolved.emplace_back(docker_ip);
+      return resolved;
+    }();
+    return url && ranges::contains(local_ips, url->host()) &&
            url->port().value_or(0) == m_listening_port.get();
   };
 

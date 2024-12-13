@@ -20,6 +20,11 @@ using ::testing::ElementsAreArray;
 using namespace zit;
 using namespace std;
 
+TEST(net, get_host_ip_addresses) {
+  auto ip_addresses = get_host_ip_addresses();
+  EXPECT_FALSE(ip_addresses.empty());
+}
+
 TEST(net, url_encode) {
   string input =
       "\x12\x34\x56\x78\x9a\xbc\xde\xf1\x23\x45"

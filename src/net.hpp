@@ -16,6 +16,11 @@ namespace zit {
 using string_list = std::vector<std::string>;
 using namespace std::string_literals;
 
+/**
+ * Get a list of all known IPs representing localhost.
+ */
+std::vector<std::string> get_host_ip_addresses();
+
 class HttpException : public std::runtime_error {
  public:
   HttpException(const std::string& what_arg, unsigned int status_code)
