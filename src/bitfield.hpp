@@ -83,6 +83,15 @@ class Bitfield {
   Proxy operator[](bytes::size_type i);
 
   /**
+   * Fill the first n bits with 0 or 1.
+   *
+   * @param count number of bits to set
+   * @param val value to set
+   * @param start start index
+   */
+  void fill(bytes::size_type count, bool val, bytes::size_type start = 0);
+
+  /**
    * Subtract another bitfield.
    */
   Bitfield operator-(const Bitfield& other) const;
