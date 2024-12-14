@@ -35,8 +35,11 @@ class TestWithTmpDir : public ::testing::Test {
       try {
         std::filesystem::remove_all(m_dirname);
       } catch (const std::exception& ex) {
-        std::cerr << "WARN: Could not cleanup " << m_dirname << ": "
-                  << ex.what() << "\n";
+        try {
+          std::cerr << "WARN: Could not cleanup " << m_dirname << ": "
+                    << ex.what() << "\n";
+        } catch (...) {
+        }
       }
     }
   }
