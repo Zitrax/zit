@@ -23,14 +23,11 @@ using PieceCallback =
 using DisconnectCallback = std::function<void(Peer*)>;
 
 /**
- * Function taking an Url and returning the resulting Headers,Body of the
- * request. Matching Net::httpGet(const Url&).
- *
- * FIXME: Make bind_address something better than a plain string
+ * Function taking an Url + bind address and returning the resulting
+ * Headers,Body of the request. Matching Net::httpGet(const Url&).
  */
-using HttpGet =
-    std::function<std::tuple<std::string, std::string>(const Url&,
-                                                       const std::string&)>;
+using HttpGet = std::function<
+    std::tuple<std::string, std::string>(const Url&, const Net::BindAddress&)>;
 
 /**
  * Information object for each file in the torrent.
@@ -111,7 +108,8 @@ class Torrent {
       std::filesystem::path file,
       std::filesystem::path data_dir = "",
       const Config& config = SingletonDirectoryFileConfig::getInstance(),
-      HttpGet http_get = [](const Url& url, const std::string& bind_address) {
+      HttpGet http_get = [](const Url& url,
+                            const Net::BindAddress& bind_address) {
         return Net::httpGet(url, bind_address);
       });
 

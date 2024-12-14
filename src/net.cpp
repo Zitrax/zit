@@ -322,13 +322,13 @@ void addWindowsCertificates(const SSL_CTX* ctx) {
 // Based on example at
 // https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/overview/ssl.html
 std::tuple<std::string, std::string> httpsGet(const Url& url,
-                                              const std::string& bind_address) {
+                                              const Net::BindAddress& bind_address) {
   using ssl_socket = ssl::stream<tcp::socket>;
   // Create a context that uses the default paths for
   // finding CA certificates.
   ssl::context ctx(ssl::context::tlsv12);
 
-  if (!bind_address.empty() && bind_address != "127.0.0.1") {
+  if (!bind_address.get().empty() && bind_address.get() != "127.0.0.1") {
     throw std::runtime_error("bind for ssl not yet supported");
   }
 
@@ -400,7 +400,7 @@ std::tuple<std::string, std::string> httpsGet(const Url& url,
 //
 std::tuple<std::string, std::string> Net::httpGet(
     const Url& url,
-    const std::string& bind_address) {
+    const BindAddress& bind_address) {
   if (url.scheme() == "https" || url.port().value_or(1) == 443) {
     return httpsGet(url, bind_address);
   }
@@ -417,17 +417,17 @@ std::tuple<std::string, std::string> Net::httpGet(
   // An endpoint might be IPv4 or IPv6 (currently hardcoded to v4)
   tcp::socket socket(io_service);
   try {
-    if (!bind_address.empty()) {
+    if (!bind_address.get().empty()) {
       socket.open(asio::ip::tcp::v4());
       socket.bind(
-          asio::ip::tcp::endpoint(asio::ip::make_address(bind_address), 0));
+          asio::ip::tcp::endpoint(asio::ip::make_address(bind_address.get()), 0));
       logger()->debug("Http request from {}:{}",
                       socket.local_endpoint().address().to_string(),
                       socket.local_endpoint().port());
     }
   } catch (const std::exception&) {
     throw_with_nested(std::runtime_error(
-        fmt::format("Could not bind to address: '{}'", bind_address)));
+        fmt::format("Could not bind to address: '{}'", bind_address.get())));
   }
   asio::error_code error = asio::error::host_not_found;
   asio::connect(socket, endpoints, error);

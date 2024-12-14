@@ -169,6 +169,8 @@ class Net {
 
   Net() = default;
 
+  using BindAddress = StrongType<std::string, struct BindAddressTag>;
+
   /**
    * Perform a http/https request.
    *
@@ -176,7 +178,7 @@ class Net {
    */
   static std::tuple<std::string, std::string> httpGet(
       const Url& url,
-      const std::string& bind_address = "127.0.0.1");
+      const BindAddress& bind_address = BindAddress("127.0.0.1"));
 
   /**
    * Perform a udp request.
