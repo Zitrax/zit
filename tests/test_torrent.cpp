@@ -144,8 +144,6 @@ TEST_F(torrent, multi_listen) {
   zit::Torrent t2(m_io_context, data_dir / "test.torrent");
 }
 
-#ifdef __linux__
-
 // 127.0.0.1:65535
 const auto FAKE_URL = "\x7F\x00\x00\x01\xFF\xFF"s;
 
@@ -229,5 +227,3 @@ TEST_F(torrent_with_tmp_dir, tracker_requests_announce_list) {
   EXPECT_THAT(requests,
               testing::UnorderedElementsAreArray({"t1_1", "t1_2", "t2_1"}));
 }
-
-#endif  // __linux__
