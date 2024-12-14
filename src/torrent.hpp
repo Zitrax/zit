@@ -65,27 +65,6 @@ class FileInfo {
 std::ostream& operator<<(std::ostream& os, const zit::FileInfo& file_info);
 
 /**
- * Current each torrent has it's own run function. That results in each torrent
- * having to run in it's own thread. That seem unnecessary and would not really
- * scale.
- *
- * Also apparently new asio has deprecated io_service that is in current use,
- * io_context should be used instead.
- *
- * Probably what makes most sense is to provide an io_context from the outside
- * to the torrent, then it's up to the caller if it should be one global or
- * more. Something like: asio::io_context io; Torrent t1(io, ...); Torrent
- * t2(io, ...); io.run();
- *
- * However the torrent class currently performas some maintenance in it's run
- * function, how should that be handled if there is no run function and run is
- * called on the context from the outside?
- *
- * Could the maintenance functions could be scheduled instead of being rate
- * limited like now?
- */
-
-/**
  * Represents one torrent. Bookeeps all pieces and block information.
  *
  * @note About locking; implemented as suggested in
