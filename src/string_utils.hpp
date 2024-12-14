@@ -144,7 +144,9 @@ inline std::string bytesToHumanReadable(int64_t bytes) {
                                                              {0, "B"}};
   const auto abytes = std::abs(bytes);
   const auto* sign = (bytes < 0 ? "-" : "");
-  for (const auto& [limit, unit] : limits) {
+  for (const std::tuple<int64_t, std::string>& limit_unit : limits) {
+    const int64_t& limit = std::get<0>(limit_unit);
+    const std::string& unit = std::get<1>(limit_unit);
     if (abytes >= limit) {
       if (limit) {
         const auto w = abytes / limit;

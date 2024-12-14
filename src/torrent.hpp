@@ -253,8 +253,8 @@ class Torrent {
   /**
    * Add peer if there is no other peer handling the same url.
    *
-   * @parm peer The peer to add
-   * @parm peers The vector to add the peer to, defaults to m_peers
+   * @param peer The peer to add
+   * @param peers The vector to add the peer to, defaults to m_peers
    *
    * @return true if the peer was added
    */
