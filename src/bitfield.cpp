@@ -125,12 +125,10 @@ void Bitfield::fill(bytes::size_type count, bool val, bytes::size_type start) {
 
   // Fill the rest of the bytes
   const auto byte_val = val ? std::byte{0xFF} : std::byte{0x00};
-  std::cerr << fmt::format("FillX: {} {} {} {}", byte_start, byte_end, byte_val,
-                           m_bytes.size())
-            << "\n";
+  using difftype = decltype(m_bytes)::iterator::difference_type;
   if (byte_start <= byte_end) {
-    std::fill(m_bytes.begin() + byte_start, m_bytes.begin() + byte_end + 1,
-              byte_val);
+    std::fill(m_bytes.begin() + numeric_cast<difftype>(byte_start),
+              m_bytes.begin() + numeric_cast<difftype>(byte_end + 1), byte_val);
   }
 }
 

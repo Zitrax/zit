@@ -73,6 +73,8 @@ if(UNIX)
       -Weverything
       -Wno-c++98-compat                   # Don't care about c++98
       -Wno-c++98-compat-pedantic          # Don't care about c++98
+      -Wno-switch-default                 # Conflicts with -Wcovered-switch-default
+      -Wno-ctad-maybe-unsupported         # Triggers on use of scoped_lock
       -Wno-padded                         #
       -Wno-weak-vtables                   #
       -Wno-global-constructors            # performance startup-time
