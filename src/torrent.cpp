@@ -472,7 +472,7 @@ Torrent::http_tracker_request(const Url& announce_url, TrackerEvent event) {
   }
 
   auto [headers, body] =
-      m_http_get(url, m_config.get(StringSetting::BIND_ADDRESS));
+      m_http_get(url, Net::BindAddress(m_config.get(StringSetting::BIND_ADDRESS)));
 
   std::vector<std::shared_ptr<Peer>> peers;
 

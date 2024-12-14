@@ -136,7 +136,8 @@ TEST(net, httpGetHTTPS) {
 
   // Since bind for https has not yet been implemented
   // verify that it throws on a non-default bind address
-  EXPECT_THROW(Net::httpGet(url, "192.168.0.1"), std::runtime_error);
+  EXPECT_THROW(Net::httpGet(url, zit::Net::BindAddress("192.168.0.1")),
+               std::runtime_error);
 }
 
 TEST(net, chunkedTransfer) {
