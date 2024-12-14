@@ -67,7 +67,10 @@ class Process {
     try {
       terminate();
     } catch (std::exception& ex) {
-      std::cout << "ERROR in ~Process: " << ex.what();
+      try {
+        std::cout << "ERROR in ~Process: " << ex.what();
+      } catch (...) {
+      }
     }
   }
 
