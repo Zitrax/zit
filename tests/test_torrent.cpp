@@ -170,7 +170,7 @@ TEST_F(torrent_with_tmp_dir, tracker_requests_announce) {
 
   zit::Torrent t(m_io_context, torrent_file, tmp_dir(),
                  zit::SingletonDirectoryFileConfig::getInstance(),
-                 [&](const zit::Url& url, const std::string&) {
+                 [&](const zit::Url& url, const zit::Net::BindAddress&) {
                    requests.push_back(url.host());
                    BeDict peers;
                    peers["peers"] =
@@ -215,7 +215,7 @@ TEST_F(torrent_with_tmp_dir, tracker_requests_announce_list) {
       m_io_context, torrent_file, tmp_dir(),
       zit::SingletonDirectoryFileConfig::getInstance(),
       // Keep track of the requests and make only the last one pass
-      [&, call = 0](const zit::Url& url, const std::string&) mutable {
+      [&, call = 0](const zit::Url& url, const zit::Net::BindAddress&) mutable {
         requests.push_back(url.host());
         BeDict peers;
         peers["peers"] = Element::build(
