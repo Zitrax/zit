@@ -17,8 +17,13 @@ using namespace std;
 Process::Process(const string& name,
                  vector<string> argv,
                  const char* cwd,
-                 vector<string> stop_cmd)
-    : m_pid(0), m_name(name), m_stop_cmd(move(stop_cmd)) {
+                 vector<string> stop_cmd,
+                 Mode background)
+    : m_pid(0),
+      m_name(name),
+      m_stop_cmd(move(stop_cmd)),
+      m_mode(background),
+      m_cwd(cwd) {
   STARTUPINFO si;
   PROCESS_INFORMATION pi;
   ZeroMemory(&si, sizeof(si));
@@ -39,20 +44,23 @@ Process::Process(const string& name,
   CloseHandle(pi.hThread);
   logger()->trace("Started '{}'", commandLine);
 
-  // Slight delay to verify that process did not immediately die
-  // for more clear and faster error response.
-  this_thread::sleep_for(200ms);
-  DWORD exitCode;
-  if (GetExitCodeProcess(pi.hProcess, &exitCode) && exitCode != STILL_ACTIVE) {
-    CloseHandle(pi.hProcess);
-    throw runtime_error("Process " + m_name + " is already dead. Aborting!");
+  if (m_mode == Mode::BACKGROUND) {
+    // Slight delay to verify that process did not immediately die
+    // for more clear and faster error response.
+    this_thread::sleep_for(200ms);
+    DWORD exitCode;
+    if (GetExitCodeProcess(pi.hProcess, &exitCode) &&
+        exitCode != STILL_ACTIVE) {
+      CloseHandle(pi.hProcess);
+      throw runtime_error("Process " + m_name + " is already dead. Aborting!");
+    }
   }
   CloseHandle(pi.hProcess);
   logger()->info("Process {} started", m_name);
   logger()->debug("Command: {}", commandLine);
 }
 
-bool Process::wait_for_exit(chrono::seconds timeout) {
+bool Process::wait_for_exit(chrono::milliseconds timeout) {
   if (!m_pid) {
     return false;
   }
@@ -100,7 +108,7 @@ void Process::terminate() {
     // If stop_cmd, run and wait maximum 10sec, but we should wait no longer
     // than the process
     if (!m_stop_cmd.empty()) {
-      Process stop_process("stop_" + m_name, m_stop_cmd);
+      Process stop_process("stop_" + m_name, m_stop_cmd, m_cwd);
       // Using 35s since 30s is the default max time docker use on windows
       if (!stop_process.wait_for_exit(35s)) {
         logger()->warn("Stop command did not exit within 35s");

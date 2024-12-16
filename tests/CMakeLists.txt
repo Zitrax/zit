@@ -35,6 +35,7 @@ add_executable(zitest
   test_main.cpp
   test_net.cpp
   test_peer.cpp
+  test_process.cpp
   test_random.cpp
   test_retry.cpp
   test_sha1.cpp

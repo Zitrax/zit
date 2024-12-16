@@ -1,19 +1,21 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #pragma once
 
-#include <filesystem>
-
-#include <stdio.h>
-#include <array>
-#include <asio/io_context.hpp>
-#include <regex>
-#include <stdexcept>
-#include <string>
 #include "gtest/gtest.h"
 #include "logger.hpp"
 #include "random.hpp"
 #include "spdlog/fmt/fmt.h"
 #include "spdlog/spdlog.h"
+
+#include <asio/io_context.hpp>
+
+#include <array>
+#include <cstdio>
+#include <filesystem>
+#include <fstream>
+#include <regex>
+#include <stdexcept>
+#include <string>
 
 class TestWithIOContext {
  public:
