@@ -44,8 +44,12 @@ class Process {
   Process(Process&& rhs)
       : m_pid(rhs.m_pid),
         m_name(rhs.m_name),
-        m_stop_cmd(std::move(rhs.m_stop_cmd)) {
+        // Copy to avoid double stop cmd
+        m_stop_cmd(rhs.m_stop_cmd),
+        m_mode(rhs.m_mode),
+        m_cwd(rhs.m_cwd) {
     rhs.m_pid = 0;  // Ensure we wont kill the moved from process
+    rhs.m_stop_cmd.clear();
   }
   Process& operator=(Process&& rhs) {
     m_pid = rhs.m_pid;
