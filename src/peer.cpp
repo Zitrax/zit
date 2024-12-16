@@ -295,13 +295,13 @@ asio::awaitable<void> PeerAcceptor::listen() {
       }
       // Now add a new listening peer for this torrent
       const auto accept_port = [&]() -> decltype(port) {
-        // FIXME: Remove hardcoded ip
-        if (ip == "192.168.0.18") {
-          logger()->info("Translating port for Docker testing");
-          return 51413;
-        } else {
-          return port;
-        }
+        // TODO: For docker testing - revisit or delete later
+        // if (ip == "192.168.0.18") {
+        //  logger()->info("Translating port for Docker testing");
+        //  return 51413;
+        //} else {
+        return port;
+        //}
       }();
       torrent->add_peer(make_shared<Peer>(
           Url{fmt::format("http://{}:{}", ip, accept_port)}, *torrent));
