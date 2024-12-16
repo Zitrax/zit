@@ -62,21 +62,27 @@ Process::Process(const string& name,
 
 bool Process::wait_for_exit(chrono::milliseconds timeout) {
   if (!m_pid) {
+    logger()->trace("No process to wait for");
     return false;
   }
 
   HANDLE hProcess = OpenProcess(SYNCHRONIZE, FALSE, m_pid);
   if (!hProcess) {
+    logger()->trace("Failed to open process for waiting - {}", GetLastError());
     return false;
   }
 
-  switch (WaitForSingleObject(
-      hProcess, numeric_cast<DWORD>(
-                    duration_cast<chrono::milliseconds>(timeout).count()))) {
+  const auto wait_time_ms =
+      numeric_cast<DWORD>(duration_cast<chrono::milliseconds>(timeout).count());
+  logger()->trace("Waiting for process {} to exit for max {}ms", m_name,
+                  wait_time_ms);
+  switch (WaitForSingleObject(hProcess, wait_time_ms)) {
     case WAIT_OBJECT_0:
+      logger()->trace("Process {} exited", m_name);
       m_pid = 0;
       return true;
     case WAIT_TIMEOUT:
+      logger()->trace("Process {} did not exit within timeout", m_name);
       return false;
     case WAIT_FAILED:
       logger()->error("Failed to wait for process - {}", GetLastError());
@@ -104,18 +110,18 @@ void Process::terminate() {
       logger()->info("Process {} terminated", m_name);
     }
     CloseHandle(hProcess);
+    m_pid = 0;
+  }
 
-    // If stop_cmd, run and wait maximum 10sec, but we should wait no longer
-    // than the process
-    if (!m_stop_cmd.empty()) {
-      Process stop_process("stop_" + m_name, m_stop_cmd, m_cwd);
-      // Using 35s since 30s is the default max time docker use on windows
-      if (!stop_process.wait_for_exit(35s)) {
-        logger()->warn("Stop command did not exit within 35s");
-      }
+  // If stop_cmd, run and wait maximum 10sec, but we should wait no longer
+  // than the process
+  if (!m_stop_cmd.empty()) {
+    Process stop_process("stop_" + m_name, m_stop_cmd, m_cwd);
+    // Using 35s since 30s is the default max time docker use on windows
+    if (!stop_process.wait_for_exit(35s)) {
+      logger()->warn("Stop command did not exit within 35s");
     }
   }
-  m_pid = 0;
 }
 
 }  // namespace zit
