@@ -19,11 +19,13 @@ const auto sleep_command = []() -> std::vector<std::string> {
 #ifdef __linux__
   return {"sleep", "1"};
 #else
-  // Windows timeout is weird, it does not seem to wait exactly N seconds
-  // instead I am guessing it waits for the next N seconds boundary. I.e.
-  // timeout 1 might wait for anything between 0 and 1 seconds, thus we
-  // use 2 seconds to be sure to wait more than 1 second.
-  return {"timeout", "/NOBREAK", "/T", "2"};
+  // The timeout command on windows cannot run in github ci,
+  // fails there with:
+  //  ERROR: Input redirection is not supported, exiting the process
+  //  immediately.
+  // But can use ping instead as suggested here:
+  // https://stackoverflow.com/a/79268314/11722
+  return {"ping", "-n", "2", "-w", "1000", "localhost"};
 #endif
 }();
 
