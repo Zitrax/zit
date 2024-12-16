@@ -19,10 +19,21 @@ namespace zit {
  */
 class Process {
  public:
+  /**
+   * Mode of running the process.
+   */
+  enum class Mode {
+    /** Run in background. Constructor checks that it's up and running */
+    BACKGROUND,
+    /** For now this just means the constructor check is not done */
+    FOREGROUND
+  };
+
   Process(const std::string& name,
           std::vector<std::string> argv,
           const char* cwd = nullptr,
-          std::vector<std::string> stop_cmd = {});
+          std::vector<std::string> stop_cmd = {},
+          Mode background = Mode::BACKGROUND);
 
   // Since this should be created and deleted only once
   // forbid copying and assignment.
@@ -58,7 +69,7 @@ class Process {
    * @param timeout The max time to wait for the process to exit.
    * @return True if the process exited, false if the timeout was reached.
    */
-  [[nodiscard]] bool wait_for_exit(std::chrono::seconds timeout);
+  [[nodiscard]] bool wait_for_exit(std::chrono::milliseconds timeout);
 
   /**
    * Kill the process if not already dead.
@@ -78,6 +89,8 @@ class Process {
   pid_t m_pid;
   std::string m_name;
   std::vector<std::string> m_stop_cmd;
+  Mode m_mode;
+  const char* m_cwd;
 };
 
 }  // namespace zit
