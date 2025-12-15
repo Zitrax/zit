@@ -70,8 +70,7 @@ PeerConnection::PeerConnection(IConnectionUrlProvider& peer,
       resolver_(io_service),
       socket_(socket ? std::move(socket)
                      : make_unique<tcp::socket>(io_service, tcp::v4())),
-      m_connection_port(connection_port),
-      m_io_service(io_service) {
+      m_connection_port(connection_port) {
   // Note use of socket constructor that does not bind such
   // that we can set the options before that.
 }

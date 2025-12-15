@@ -128,7 +128,7 @@ class Element : public std::enable_shared_from_this<Element> {
     if (!ptr) {
       throw BencodeConversionError("Could not convert to type");
     }
-    return ptr;
+    return std::move(ptr);
   }
 
   template <typename T>

@@ -71,17 +71,19 @@ if(UNIX)
     # Be strict and just disable unwanted or noisy warnings
     add_compile_options(
       -Weverything
-      -Wno-c++98-compat                   # Don't care about c++98
-      -Wno-c++98-compat-pedantic          # Don't care about c++98
-      -Wno-switch-default                 # Conflicts with -Wcovered-switch-default
-      -Wno-ctad-maybe-unsupported         # Triggers on use of scoped_lock
-      -Wno-padded                         #
-      -Wno-weak-vtables                   #
-      -Wno-global-constructors            # performance startup-time
-      -Wno-exit-time-destructors          # similar as ^ for destructors
-      -Wno-undefined-func-template        # does not seem very important
-      -Wno-zero-as-null-pointer-constant  # fails clang-10 on travis but not locally?
-      -Wno-disabled-macro-expansion       # Does not work when interfacing with csignal
+      -Wno-c++98-compat                      # Don't care about c++98
+      -Wno-c++98-compat-pedantic             # Don't care about c++98
+      -Wno-switch-default                    # Conflicts with -Wcovered-switch-default
+      -Wno-ctad-maybe-unsupported            # Triggers on use of scoped_lock
+      -Wno-padded                            #
+      -Wno-weak-vtables                      #
+      -Wno-global-constructors               # performance startup-time
+      -Wno-exit-time-destructors             # similar as ^ for destructors
+      -Wno-undefined-func-template           # does not seem very important
+      -Wno-zero-as-null-pointer-constant     # fails clang-10 on travis but not locally?
+      -Wno-disabled-macro-expansion          # Does not work when interfacing with csignal
+      -Wno-unsafe-buffer-usage-in-libc-call  # Complains about fgets but would like finer grain control like https://github.com/llvm/llvm-project/issues/127849
+      -Wno-unsafe-buffer-usage-in-container  # We sametimes use spans to shorten the bound
     )
   elseif(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
     add_compile_options(

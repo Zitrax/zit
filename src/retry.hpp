@@ -38,7 +38,7 @@ inline auto retry_call(
   for (unsigned i = 0; i < retries; ++i) {
     last_call = Clock::now();
     if (auto ret = callable(); ret || i == retries - 1) {
-      return ret;
+      return std::move(ret);
     }
     const auto time_spent = Clock::now() - last_call;
     if (i < (retries - 1)) {
