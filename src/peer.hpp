@@ -80,7 +80,6 @@ class PeerConnection {
   bool m_connected = false;
   bool m_sending = false;
   ConnectionPort m_connection_port;
-  asio::io_service& m_io_service;
 };
 
 class PeerAcceptor {

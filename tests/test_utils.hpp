@@ -72,7 +72,7 @@ inline std::string exec(const std::string& cmd) {
   std::array<char, 128> buffer;
   std::string result;
   while (!feof(pipe)) {
-    if (fgets(buffer.data(), 128, pipe) != nullptr) {
+    if (fgets(buffer.data(), buffer.size(), pipe) != nullptr) {
       result += buffer.data();
     }
   }

@@ -25,8 +25,8 @@
     },
     {
       "name": "spdlog",
-      "version": "1.14.1"
+      "version": "1.16.0"
     }
   ],
-  "builtin-baseline": "8ae59b5b1329a51875abc71d528da93d9c3e8972"
+  "builtin-baseline": "74e6536215718009aae747d86d84b78376bf9e09"
 }

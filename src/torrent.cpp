@@ -210,7 +210,7 @@ Torrent::Torrent(asio::io_context& io_context,
                     tier_output_list, [](const auto& elm) {
                       return elm->template to<TypedElement<string>>()->val();
                     });
-      return tier_output_list;
+      return std::move(tier_output_list);
     });
   }
 
@@ -870,7 +870,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
       resolved.emplace_back("localhost");
       static auto docker_ip{"172.17.0.1"};
       resolved.emplace_back(docker_ip);
-      return resolved;
+      return std::move(resolved);
     }();
     return url && ranges::contains(local_ips, url->host()) &&
            url->port().value_or(0) == m_listening_port.get();
