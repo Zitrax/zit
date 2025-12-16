@@ -5,10 +5,11 @@
 #include <openssl/tls1.h>
 #include <openssl/x509.h>
 #include <openssl/x509_vfy.h>
+#include <spdlog/common.h>
 #include <asio/buffer.hpp>
 #include <asio/buffers_iterator.hpp>
 #include <asio/completion_condition.hpp>
-#include <asio/connect.hpp>
+#include <asio/connect.hpp>  // NOLINT(misc-include-cleaner)
 #include <asio/detail/socket_ops.hpp>
 #include <asio/error.hpp>
 #include <asio/error_code.hpp>
@@ -16,6 +17,7 @@
 #include <asio/io_service.hpp>
 #include <asio/ip/address.hpp>
 #include <asio/ip/address_v4.hpp>
+#include <asio/ip/host_name.hpp>
 #include <asio/ip/tcp.hpp>
 #include <asio/ip/udp.hpp>
 #include <asio/read_until.hpp>
@@ -73,11 +75,11 @@ vector<string> get_host_ip_addresses() {
   vector<string> ip_addresses;
   asio::io_context io_context;
   asio::ip::tcp::resolver resolver(io_context);
-  asio::ip::tcp::resolver::query query(asio::ip::host_name(), "");
+  const asio::ip::tcp::resolver::query query(asio::ip::host_name(), "");
   asio::ip::tcp::resolver::iterator it = resolver.resolve(query);
 
   while (it != asio::ip::tcp::resolver::iterator()) {
-    asio::ip::tcp::endpoint endpoint = *it++;
+    const asio::ip::tcp::endpoint endpoint = *it++;
     ip_addresses.push_back(endpoint.address().to_string());
   }
 
@@ -167,7 +169,7 @@ std::tuple<std::string, std::string> request(Sock& sock, const Url& url) {
   response_stream >> status_code;
   std::string status_message;
   std::getline(response_stream, status_message);
-  if (!response_stream || http_version.substr(0, 5) != "HTTP/") {
+  if (!response_stream || !http_version.starts_with("HTTP/")) {
     throw runtime_error("invalid response");
   }
 
@@ -321,13 +323,16 @@ void addWindowsCertificates(const SSL_CTX* ctx) {
 
 // Based on example at
 // https://www.boost.org/doc/libs/1_73_0/doc/html/boost_asio/overview/ssl.html
-std::tuple<std::string, std::string> httpsGet(const Url& url,
-                                              const Net::BindAddress& bind_address) {
+std::tuple<std::string, std::string> httpsGet(
+    const Url& url,
+    const Net::BindAddress& bind_address) {
   using ssl_socket = ssl::stream<tcp::socket>;
   // Create a context that uses the default paths for
   // finding CA certificates.
   ssl::context ctx(ssl::context::tlsv12);
 
+  // Both critical section and call is inside asio - so nothing we can control
+  // NOLINTNEXTLINE(clang-analyzer-unix.BlockInCriticalSection)
   if (!bind_address.get().empty() && bind_address.get() != "127.0.0.1") {
     throw std::runtime_error("bind for ssl not yet supported");
   }
@@ -339,15 +344,20 @@ std::tuple<std::string, std::string> httpsGet(const Url& url,
   ctx.set_default_verify_paths();
   // In my case the default path is not aligned with the systems on Ubuntu
   // (/usr/local/ssl/certs). Thus adding the standard linux directory in
-  // addition. This is likely due OpenSSL being built by Conan with that path.
-  // Note: With a newer conan openssl build this was no longer necessary
+  // addition. This is likely due to OpenSSL being built by Conan with that
+  // path. Note: With a newer conan openssl build this was no longer necessary
   // ctx.add_verify_path("/etc/ssl/certs");
 
   // Open a socket and connect it to the remote host.
   asio::io_context io_context;
+
+  // Both critical section and call is inside asio - so nothing we can control
+  // NOLINTNEXTLINE(clang-analyzer-unix.BlockInCriticalSection)
   ssl_socket sock(io_context, ctx);
+
   tcp::resolver resolver(io_context);
   const tcp::resolver::query query(url.host(), url.service());
+  // NOLINTNEXTLINE(misc-include-cleaner)
   asio::connect(sock.lowest_layer(), resolver.resolve(query));
   sock.lowest_layer().set_option(tcp::no_delay(true));
 
@@ -419,8 +429,8 @@ std::tuple<std::string, std::string> Net::httpGet(
   try {
     if (!bind_address.get().empty()) {
       socket.open(asio::ip::tcp::v4());
-      socket.bind(
-          asio::ip::tcp::endpoint(asio::ip::make_address(bind_address.get()), 0));
+      socket.bind(asio::ip::tcp::endpoint(
+          asio::ip::make_address(bind_address.get()), 0));
       logger()->debug("Http request from {}:{}",
                       socket.local_endpoint().address().to_string(),
                       socket.local_endpoint().port());
@@ -430,6 +440,7 @@ std::tuple<std::string, std::string> Net::httpGet(
         fmt::format("Could not bind to address: '{}'", bind_address.get())));
   }
   asio::error_code error = asio::error::host_not_found;
+  // NOLINTNEXTLINE(misc-include-cleaner)
   asio::connect(socket, endpoints, error);
   if (error) {
     throw asio::system_error(error, url.str());
@@ -517,7 +528,7 @@ string Net::urlEncode(const string& value) {
 
     // Any other characters are percent-encoded
     escaped << uppercase;
-    escaped << '%' << setw(2) << int(static_cast<byte>(C));
+    escaped << '%' << setw(2) << static_cast<int>(static_cast<byte>(C));
     escaped << nouppercase;
   }
 
@@ -548,11 +559,14 @@ Url::Url(const string& url, Binary binary, Resolve resolve) {
                           to_string(url.length()));
     }
     stringstream ss;
-    ss << to_string(uint8_t(url[0])) << "." << to_string(uint8_t(url[1])) << "."
-       << to_string(uint8_t(url[2])) << "." << to_string(uint8_t(url[3]));
+    ss << to_string(static_cast<uint8_t>(url.at(0))) << "."
+       << to_string(static_cast<uint8_t>(url.at(1))) << "."
+       << to_string(static_cast<uint8_t>(url.at(2))) << "."
+       << to_string(static_cast<uint8_t>(url.at(3)));
     m_host = ss.str();
-    m_port = host_to_network_short(static_cast<uint16_t>(
-        static_cast<uint8_t>(url[4]) << 0 | static_cast<uint8_t>(url[5]) << 8));
+    m_port = host_to_network_short(
+        static_cast<uint16_t>(static_cast<uint8_t>(url.at(4)) << 0 |
+                              static_cast<uint8_t>(url.at(5)) << 8));
     m_scheme = "http";
   }
 

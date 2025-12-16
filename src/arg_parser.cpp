@@ -85,7 +85,7 @@ void ArgParser::parse(const std::vector<std::string>& argv) {
   unsigned positional{0};
   for (size_t i = 1; i < argv.size(); i++) {
     // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-    const std::string& name = argv[i];
+    const std::string& name = argv.at(i);
     auto m = find(name);
     if (m == m_options.end()) {
       // No named argument - check if we have positional
@@ -113,7 +113,7 @@ void ArgParser::parse(const std::vector<std::string>& argv) {
           throw runtime_error(fmt::format("Missing value for {}", name));
         }
         // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-pointer-arithmetic)
-        val = argv[i++ + 1];
+        val = argv.at(i++ + 1);
       }
 
       switch (arg->get_type()) {

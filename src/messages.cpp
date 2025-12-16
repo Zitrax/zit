@@ -114,7 +114,7 @@ string debugMsg(span<const byte> msg) {
   ss.fill('0');
   ss << hex;
   for (const auto b : msg) {
-    ss << setw(2) << int(b) << " ";
+    ss << setw(2) << static_cast<int>(b) << " ";
   }
   return ss.str();
 }
@@ -131,21 +131,22 @@ optional<HandshakeMsg> HandshakeMsg::parse(const bytes& msg) {
       'r'_b,      'e'_b, 'n'_b, 't'_b, ' '_b, 'p'_b, 'r'_b,
       'o'_b,      't'_b, 'o'_b, 'c'_b, 'o'_b, 'l'_b};
 
-  const auto it =
-      std::search(msg.begin(), msg.end(), BT_START.begin(), BT_START.end());
-  if (it == msg.end()) {
-    logger()->trace("No handshake match:\nGot: {}\nExp: {}",
-                    debugMsg(span(msg.begin(), std::min(msg.size(), BT_START.size()))),
-                    debugMsg(BT_START));
+  const auto sr = std::ranges::search(msg, BT_START);
+  if (sr.empty()) {
+    logger()->trace(
+        "No handshake match:\nGot: {}\nExp: {}",
+        debugMsg(span(msg.begin(), std::min(msg.size(), BT_START.size()))),
+        debugMsg(BT_START));
     return {};
   }
 
-  if (it != msg.begin()) {
-    logger()->debug("Found BT start at {}", std::distance(msg.begin(), it));
-    return HandshakeMsg::parse(bytes{it, msg.end()});
+  if (sr.begin() != msg.begin()) {
+    logger()->debug("Found BT start at {}",
+                    std::distance(msg.begin(), sr.begin()));
+    return HandshakeMsg::parse(bytes{sr.begin(), msg.end()});
   }
 
-  const bytes reserved(&msg[20], &msg[28]);
+  const bytes reserved(&msg.at(20), &msg.at(28));
   const Sha1 info_hash = Sha1::fromBuffer(msg, 28);
   const string peer_id = from_bytes(msg, 48, 68);
 
@@ -155,10 +156,10 @@ optional<HandshakeMsg> HandshakeMsg::parse(const bytes& msg) {
       logger()->error("Invalid handshake length: {}", msg.size());
       return {};
     }
-    if (to_peer_wire_id(msg[72]) != peer_wire_id::BITFIELD) {
+    if (to_peer_wire_id(msg.at(72)) != peer_wire_id::BITFIELD) {
       logger()->error("Expected bitfield id ({}) but got: {}",
                       static_cast<pwid_t>(peer_wire_id::BITFIELD),
-                      static_cast<uint8_t>(msg[72]));
+                      static_cast<uint8_t>(msg.at(72)));
       return {};
     }
     // 4-byte big endian
@@ -222,7 +223,7 @@ size_t Message::parse(PeerConnection& connection) {
       return 4;
     }
     if (m_msg.size() >= 5) {
-      auto id = to_peer_wire_id(m_msg[4]);
+      auto id = to_peer_wire_id(m_msg.at(4));
       logger()->debug("{}: Received: {}", peer.str(), id);
       switch (id) {
         case peer_wire_id::CHOKE:

@@ -4,7 +4,7 @@
 #include <fmt/format.h>
 #include <asio/awaitable.hpp>
 #include <asio/buffer.hpp>
-#include <asio/co_spawn.hpp>
+#include <asio/co_spawn.hpp>  // NOLINT(misc-include-cleaner)
 #include <asio/io_context.hpp>
 #include <asio/ip/tcp.hpp>
 #include <asio/signal_set.hpp>
@@ -16,8 +16,8 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "asio_helpers.hpp"
-#include "common.hpp"  // NOLINT(misc-include-cleaner)
+#include "asio_helpers.hpp"  // NOLINT(misc-include-cleaner)
+#include "common.hpp"        // NOLINT(misc-include-cleaner)
 #include "logger.hpp"
 
 class Connection : public socket_test::ID {
@@ -79,6 +79,7 @@ int main(int argc, char* argv[]) {
       // Note: asio::detached is often used in examples but it will ignore any
       //       exceptions thrown by the coroutine. Using my own completion
       //       handler here instead that just rethrows the exception instead.
+      // NOLINTNEXTLINE(misc-include-cleaner)
       co_spawn(io_context, connections.back()->connect(), socket_test::rethrow);
     }
     io_context.run();

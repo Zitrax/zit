@@ -3,6 +3,7 @@
 
 #include <cctype>
 #include <iomanip>
+#include <ranges>
 #include <regex>
 #include <sstream>
 #include <stdexcept>
@@ -39,9 +40,12 @@ inline std::string from_bytes(const bytes& buffer,
   }
   return ss.str();
 #else
+  // Bounds checked above
+  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
   return {
       reinterpret_cast<const char*>(&buffer[start]),
       reinterpret_cast<const char*>(&buffer[end == 0 ? buffer.size() : end])};
+  // NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 #endif  // WIN32
 }
 
@@ -77,17 +81,18 @@ inline std::string to_hex(const bytes& data) {
 
 // trim from start (in place)
 inline void ltrim(std::string& s) {
-  s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char ch) {
+  s.erase(s.begin(), std::ranges::find_if(s, [](unsigned char ch) {
             return !std::isspace(ch);
           }));
 }
 
 // trim from end (in place)
 inline void rtrim(std::string& s) {
-  s.erase(std::find_if(s.rbegin(), s.rend(),
-                       [](unsigned char ch) { return !std::isspace(ch); })
-              .base(),
-          s.end());
+  s.erase(
+      std::ranges::find_if(std::ranges::reverse_view(s),
+                           [](unsigned char ch) { return !std::isspace(ch); })
+          .base(),
+      s.end());
 }
 
 // trim from both ends (in place)
@@ -150,8 +155,8 @@ inline std::string bytesToHumanReadable(int64_t bytes) {
     if (abytes >= limit) {
       if (limit) {
         const auto w = abytes / limit;
-        const auto f =
-            static_cast<float>(abytes - w * limit) / static_cast<float>(limit);
+        const auto f = static_cast<float>(abytes - (w * limit)) /
+                       static_cast<float>(limit);
         return fmt::format("{}{:.2f} {}", sign, static_cast<float>(w) + f,
                            unit);
       }

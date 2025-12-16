@@ -30,7 +30,7 @@ using namespace std;
 namespace fs = filesystem;
 
 void FileWriter::add(Torrent* torrent, const shared_ptr<Piece>& piece) {
-  const lock_guard<mutex> lock(m_queue_mutex);
+  const scoped_lock lock(m_queue_mutex);
   logger()->debug("Piece {} added to queue", piece->id());
   m_queue.emplace(torrent, piece);
   m_condition.notify_one();
@@ -270,7 +270,7 @@ void FileWriter::write_next_piece() {
   auto [torrent, piece] = t_piece;
   try {
     auto sha = Sha1::calculateData(piece->data());
-    if (sha != torrent->pieces()[piece->id()]) {
+    if (sha != torrent->pieces().at(piece->id())) {
       throw runtime_error("Piece data does not match expected Sha1");
     }
 

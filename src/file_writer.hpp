@@ -93,12 +93,12 @@ class FileWriter {
  private:
   void write_next_piece();
 
-  std::queue<TorrentPiece> m_queue{};
-  std::mutex m_queue_mutex{};
-  std::mutex m_file_mutex{};
-  std::condition_variable m_condition{};
+  std::queue<TorrentPiece> m_queue;
+  std::mutex m_queue_mutex;
+  std::mutex m_file_mutex;
+  std::condition_variable m_condition;
   std::atomic_bool m_stop = false;
-  TorrentWrittenCallback m_torrent_written_callback{};
+  TorrentWrittenCallback m_torrent_written_callback;
 };
 
 /**
@@ -131,7 +131,7 @@ class FileWriterThread {
   }
 
  private:
-  std::shared_ptr<spdlog::logger> m_logger{};
+  std::shared_ptr<spdlog::logger> m_logger;
   FileWriter& m_file_writer;
   std::thread m_file_writer_thread;
 };

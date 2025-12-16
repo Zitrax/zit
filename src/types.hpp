@@ -24,14 +24,14 @@ using ListeningPort = StrongType<unsigned short, struct ListeningPortTag>;
 using ConnectionPort = StrongType<unsigned short, struct ConnectionPortTag>;
 
 // numeric_cast ( Copied from https://codereview.stackexchange.com/a/26496/39248
-// ) by user Matt Whitlock - functions renamed.
+// ) by user Matt Whitlock - functions renamed and modified.
 
 // FIXME: These casts could fall back to no checking at all if I == J
 
 template <typename I, typename J>
-static constexpr
-    typename std::enable_if_t<std::is_signed_v<I> && std::is_signed_v<J>, I>
-    numeric_cast(J value, const char* msg = nullptr) {
+static constexpr I numeric_cast(J value, const char* msg = nullptr)
+  requires(std::is_signed_v<I> && std::is_signed_v<J>)
+{
   if (value < static_cast<J>(std::numeric_limits<I>::min()) ||
       value > static_cast<J>(std::numeric_limits<I>::max())) {
     throw std::out_of_range(msg ? msg : "out of range");
@@ -40,21 +40,21 @@ static constexpr
 }
 
 template <typename I, typename J>
-static constexpr
-    typename std::enable_if_t<std::is_signed_v<I> && std::is_unsigned_v<J>, I>
-    numeric_cast(J value, const char* msg = nullptr) {
-  if (value > static_cast<typename std::make_unsigned_t<I>>(
-                  std::numeric_limits<I>::max())) {
+static constexpr I numeric_cast(J value, const char* msg = nullptr)
+  requires(std::is_signed_v<I> && std::is_unsigned_v<J>)
+{
+  if (value >
+      static_cast<std::make_unsigned_t<I>>(std::numeric_limits<I>::max())) {
     throw std::out_of_range(msg ? msg : "out of range");
   }
   return static_cast<I>(value);
 }
 
 template <typename I, typename J>
-static constexpr
-    typename std::enable_if_t<std::is_unsigned_v<I> && std::is_signed_v<J>, I>
-    numeric_cast(J value, const char* msg = nullptr) {
-  if (value < 0 || static_cast<typename std::make_unsigned_t<J>>(value) >
+static constexpr I numeric_cast(J value, const char* msg = nullptr)
+  requires(std::is_unsigned_v<I> && std::is_signed_v<J>)
+{
+  if (value < 0 || static_cast<std::make_unsigned_t<J>>(value) >
                        std::numeric_limits<I>::max()) {
     throw std::out_of_range(msg ? msg : "out of range");
   }
@@ -62,9 +62,9 @@ static constexpr
 }
 
 template <typename I, typename J>
-static constexpr
-    typename std::enable_if_t<std::is_unsigned_v<I> && std::is_unsigned_v<J>, I>
-    numeric_cast(J value, const char* msg = nullptr) {
+static constexpr I numeric_cast(J value, const char* msg = nullptr)
+  requires(std::is_unsigned_v<I> && std::is_unsigned_v<J>)
+{
   if (value > std::numeric_limits<I>::max()) {
     throw std::out_of_range(msg ? msg : "out of range");
   }
@@ -115,6 +115,8 @@ static inline T from_big_endian(const bytes& buf, bytes::size_type offset = 0) {
         "Target range outside of buffer: ({},{})", offset, buf.size()));
   }
 
+  // NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+
   if constexpr (size == 2) {
     return static_cast<T>(static_cast<uint8_t>(buf[offset + 1]) << 0 |
                           static_cast<uint8_t>(buf[offset + 0]) << 8);
@@ -135,6 +137,8 @@ static inline T from_big_endian(const bytes& buf, bytes::size_type offset = 0) {
   } else {
     static_assert(!sizeof(T*), "Unhandled size");
   }
+
+  // NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 }
 
 /**

@@ -2,6 +2,8 @@
 #include "bitfield.hpp"
 #include "types.hpp"
 
+#include <fmt/format.h>
+
 #include <algorithm>
 #include <array>
 #include <cstddef>
@@ -11,7 +13,11 @@
 #include <numeric>
 #include <optional>
 #include <sstream>
+#include <stdexcept>
 #include <string>
+
+// Using operator[] on purpose
+// NOLINTBEGIN(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
 
 namespace zit {
 
@@ -59,7 +65,7 @@ Bitfield::Proxy::operator bool() const {
 Bitfield::Bitfield(bytes::size_type count) {
   // Number of bytes that will fit given number of bits
   // i.e. ceil(count/8)
-  m_bytes.resize(count / 8 + (count % 8 != 0));
+  m_bytes.resize((count / 8) + (count % 8 != 0));
 }
 
 bool Bitfield::get(bytes::size_type i) const {
@@ -72,6 +78,14 @@ bool Bitfield::operator[](bytes::size_type i) const {
 }
 
 Bitfield::Proxy Bitfield::operator[](bytes::size_type i) {
+  return {*this, i};
+}
+
+bool Bitfield::at(bytes::size_type i) const {
+  return get(i);
+}
+
+Bitfield::Proxy Bitfield::at(bytes::size_type i) {
   return {*this, i};
 }
 
@@ -184,7 +198,7 @@ std::optional<bytes::size_type> Bitfield::next(bool val,
   // Check first partial byte if we have a bit offset
   if (bit_offset) {
     for (unsigned short i = bit_offset; i < 8; ++i) {
-      const auto pos = numeric_cast<bytes::size_type>(byte_offset * 8 + i);
+      const auto pos = numeric_cast<bytes::size_type>((byte_offset * 8) + i);
       if (operator[](pos) == val) {
         return pos;
       }
@@ -239,3 +253,5 @@ std::string format_as(const Bitfield& bf) {
 }
 
 }  // namespace zit
+
+// NOLINTEND(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)

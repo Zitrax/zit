@@ -119,6 +119,9 @@ std::optional<bool> parse_bool(const std::string& _str) {
 template <typename T>
 const std::map<std::string, T> settings_map;
 
+// Should be fine - possibly try maxing them constexpr
+// NOLINTBEGIN(bugprone-throwing-static-initialization)
+
 template <>
 const std::map<std::string, BoolSetting> settings_map<BoolSetting>{
     {"initiate_peer_connections", BoolSetting::INITIATE_PEER_CONNECTIONS},
@@ -136,6 +139,8 @@ const std::map<std::string, IntSetting> settings_map<IntSetting>{
 template <>
 const std::map<std::string, StringSetting> settings_map<StringSetting>{
     {"bind_address", StringSetting::BIND_ADDRESS}};
+
+// NOLINTEND(bugprone-throwing-static-initialization)
 
 }  // namespace
 
@@ -170,9 +175,9 @@ bool FileConfig::try_file(const std::filesystem::path& config_file) {
       if (kv.size() != 2) {
         logger()->warn("Ignoring invalid config line: {}", line);
       } else {
-        trim(kv[0]);
-        trim(kv[1]);
-        update_value(kv[0], kv[1]);
+        trim(kv.at(0));
+        trim(kv.at(1));
+        update_value(kv.at(0), kv.at(1));
       }
     }
     return true;

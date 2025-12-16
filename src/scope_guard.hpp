@@ -23,7 +23,7 @@ class ScopeGuard {
     } catch (...) {
       try {
         logger()->warn("Exception thrown from ScopeGuard");
-      } catch (...) {
+      } catch (...) {  // NOLINT(bugprone-empty-catch)
       }
     }
   }

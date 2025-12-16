@@ -1,4 +1,5 @@
 option(USE_CLANG_TIDY "Use clang-tidy if available" ON)
+option(USE_CLANG_TIDY_CACHE "Use clang-tidy-cache if available" ON)
 option(ASIO_DEBUG "Add asio debug output" OFF)
 option(DISABLE_LTO "Turn off lto" OFF)
 
@@ -10,16 +11,18 @@ option(DISABLE_LTO "Turn off lto" OFF)
 # the compile time went from 16s to 48s.
 #
 if(USE_CLANG_TIDY)
-  find_program(CLANG_TIDY NAMES clang-tidy-18)
+  find_program(CLANG_TIDY NAMES clang-tidy-22)
 
   if(CLANG_TIDY)
     find_program(CLANG_TIDY_CACHE NAMES "clang-tidy-cache")
 
-    if(CLANG_TIDY_CACHE)
-      message(STATUS "Found clang-tidy-cache: ${CLANG_TIDY_CACHE}")
-      set(CLANG_TIDY_CACHE_PREFIX "${CLANG_TIDY_CACHE};")
-    else()
-      message(STATUS "No clang-tidy-cache found")
+    if(USE_CLANG_TIDY_CACHE)
+      if(CLANG_TIDY_CACHE)
+        message(STATUS "Found clang-tidy-cache: ${CLANG_TIDY_CACHE}")
+        set(CLANG_TIDY_CACHE_PREFIX "${CLANG_TIDY_CACHE};")
+      else()
+        message(STATUS "No clang-tidy-cache found")
+      endif()
     endif()
 
     message(STATUS "Enabling clang-tidy: ${CLANG_TIDY}")

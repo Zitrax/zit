@@ -2,6 +2,7 @@
 
 # Magic number check is a bit noisy, so off by default
 # -altera-struct-pack-align (too specific performance issue)
+# -boost-* (not using boost)
 # -cert-err58-cpp statics might throw. Allowing this for now.
 # -clang-analyzer-cplusplus.NewDelete (temporary due to https://github.com/boostorg/asio/issues/341)
 # -cppcoreguidelines-avoid-const-or-ref-data-members (TODO: Recheck later)
@@ -20,6 +21,7 @@
 # -misc-non-private-member-variables-in-classes (optimally I would like to allow protected but not private)
 # -modernize-avoid-c-arrays (covered by cppcore)
 # -modernize-use-trailing-return-type (prefer old style for now)
+# -portability-avoid-pragma-once (pragma once is nicer)
 # -readability-braces-around-statements (can't handle constexpr if)
 # -readability-function-cognitive-complexity (no hard limit on this)
 # -readability-inconsistent-declaration-parameter-name (prefer different names on templates)
@@ -30,6 +32,7 @@ Checks:          '*,
                  -abseil-*,
                  -altera-*,
                  -altera-struct-pack-align,
+                 -boost-*,
                  -cert-err58-cpp,
                  -clang-analyzer-cplusplus.NewDelete,
                  -cppcoreguidelines-avoid-const-or-ref-data-members,
@@ -55,6 +58,7 @@ Checks:          '*,
                  -modernize-avoid-c-arrays,
                  -modernize-use-trailing-return-type,
                  -objc-*,
+                 -portability-avoid-pragma-once,
                  -readability-braces-around-statements,
                  -readability-function-cognitive-complexity,
                  -readability-identifier-length,
@@ -66,7 +70,6 @@ Checks:          '*,
                  '
 WarningsAsErrors: '*'
 HeaderFilterRegex: '(src|tests)/*.h$'
-AnalyzeTemporaryDtors: false
 FormatStyle:     none
 User:            db
 CheckOptions:    

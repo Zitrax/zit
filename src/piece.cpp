@@ -26,7 +26,7 @@ using namespace std;
 namespace zit {
 
 optional<uint32_t> Piece::next_offset(bool mark) {
-  const lock_guard<mutex> lock(m_mutex);
+  const scoped_lock lock(m_mutex);
   const auto req_or_done = m_blocks_requested + m_blocks_done;
   auto next = req_or_done.next(false);
   if (!next) {
@@ -40,14 +40,14 @@ optional<uint32_t> Piece::next_offset(bool mark) {
   }
   // Mark block as requested
   if (mark) {
-    m_blocks_requested[*next] = true;
+    m_blocks_requested.at(*next) = true;
     m_last_request = std::chrono::system_clock::now();
   }
   return numeric_cast<uint32_t>(*next) * m_block_size;
 }
 
 bytes Piece::data() const {
-  const lock_guard<mutex> lock(m_mutex);
+  const scoped_lock lock(m_mutex);
   if (m_data.empty()) {
     logger()->warn("Retrieved empty data from piece {}", m_id);
   }
@@ -66,15 +66,15 @@ bool Piece::set_block(uint32_t offset, bytes_span data) {
   }
   auto block_id = offset / m_block_size;
 
-  const lock_guard<mutex> lock(m_mutex);
-  if (m_blocks_done[block_id]) {
+  const scoped_lock lock(m_mutex);
+  if (m_blocks_done.at(block_id)) {
     logger()->warn("Already got block {} for piece {}", block_id, m_id);
   } else {
-    if (!m_blocks_requested[block_id]) {
+    if (!m_blocks_requested.at(block_id)) {
       logger()->warn("Got data for non requested block?");
     }
     ranges::copy(data, m_data.begin() + offset);
-    m_blocks_done[block_id] = true;
+    m_blocks_done.at(block_id) = true;
     logger()->debug("Block {}/{} of size {} stored for piece {}", block_id + 1,
                     block_count(), data.size(), m_id);
   }
@@ -94,8 +94,8 @@ bytes Piece::get_block(uint32_t offset,
   }
   auto block_id = offset / m_block_size;
 
-  const lock_guard<mutex> lock(m_mutex);
-  if (!m_blocks_done[block_id]) {
+  const scoped_lock lock(m_mutex);
+  if (!m_blocks_done.at(block_id)) {
     logger()->warn("Block {} in piece {} not done", block_id, m_id);
     return {};
   }
@@ -111,15 +111,15 @@ bytes Piece::get_block(uint32_t offset,
   logger()->debug("Returning block {} in piece {} from disk", block_id, m_id);
   // Important to use the piece_length from the torrent, since the last
   // piece is often shorter and can't thus be used to get the offset.
-  const auto file_offset = torrent.piece_length() * m_id + offset;
+  const auto file_offset = (torrent.piece_length() * m_id) + offset;
   return FileWriter::getInstance().read_block(file_offset, length, torrent);
 }
 
 void Piece::set_piece_written(bool written) {
   m_piece_written = written;
-  const lock_guard<mutex> lock(m_mutex);
+  const scoped_lock lock(m_mutex);
   for (uint32_t i = 0; i < block_count(); ++i) {
-    m_blocks_done[i] = true;
+    m_blocks_done.at(i) = true;
   }
   m_data.clear();
   m_data.shrink_to_fit();
@@ -142,7 +142,7 @@ std::size_t Piece::retry_blocks() {
     logger()->warn(
         "Piece {} inactive for {} seconds. Marking for retry.", m_id,
         std::chrono::duration_cast<std::chrono::seconds>(inactive).count());
-    const lock_guard<mutex> lock(m_mutex);
+    const scoped_lock lock(m_mutex);
     const auto retry = (m_blocks_requested - m_blocks_done).count();
 
     // TODO: Should we really request the whole piece again?

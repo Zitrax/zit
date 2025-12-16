@@ -83,7 +83,7 @@ template <typename T>
 
 template <typename T>
 [[nodiscard]] std::string encode(const T& in) {
-  using src = typename ArrayToPointerDecay<T>::type;
+  using src = ArrayToPointerDecay<T>::type;
   return encode_internal<src>(in);
 }
 
@@ -122,7 +122,7 @@ class Element : public std::enable_shared_from_this<Element> {
 
   template <typename T>
   [[nodiscard]] auto to() const {
-    static_assert(std::is_base_of<Element, T>::value,
+    static_assert(std::is_base_of_v<Element, T>,
                   "Can only return sublasses of Element");
     auto ptr = std::dynamic_pointer_cast<const T>(shared_from_this());
     if (!ptr) {
@@ -133,7 +133,7 @@ class Element : public std::enable_shared_from_this<Element> {
 
   template <typename T>
   [[nodiscard]] auto is() const {
-    static_assert(std::is_base_of<Element, T>::value,
+    static_assert(std::is_base_of_v<Element, T>,
                   "Can only return sublasses of Element");
     return std::dynamic_pointer_cast<const T>(shared_from_this()) != nullptr;
   }
@@ -169,7 +169,9 @@ class TypedElement : public Element {
   explicit TypedElement(std::add_rvalue_reference_t<T> data)
       : m_data(std::forward<T>(data)) {}
 
-  [[nodiscard]] std::string encode() const override { return bencode::encode(m_data); }
+  [[nodiscard]] std::string encode() const override {
+    return bencode::encode(m_data);
+  }
 
   [[nodiscard]] auto val() const { return m_data; }
 

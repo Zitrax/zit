@@ -28,6 +28,7 @@
 #include <atomic>
 #include <cassert>
 #include <chrono>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <ctime>
@@ -35,6 +36,7 @@
 #include <execution>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 #include <iterator>
@@ -61,7 +63,8 @@ using namespace std;
 
 namespace std {
 template <typename T>
-// NOLINTNEXTLINE(cert-dcl58-cpp)
+// Various issues related to std extensions
+// NOLINTNEXTLINE
 std::string format_as(const atomic<T>& t) {
   return std::to_string(t.load());
 }
@@ -86,7 +89,7 @@ auto transform_all(const In& in, Out& out, Op func) {
 auto beDictToFileInfo(const Element& element) {
   const auto& dict = element.template to<TypedElement<BeDict>>()->val();
   string md5;
-  if (dict.find("md5sum") != dict.end()) {
+  if (dict.contains("md5sum")) {
     md5 = dict.at("md5sum")->template to<TypedElement<string>>()->val();
   }
   const auto path_list =
@@ -164,10 +167,10 @@ Torrent::Torrent(asio::io_context& io_context,
       info.at("piece length")->to<TypedElement<int64_t>>()->val());
 
   // Either 'length' or 'files' is needed depending on mode
-  if (info.find("length") != info.end()) {
+  if (info.contains("length")) {
     m_length = info.at("length")->to<TypedElement<int64_t>>()->val();
   }
-  if (info.find("files") != info.end()) {
+  if (info.contains("files")) {
     if (m_length != 0) {
       throw runtime_error("Invalid torrent: dual mode");
     }
@@ -220,7 +223,7 @@ Torrent::Torrent(asio::io_context& io_context,
   verify_existing_file();
 
   {
-    scoped_lock lock(m_torrents_mutex);
+    const scoped_lock lock(m_torrents_mutex);
     if (m_torrents.contains(m_info_hash)) {
       throw runtime_error("Torrent already exists");
     }
@@ -230,7 +233,7 @@ Torrent::Torrent(asio::io_context& io_context,
 }
 
 Torrent::~Torrent() {
-  scoped_lock lock(m_torrents_mutex);
+  const scoped_lock lock(m_torrents_mutex);
   m_torrents.erase(m_info_hash);
 }
 
@@ -260,8 +263,8 @@ void Torrent::verify_piece_single_file(uintmax_t file_length,
   if (sha1 == fsha1) {
     // Lock when updating num_pieces, inserting into
     // std::map is likely not thread safe.
-    const std::lock_guard<std::mutex> lock(mutex);
-    m_client_pieces[id] = true;
+    const std::scoped_lock lock(mutex);
+    m_client_pieces.at(id) = true;
     m_active_pieces.emplace(
         id, make_shared<Piece>(PieceId(id), PieceSize(piece_length(id))));
     m_active_pieces[id]->set_piece_written(true);
@@ -305,8 +308,8 @@ void Torrent::verify_piece_multi_file(std::atomic_uint32_t& num_pieces,
   if (sha1 == fsha1) {
     // Lock when updating num_pieces, inserting into std::map is
     // likely not thread safe.
-    const std::lock_guard<std::mutex> lock(mutex);
-    m_client_pieces[id] = true;
+    const std::scoped_lock lock(mutex);
+    m_client_pieces.at(id) = true;
     m_active_pieces.emplace(
         id, make_shared<Piece>(PieceId(id), PieceSize(piece_length(id))));
     m_active_pieces[id]->set_piece_written(true);
@@ -471,8 +474,8 @@ Torrent::http_tracker_request(const Url& announce_url, TrackerEvent event) {
     logger()->info("HTTP Tracker request ({}): {}", event, url.str());
   }
 
-  auto [headers, body] =
-      m_http_get(url, Net::BindAddress(m_config.get(StringSetting::BIND_ADDRESS)));
+  auto [headers, body] = m_http_get(
+      url, Net::BindAddress(m_config.get(StringSetting::BIND_ADDRESS)));
 
   std::vector<std::shared_ptr<Peer>> peers;
 
@@ -493,13 +496,13 @@ Torrent::http_tracker_request(const Url& announce_url, TrackerEvent event) {
     logger()->debug("=====HEADER=====\n{}\n=====BODY=====\n{}", headers, reply);
 
     auto reply_dict = reply->to<TypedElement<BeDict>>()->val();
-    if (reply_dict.find("failure reason") != reply_dict.end()) {
+    if (reply_dict.contains("failure reason")) {
       throw runtime_error(
           "Tracker request failed: " +
           reply_dict["failure reason"]->to<TypedElement<string>>()->val());
     }
 
-    if (reply_dict.find("peers") == reply_dict.end()) {
+    if (!reply_dict.contains("peers")) {
       throw runtime_error("Invalid tracker reply, no peer list");
     }
     auto peers_dict = reply_dict["peers"];
@@ -663,10 +666,10 @@ class UDPTrackerRequest {
       logger()->debug("Parsing {} peers", peers_in_list);
       for (size_t i = 0; i < peers_in_list; ++i) {
         const auto ip = from_big_endian<int32_t>(
-            announce_response, peer_offset + i * size_of_peer);
+            announce_response, peer_offset + (i * size_of_peer));
         const auto port = from_big_endian<uint16_t>(
             announce_response,
-            peer_offset + i * size_of_peer + sizeof(int32_t));
+            peer_offset + (i * size_of_peer) + sizeof(int32_t));
 
         const auto ip_str =
             fmt::format("{}.{}.{}.{}", static_cast<uint8_t>((ip >> 24) & 0xFF),
@@ -688,7 +691,12 @@ class UDPTrackerRequest {
   }
 
  private:
-  enum class UdpAction { CONNECT = 0, ANNOUNCE = 1, SCRAPE = 2, ERR = 3 };
+  enum class UdpAction : std::uint8_t {
+    CONNECT = 0,
+    ANNOUNCE = 1,
+    SCRAPE = 2,
+    ERR = 3
+  };
 
   /** Connect to UDP tracker */
   bool connect() {
@@ -785,7 +793,7 @@ class UDPTrackerRequest {
 
   Url m_announce_url;
   Torrent& m_torrent;
-  std::optional<int64_t> m_connection_id{};
+  std::optional<int64_t> m_connection_id;
   TimePoint m_last_connection_id{ClockType::time_point::min()};
 };
 
@@ -868,7 +876,8 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
     static const auto local_ips = [] {
       auto resolved = get_host_ip_addresses();
       resolved.emplace_back("localhost");
-      static auto docker_ip{"172.17.0.1"};
+      // FIXME: This should not be hardcoded
+      constexpr auto* docker_ip{"172.17.0.1"};
       resolved.emplace_back(docker_ip);
       return std::move(resolved);
     }();
@@ -884,7 +893,7 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
 }
 
 void Torrent::start() {
-  scoped_lock lock(m_peers_mutex);
+  const scoped_lock lock(m_peers_mutex);
   if (!m_peers.empty()) {
     throw runtime_error("Local peer vector not empty");
   }
@@ -941,7 +950,7 @@ void Torrent::run() {
   while (!m_stopped && (!done() || !ranges::all_of(m_peers, is_stopped))) {
     std::size_t ran = 0;
     {
-      scoped_lock lock(m_peers_mutex);
+      const scoped_lock lock(m_peers_mutex);
       for (auto& p : m_peers) {
         ran += p->io_service().poll_one();
       }
@@ -962,7 +971,7 @@ void Torrent::run() {
 }
 
 void Torrent::stop() {
-  scoped_lock lock(m_peers_mutex);
+  const scoped_lock lock(m_peers_mutex);
   for (auto& peer : m_peers) {
     peer->stop();
   }
@@ -971,7 +980,7 @@ void Torrent::stop() {
 }
 
 Torrent* Torrent::get(const Sha1& info_hash) {
-  scoped_lock lock(m_torrents_mutex);
+  const scoped_lock lock(m_torrents_mutex);
   if (auto match = m_torrents.find(info_hash); match != m_torrents.end()) {
     return match->second;
   }
@@ -979,7 +988,7 @@ Torrent* Torrent::get(const Sha1& info_hash) {
 }
 
 size_t Torrent::count() {
-  scoped_lock lock(m_torrents_mutex);
+  const scoped_lock lock(m_torrents_mutex);
   return m_torrents.size();
 }
 
@@ -1050,7 +1059,7 @@ void Torrent::retry_pieces() {
   // To hit different peers for each invocation - shuffle the list
   std::random_device rd;
   std::mt19937 g(rd());
-  scoped_lock lock(m_peers_mutex);
+  const scoped_lock lock(m_peers_mutex);
   shuffle(m_peers.begin(), m_peers.end(), g);
 
   auto it = m_peers.begin();
@@ -1077,14 +1086,12 @@ bool Torrent::add_peer(
     shared_ptr<Peer> peer,
     optional<reference_wrapper<std::vector<std::shared_ptr<Peer>>>> peers) {
   const bool in_use =
-      std::find_if(m_peers.begin(), m_peers.end(),
-                   [&peer](auto& existing_peer) {
-                     const auto& lurl = peer->url();
-                     const auto& rurl = existing_peer->url();
-                     return lurl.has_value() && rurl.has_value() &&
-                            peer->url().value().str() ==
-                                existing_peer->url().value().str();
-                   }) != m_peers.end();
+      std::ranges::find_if(m_peers, [&peer](auto& existing_peer) {
+        const auto& lurl = peer->url();
+        const auto& rurl = existing_peer->url();
+        return lurl.has_value() && rurl.has_value() &&
+               peer->url().value().str() == existing_peer->url().value().str();
+      }) != m_peers.end();
   logger()->debug("Candidate {} in use: {}", peer->str(), in_use);
   if (!in_use) {
     peer->handshake();
@@ -1103,7 +1110,7 @@ void Torrent::retry_peers() {
     return;
   }
 
-  scoped_lock lock(m_peers_mutex);
+  const scoped_lock lock(m_peers_mutex);
   const ScopeGuard scope_guard([this]() { schedule_retry_peers(); });
 
   logger()->debug("Checking peers for retry");
@@ -1142,9 +1149,9 @@ void Torrent::retry_peers() {
 // TODO: Yes, should group these in one type
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 bool Torrent::set_block(uint32_t piece_id, uint32_t offset, bytes_span data) {
-  const std::lock_guard<std::mutex> lock(m_mutex);
+  const std::scoped_lock lock(m_mutex);
   // Look up relevant piece object among active pieces
-  if (m_active_pieces.find(piece_id) != m_active_pieces.end()) {
+  if (m_active_pieces.contains(piece_id)) {
     auto piece = m_active_pieces[piece_id];
     if (piece->set_block(offset, data)) {
       logger()->debug("Piece {} done!", piece_id);
@@ -1157,7 +1164,7 @@ bool Torrent::set_block(uint32_t piece_id, uint32_t offset, bytes_span data) {
 }
 
 std::shared_ptr<Piece> Torrent::active_piece(uint32_t id, bool create) {
-  const std::lock_guard<std::mutex> lock(m_mutex);
+  const std::scoped_lock lock(m_mutex);
   auto piece = m_active_pieces.find(id);
   if (piece == m_active_pieces.end()) {
     if (!create) {
@@ -1172,7 +1179,7 @@ std::shared_ptr<Piece> Torrent::active_piece(uint32_t id, bool create) {
 }
 
 bool Torrent::done() const {
-  const std::lock_guard<std::mutex> lock(m_mutex);
+  const std::scoped_lock lock(m_mutex);
 
   // If we haven't started on all pieces we are not done
   if (m_active_pieces.size() != m_pieces.size()) {
@@ -1204,7 +1211,7 @@ void Torrent::last_piece_written() {
   logger()->info("{} completed. Notifying peers and tracker.", m_name);
 
   {
-    scoped_lock lock(m_peers_mutex);
+    const scoped_lock lock(m_peers_mutex);
     for (auto& peer : m_peers) {
       if (!peer->is_listening()) {
         peer->set_am_interested(false);
@@ -1216,7 +1223,7 @@ void Torrent::last_piece_written() {
 }
 
 void Torrent::piece_done(std::shared_ptr<Piece>& piece) {
-  m_client_pieces[piece->id()] = true;
+  m_client_pieces.at(piece->id()) = true;
   ranges::for_each(m_piece_callbacks, [&](const auto& cb) { cb(this, piece); });
 }
 
