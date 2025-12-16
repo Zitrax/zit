@@ -8,7 +8,7 @@
 #include <variant>
 
 namespace spdlog {
-class logger;
+class logger;  // NOLINT(readability-identifier-naming)
 }
 
 namespace zit {
@@ -16,7 +16,7 @@ namespace zit {
 /**
  * Boolean settings. In the config file they can be read as true/false or 1/0
  */
-enum class BoolSetting {
+enum class BoolSetting : std::uint8_t {
   /**
    * If this is true, Zit will initiate connections to peers from the tracker
    * even if we are just seeding. This works around a problem where some
@@ -38,7 +38,7 @@ enum class BoolSetting {
  * Settings taking an integer. An invalid integer for the setting is a runtime
  * error.
  */
-enum class IntSetting {
+enum class IntSetting : std::uint8_t {
   /**
    * Port on which the Zit client is listening to incoming peer connections.
    */
@@ -60,7 +60,7 @@ enum class IntSetting {
   RETRY_PEERS_INTERVAL_SECONDS
 };
 
-enum class StringSetting {
+enum class StringSetting : std::uint8_t {
   /**
    * IPv4 address to accept incoming connections on, by default 127.0.0.1
    */

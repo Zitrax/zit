@@ -2,10 +2,10 @@
 // #define ASIO_ENABLE_HANDLER_TRACKING
 
 #include <asio/awaitable.hpp>
-#include <asio/co_spawn.hpp>
+#include <asio/co_spawn.hpp>  // NOLINT(misc-include-cleaner)
 #include <asio/io_context.hpp>
 #include <asio/ip/tcp.hpp>
-#include <asio/read_until.hpp>
+#include <asio/read_until.hpp>  // NOLINT(misc-include-cleaner)
 #include <asio/signal_set.hpp>
 #include <asio/streambuf.hpp>
 #include <asio/use_awaitable.hpp>
@@ -17,8 +17,8 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include "asio_helpers.hpp"
-#include "common.hpp"  // NOLINT(misc-include-cleaner)
+#include "asio_helpers.hpp"  // NOLINT(misc-include-cleaner)
+#include "common.hpp"        // NOLINT(misc-include-cleaner)
 #include "logger.hpp"
 
 class Connection : public socket_test::ID {
@@ -44,6 +44,7 @@ class Connection : public socket_test::ID {
 
       // Read incoming data
       asio::streambuf buffer;
+      // NOLINTNEXTLINE(misc-include-cleaner)
       co_await asio::async_read_until(m_socket, buffer, '\n',
                                       asio::use_awaitable);
 
@@ -93,6 +94,7 @@ int main(int argc, char* argv[]) {
       // Note: asio::detached is often used in examples but it will ignore any
       //       exceptions thrown by the coroutine. Using my own completion
       //       handler here instead that just rethrows the exception instead.
+      // NOLINTNEXTLINE(misc-include-cleaner)
       co_spawn(io_context, connections.back()->listen(), socket_test::rethrow);
     }
     io_context.run();

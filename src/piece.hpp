@@ -90,11 +90,11 @@ class Piece {
   Bitfield m_blocks_requested;
   Bitfield m_blocks_done;
   const uint32_t m_id;
-  mutable std::mutex m_mutex{};
-  bytes m_data{};
+  mutable std::mutex m_mutex;
+  bytes m_data;
   std::atomic_bool m_piece_written = false;
-  std::chrono::system_clock::time_point m_last_request{};
-  std::chrono::system_clock::time_point m_last_block{};
+  std::chrono::system_clock::time_point m_last_request;
+  std::chrono::system_clock::time_point m_last_block;
 };
 
 }  // namespace zit

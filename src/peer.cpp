@@ -1,9 +1,10 @@
 // -*- mode:c++; c-basic-offset : 2; -*-
 #include "peer.hpp"
 
+#include <fmt/format.h>
 #include <asio/awaitable.hpp>
 #include <asio/buffer.hpp>
-#include <asio/co_spawn.hpp>
+#include <asio/co_spawn.hpp>  // NOLINT(misc-include-cleaner)
 #include <asio/completion_condition.hpp>
 #include <asio/error.hpp>
 #include <asio/error_code.hpp>
@@ -11,11 +12,11 @@
 #include <asio/io_service.hpp>
 #include <asio/ip/address.hpp>
 #include <asio/ip/tcp.hpp>
-#include <asio/read.hpp>
+#include <asio/read.hpp>  // NOLINT(misc-include-cleaner)
 #include <asio/socket_base.hpp>
 #include <asio/system_error.hpp>
 #include <asio/use_awaitable.hpp>
-#include <asio/write.hpp>
+#include <asio/write.hpp>  // NOLINT(misc-include-cleaner)
 
 #ifndef _MSC_VER
 #include <bits/basic_string.h>
@@ -145,6 +146,7 @@ void PeerConnection::send(bool start_read) {
     m_sending = true;
     const string msg(m_msg);
     m_msg.clear();
+    // NOLINTNEXTLINE(misc-include-cleaner)
     asio::async_write(
         *socket_, asio::buffer(msg.c_str(), msg.size()),
         [this, start_read](auto err, auto len) {
@@ -222,6 +224,7 @@ void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
     // TODO: https://sourceforge.net/p/asio/mailman/message/23968189/
     //       mentions that maybe socket.async_read_some is better to read > 512
     //       bytes at a time
+    // NOLINTNEXTLINE(misc-include-cleaner)
     asio::async_read(
         *socket_, response_, asio::transfer_at_least(1),
         [this](const auto& ec, auto s) { handle_response(ec, s); });
@@ -249,7 +252,9 @@ PeerAcceptor::PeerAcceptor(ListeningPort port,
       m_bind_address(std::move(bind_address)) {
   logger()->trace(PRETTY_FUNCTION);
   // For now rethrowing - can consider asio::detached later?
-  co_spawn(m_io_context, listen(), [](auto e) { std::rethrow_exception(e); });
+  // NOLINTNEXTLINE(misc-include-cleaner)
+  co_spawn(m_io_context, listen(),
+           [](auto e) { std::rethrow_exception(std::move(e)); });
 }
 
 asio::awaitable<void> PeerAcceptor::listen() {
@@ -278,6 +283,7 @@ asio::awaitable<void> PeerAcceptor::listen() {
 
       // Read data from socket
       bytes buffer;
+      // NOLINTNEXTLINE(misc-include-cleaner)
       co_await asio::async_read(socket, asio::dynamic_buffer(buffer),
                                 asio::transfer_at_least(MIN_BT_MSG_LENGTH),
                                 asio::use_awaitable);
@@ -409,7 +415,7 @@ std::size_t Peer::request_next_block(unsigned short count) {
     return requests;
   }
   bytes req;
-  for (int i = 0; i < count; i++) {
+  for (unsigned short i = 0; i < count; i++) {
     // We can now start requesting pieces
     auto has_piece = next_piece(true);
     if (!has_piece) {
@@ -503,7 +509,7 @@ void Peer::have(uint32_t id) {
     m_remote_pieces = Bitfield(number_of_pieces);
     m_remote_pieces.fill(number_of_pieces, true);
   } else {
-    m_remote_pieces[id] = true;
+    m_remote_pieces.at(id) = true;
   }
   request_next_block();
 }

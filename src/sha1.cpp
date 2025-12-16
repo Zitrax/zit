@@ -142,12 +142,12 @@ Sha1 Sha1::calculateFile(const std::filesystem::path& file) {
 }
 
 template <typename T>
-Sha1 Sha1::fromBuffer(const T& buffer, typename T::size_type offset) {
+Sha1 Sha1::fromBuffer(const T& buffer, T::size_type offset) {
   if (offset + SHA_LENGTH > buffer.size()) {
     throw invalid_argument("Buffer too small for extracting sha1");
   }
   Sha1 ret;
-  copy_n(reinterpret_cast<const char*>(&buffer[offset]), SHA_LENGTH,
+  copy_n(reinterpret_cast<const char*>(&buffer.at(offset)), SHA_LENGTH,
          ret.data());
   return ret;
 }

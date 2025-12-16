@@ -83,6 +83,16 @@ class Bitfield {
   Proxy operator[](bytes::size_type i);
 
   /**
+   * Get bit value. Alias for operator[] - both throws.
+   */
+  [[nodiscard]] bool at(bytes::size_type i) const;
+
+  /**
+   * Get bit value. Alias for operator[] - both throws.
+   */
+  Proxy at(bytes::size_type i);
+
+  /**
    * Fill the first n bits with 0 or 1.
    *
    * @param count number of bits to set
@@ -129,7 +139,7 @@ class Bitfield {
   [[nodiscard]] const bytes& data() const { return m_bytes; }
 
  private:
-  bytes m_bytes{};
+  bytes m_bytes;
 };
 
 std::ostream& operator<<(std::ostream& os, const Bitfield& bf);

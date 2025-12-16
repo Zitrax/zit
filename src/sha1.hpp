@@ -45,7 +45,7 @@ class Sha1 : public std::array<char, SHA_LENGTH> {
    * Implemented for zit::bytes and std::strings.
    */
   template <typename T>
-  static Sha1 fromBuffer(const T& buffer, typename T::size_type offset);
+  static Sha1 fromBuffer(const T& buffer, T::size_type offset);
 
  private:
   [[nodiscard]] static Sha1 calculate(const unsigned char* src, size_t count);

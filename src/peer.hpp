@@ -70,13 +70,13 @@ class PeerConnection {
 
   void send(bool start_read = false);
 
-  std::string m_msg{};
+  std::string m_msg;
   IConnectionUrlProvider& peer_;
   asio::ip::tcp::resolver resolver_;
-  asio::streambuf response_{};
+  asio::streambuf response_;
   socket_ptr socket_;
-  asio::ip::tcp::resolver::iterator endpoint_{};
-  std::deque<std::string> m_send_queue{};
+  asio::ip::tcp::resolver::iterator endpoint_;
+  std::deque<std::string> m_send_queue;
   bool m_connected = false;
   bool m_sending = false;
   ConnectionPort m_connection_port;
@@ -240,7 +240,7 @@ class Peer : public IConnectionUrlProvider {
   [[nodiscard]] bool is_inactive() const;
 
  private:
-  std::optional<Url> m_url{};
+  std::optional<Url> m_url;
   bool m_am_choking = true;
   bool m_am_interested = false;
   bool m_choking = true;
@@ -249,15 +249,15 @@ class Peer : public IConnectionUrlProvider {
 
   void init_io_service(socket_ptr socket = nullptr);
 
-  Bitfield m_remote_pieces{};
+  Bitfield m_remote_pieces;
 
   // order important - connection need to be destroyed first
-  std::unique_ptr<asio::io_service> m_io_service{};
-  std::unique_ptr<PeerConnection> m_connection{};
+  std::unique_ptr<asio::io_service> m_io_service;
+  std::unique_ptr<PeerConnection> m_connection;
 
   Torrent& m_torrent;
-  std::unique_ptr<asio::io_service::work> m_work{};
-  std::chrono::system_clock::time_point m_last_activity{};
+  std::unique_ptr<asio::io_service::work> m_work;
+  std::chrono::system_clock::time_point m_last_activity;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Peer& peer) {

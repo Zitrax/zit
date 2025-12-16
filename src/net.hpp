@@ -127,11 +127,11 @@ class Url {
   }
 
  private:
-  std::string m_scheme{};
-  std::string m_host{};
-  std::string m_path{};
-  string_list m_params{};
-  std::optional<uint16_t> m_port{};
+  std::string m_scheme;
+  std::string m_host;
+  std::string m_path;
+  string_list m_params;
+  std::optional<uint16_t> m_port;
 };
 
 inline std::ostream& operator<<(std::ostream& os, const zit::Url& url) {

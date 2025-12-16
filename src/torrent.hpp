@@ -279,7 +279,7 @@ class Torrent {
    * m_client_pieces is also accessed by the file_writer, thus we need to lock.
    */
   void init_client_pieces(bytes::size_type count) {
-    const std::lock_guard<std::mutex> lock(m_mutex);
+    const std::scoped_lock lock(m_mutex);
     if (!m_client_pieces.size()) {
       m_client_pieces = Bitfield(count);
     }
@@ -289,7 +289,7 @@ class Torrent {
    * The pieces that we have (on disk).
    */
   [[nodiscard]] Bitfield client_pieces() const {
-    const std::lock_guard<std::mutex> lock(m_mutex);
+    const std::scoped_lock lock(m_mutex);
     return m_client_pieces;
   }
 
@@ -297,7 +297,7 @@ class Torrent {
    * Number of pieces on disk and in total.
    */
   [[nodiscard]] auto piece_status() const {
-    const std::lock_guard<std::mutex> lock(m_mutex);
+    const std::scoped_lock lock(m_mutex);
     return std::make_pair(m_client_pieces.count(), m_pieces.size());
   }
 
@@ -305,7 +305,7 @@ class Torrent {
    * Information about what pieces we don't have that a remote has.
    */
   [[nodiscard]] Bitfield relevant_pieces(const Bitfield& remote_pieces) const {
-    const std::lock_guard<std::mutex> lock(m_mutex);
+    const std::scoped_lock lock(m_mutex);
     return remote_pieces - m_client_pieces;
   }
 
@@ -363,7 +363,12 @@ class Torrent {
   [[nodiscard]] std::tuple<FileInfo, int64_t, int64_t> file_at_pos(
       int64_t pos) const;
 
-  enum class TrackerEvent { STARTED, STOPPED, COMPLETED, UNSPECIFIED };
+  enum class TrackerEvent : std::uint8_t {
+    STARTED,
+    STOPPED,
+    COMPLETED,
+    UNSPECIFIED
+  };
 
   /**
    * Find a torrent with a specific info hash among all existing torrents.
@@ -456,40 +461,40 @@ class Torrent {
 
   asio::io_context& m_io_context;
   const Config& m_config;
-  std::string m_announce{};
-  std::vector<std::vector<std::string>> m_announce_list{};
+  std::string m_announce;
+  std::vector<std::vector<std::string>> m_announce_list;
   int64_t m_creation_date = 0;
-  std::string m_comment{};
-  std::string m_created_by{};
-  std::string m_encoding{};
+  std::string m_comment;
+  std::string m_created_by;
+  std::string m_encoding;
   uint32_t m_piece_length = 0;
-  std::vector<Sha1> m_pieces{};
+  std::vector<Sha1> m_pieces;
   bool m_private = false;
-  std::string m_name{};
+  std::string m_name;
   int64_t m_length = 0;
-  std::string m_md5sum{};
-  std::vector<FileInfo> m_files{};
-  Sha1 m_info_hash{};
+  std::string m_md5sum;
+  std::vector<FileInfo> m_files;
+  Sha1 m_info_hash;
   std::filesystem::path m_tmpfile{};
   std::filesystem::path m_data_dir{};
   std::filesystem::path m_torrent_file{};
-  std::vector<PieceCallback> m_piece_callbacks{};
-  DisconnectCallback m_disconnect_callback{};
-  std::string m_peer_id{};
+  std::vector<PieceCallback> m_piece_callbacks;
+  DisconnectCallback m_disconnect_callback;
+  std::string m_peer_id;
   ListeningPort m_listening_port;
   ConnectionPort m_connection_port;
-  std::mutex m_peers_mutex{};
-  std::vector<std::shared_ptr<Peer>> m_peers{};
+  std::mutex m_peers_mutex;
+  std::vector<std::shared_ptr<Peer>> m_peers;
   HttpGet m_http_get;
   asio::steady_timer m_retry_pieces_timer;
   asio::steady_timer m_retry_peers_timer;
   bool m_stopped = false;
 
   // Piece housekeeping
-  mutable std::mutex m_mutex{};
-  Bitfield m_client_pieces{};
+  mutable std::mutex m_mutex;
+  Bitfield m_client_pieces;
   /** Piece id -> Piece object */
-  std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces{};
+  std::map<uint32_t, std::shared_ptr<Piece>> m_active_pieces;
 
   // This is ok and a bug in clang-tidy
   // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)

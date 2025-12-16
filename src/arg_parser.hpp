@@ -19,7 +19,7 @@ namespace zit {
  */
 class ArgParser {
  public:
-  enum class Type { INT, UINT, FLOAT, STRING, BOOL };
+  enum class Type : std::uint8_t { INT, UINT, FLOAT, STRING, BOOL };
 
  private:
   struct BaseArg {
@@ -27,7 +27,6 @@ class ArgParser {
         : m_option(std::move(option)), m_type(type) {}
 
     virtual ~BaseArg() = default;
-    virtual void* dst() = 0;
 
     [[nodiscard]] auto get_option() const { return m_option; }
     [[nodiscard]] const auto& get_aliases() const { return m_aliases; }
@@ -45,15 +44,15 @@ class ArgParser {
 
    protected:
     std::string m_option;
-    std::string m_help{};
-    std::set<std::string> m_aliases{};
+    std::string m_help;
+    std::set<std::string> m_aliases;
     Type m_type;
     bool m_provided = false;
     bool m_required = false;
     bool m_help_arg = false;
     bool m_is_multi = false;
     bool m_is_collecting = false;
-    std::optional<unsigned> m_position{};
+    std::optional<unsigned> m_position;
   };
 
   template <typename T>
@@ -86,15 +85,14 @@ class ArgParser {
       }
     }
 
-    void* dst() override { return &m_dst; }
-
     [[nodiscard]] auto dst() const { return m_dst.empty() ? m_default : m_dst; }
+
     void set_dst(T t) {
       if (!m_is_multi && !m_dst.empty()) {
         throw std::runtime_error(
             "Multiple values provided for single value option: " + m_option);
       }
-      m_dst.emplace_back(t);
+      m_dst.emplace_back(std::move(t));
     }
 
     /** Help text for option */
@@ -111,7 +109,7 @@ class ArgParser {
 
     /** Default value for option */
     auto& default_value(T t) {
-      m_default = {t};
+      m_default = {std::move(t)};
       return *this;
     }
 
@@ -184,7 +182,7 @@ class ArgParser {
   void verify_no_duplicate_collecting() const;
 
   std::string m_desc;
-  std::vector<std::unique_ptr<BaseArg>> m_options{};
+  std::vector<std::unique_ptr<BaseArg>> m_options;
   bool m_parsed = false;
 
   template <typename T>
