@@ -66,7 +66,7 @@ endif()
 include_directories(SYSTEM "external")
 
 if(UNIX)
-  add_compile_options(-Wall -Wextra -Werror -Weffc++ -Wconversion -Wsign-conversion)
+  add_compile_options(-Wall -Wextra -Werror -Wconversion -Wsign-conversion)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
     # Be strict and just disable unwanted or noisy warnings
     add_compile_options(
