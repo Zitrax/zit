@@ -9,19 +9,19 @@
   "overrides": [
     {
       "name": "openssl",
-      "version-string": "3.3.1"
+      "version-string": "3.6.0"
     },
     {
       "name": "asio",
-      "version": "1.30.2"
+      "version": "1.32.0"
     },
     {
       "name": "gtest",
-      "version": "1.15.0"
+      "version": "1.17.0"
     },
     {
       "name": "tbb",
-      "version": "2021.13.0"
+      "version": "2022.2.0"
     },
     {
       "name": "spdlog",
