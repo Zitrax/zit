@@ -207,13 +207,13 @@ Torrent::Torrent(asio::io_context& io_context,
     const auto& announce_list =
         root_dict.at("announce-list")->to<TypedElement<BeList>>()->val();
 
-    transform_all(announce_list, m_announce_list, [](const auto& tier) {
+    transform_all(announce_list, m_announce_list, [](const auto& tier) -> vector<string> {
       vector<string> tier_output_list;
       transform_all(tier->template to<TypedElement<BeList>>()->val(),
                     tier_output_list, [](const auto& elm) {
                       return elm->template to<TypedElement<string>>()->val();
                     });
-      return std::move(tier_output_list);
+      return tier_output_list;
     });
   }
 
@@ -873,13 +873,13 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
   // To avoid connecting to our own listening peer
   const auto is_local_peer = [&](const auto& peer) {
     const auto& url = peer->url();
-    static const auto local_ips = [] {
+    static const auto local_ips = [] -> string_list {
       auto resolved = get_host_ip_addresses();
       resolved.emplace_back("localhost");
       // FIXME: This should not be hardcoded
       constexpr auto* docker_ip{"172.17.0.1"};
       resolved.emplace_back(docker_ip);
-      return std::move(resolved);
+      return resolved;
     }();
     return url && ranges::contains(local_ips, url->host()) &&
            url->port().value_or(0) == m_listening_port.get();
