@@ -2,6 +2,10 @@
 
 # Build instructions
 
+## Compilers
+
+Note that at the moment the tested compilers are clang 22 and gcc 14 on Linux.
+
 ## CMake + vcpkg
 
 * `git submodule update --init --recursive`
@@ -14,7 +18,3 @@
 Or with --preset zit-gcc.
 
 Note that on Linux `pkg-config` and `clang` or `gcc` must be installed.
-
-## [Nix](https://nixos.org)
-
-* `nix-build`
