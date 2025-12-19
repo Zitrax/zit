@@ -124,3 +124,4 @@ if(NOT WIN32)
 endif()
 
 add_subdirectory(socket_test)
+add_subdirectory(torrent_writer)

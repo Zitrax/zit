@@ -32,6 +32,7 @@ add_executable(zitest
   test_global_config.cpp
   test_integrate.cpp
   test_torrent.cpp
+  test_torrent_writer.cpp
   test_main.cpp
   test_net.cpp
   test_peer.cpp
@@ -81,6 +82,10 @@ if(INTEGRATION_TESTS)
 endif()
 
 target_compile_definitions(zitest PUBLIC DATA_DIR="${CMAKE_CURRENT_SOURCE_DIR}/data")
+
+# Path to the torrent writer executable for tests
+add_dependencies(zitest zit_torrent_writer)
+target_compile_definitions(zitest PUBLIC TORRENT_WRITER_EXE="$<TARGET_FILE:zit_torrent_writer>")
 
 # For getting backtraces use:
 # sudo ln -s /usr/bin/llvm-symbolizer-3.8 /usr/bin/llvm-symbolizer
