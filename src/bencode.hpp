@@ -141,7 +141,7 @@ class Element : public std::enable_shared_from_this<Element> {
   virtual std::ostream& print(std::ostream& os) = 0;
 
   /**
-   * First try used T&& val, but it caoused storage of int references when we
+   * First try used T&& val, but it caused storage of int references when we
    * want such values copied. See https://stackoverflow.com/q/17316386/11722 and
    * https://isocpp.org/blog/2012/11/universal-references-in-c11-scott-meyers
    * for details.

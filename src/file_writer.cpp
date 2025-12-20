@@ -45,7 +45,6 @@ void FileWriter::run() {
   logger()->info("FileWriter done");
 }
 
-// FIXME: Support for multi torrents
 bytes FileWriter::read_block(uint32_t offset,
                              uint32_t length,
                              const Torrent& torrent) {
