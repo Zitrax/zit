@@ -251,6 +251,12 @@ PeerAcceptor::PeerAcceptor(ListeningPort port,
       m_io_context(io_context),
       m_bind_address(std::move(bind_address)) {
   logger()->trace(PRETTY_FUNCTION);
+  // Do not start the coroutine here: it must be started after the object is
+  // fully emplaced into the container that will own its lifetime. Call
+  // `start()` to begin the accept loop once the object is stored.
+}
+
+void PeerAcceptor::start() {
   // For now rethrowing - can consider asio::detached later?
   // NOLINTNEXTLINE(misc-include-cleaner)
   co_spawn(m_io_context, listen(),
