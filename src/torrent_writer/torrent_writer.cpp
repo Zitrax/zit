@@ -1,6 +1,7 @@
 #include "arg_parser.hpp"
 
 #include "bencode.hpp"
+#include "logger.hpp"
 #include "sha1.hpp"
 #include "string_utils.hpp"
 #include "strong_type.hpp"
@@ -13,6 +14,7 @@
 #include <exception>
 #include <filesystem>
 #include <fstream>
+#include <generator>
 #include <iostream>
 #include <iterator>
 #include <ranges>
@@ -28,11 +30,46 @@ using DataPath = StrongType<std::string, struct DataPathTag>;
 using Comment = StrongType<std::string, struct CommentTag>;
 using AnnounceURL = StrongType<std::string, struct AnnounceURLTag>;
 
-void WriteTorrent(const TorrentFile& torrent_file,
-                  const DataPath& data_path,
-                  const Comment& comment,
-                  const AnnounceURL& announce_url,
-                  const uint32_t piece_length) {
+namespace rv = std::ranges::views;
+
+/**
+ * Get chunks for the pieces.
+ *
+ * @param is Input stream
+ * @param n First chunk size
+ * @param m Subsequent chunk size
+ * @return std::generator<std::vector<char>>
+ */
+std::generator<zit::bytes> get_chunks(std::istream& is, size_t n, size_t m) {
+  const auto read_chunk = [&](size_t size) {
+    zit::bytes buf;
+    char c;
+    for (size_t i = 0; i < size && is.get(c); ++i) {
+      buf.push_back(static_cast<std::byte>(c));
+    }
+    return buf;
+  };
+
+  // 1. Read the first chunk (size n)
+  if (auto first = read_chunk(n); !first.empty()) {
+    co_yield first;
+  }
+
+  // 2. Read subsequent chunks (size m)
+  while (is) {
+    if (auto next = read_chunk(m); !next.empty()) {
+      co_yield next;
+    } else {
+      break;
+    }
+  }
+}
+
+void write_torrent(const TorrentFile& torrent_file,
+                   const DataPath& data_path,
+                   const Comment& comment,
+                   const AnnounceURL& announce_url,
+                   const uint32_t piece_length) {
   auto root = bencode::BeDict();
   root["announce"] = bencode::Element::build(announce_url.get());
   root["comment"] = bencode::Element::build(comment.get());
@@ -44,9 +81,12 @@ void WriteTorrent(const TorrentFile& torrent_file,
 
   // info dict
   auto info = bencode::BeDict();
+  std::stringstream pieces_ss;
   // single file
   if (std::filesystem::is_regular_file(data_path.get())) {
     const auto file_size = std::filesystem::file_size(data_path.get());
+    zit::logger()->debug("Adding file: {} ({} bytes)", data_path.get(),
+                         file_size);
     const auto name_str =
         std::filesystem::path(data_path.get()).filename().string();
     // Some clients include a UTF-8 variant of the filename in the info
@@ -59,12 +99,86 @@ void WriteTorrent(const TorrentFile& torrent_file,
     info["name.utf-8"] = bencode::Element::build(name_str);
     info["length"] = bencode::Element::build(static_cast<int64_t>(file_size));
     // md5sum is optional - we skip it for now
+
+    // Read file piecewise and add sha1 per piece
+    std::ifstream file_stream(data_path.get(), std::ios::in | std::ios::binary);
+    if (!file_stream) {
+      throw std::runtime_error("Could not open data file for reading");
+    }
+    auto file_range =
+        std::ranges::subrange(std::istreambuf_iterator<char>(file_stream),
+                              std::istreambuf_iterator<char>());
+    auto chunked_view = file_range | rv::chunk(piece_length);
+
+    for (auto&& chunk : chunked_view) {
+      auto data = std::ranges::to<std::string>(chunk);
+      pieces_ss << zit::Sha1::calculateData(data).str();
+    }
+
   } else if (std::filesystem::is_directory(data_path.get())) {
-    // Directory / multi-file mode not implemented yet. When/if implemented
-    // the file entries in the `files` list should include a `path.utf-8`
-    // variant mirroring the `path` list to maintain compatibility with
-    // torrents that include UTF-8 path variants.
-    throw std::runtime_error("Directory mode not yet implemented");
+    // multi file
+    const auto base_name =
+        std::filesystem::path(data_path.get()).filename().string();
+    info["name"] = bencode::Element::build(base_name);
+    info["name.utf-8"] = bencode::Element::build(base_name);
+
+    auto files = std::vector<bencode::ElmPtr>{};
+    zit::bytes piece_data;
+    for (const auto& entry :
+         std::filesystem::recursive_directory_iterator(data_path.get())) {
+      if (std::filesystem::is_regular_file(entry.path())) {
+        const auto file_size = std::filesystem::file_size(entry.path());
+        zit::logger()->debug("Adding file: {} ({} bytes)",
+                             entry.path().string(), file_size);
+
+        // build path list relative to data_path
+        std::vector<bencode::ElmPtr> path_list;
+        for (const auto& part :
+             std::filesystem::relative(entry.path(), data_path.get())) {
+          path_list.emplace_back(bencode::Element::build(part.string()));
+        }
+
+        auto file_dict = bencode::BeDict();
+        file_dict["length"] =
+            bencode::Element::build(static_cast<int64_t>(file_size));
+        file_dict["path"] = bencode::Element::build(path_list);
+        file_dict["path.utf-8"] = bencode::Element::build(path_list);
+        // md5sum is optional - we skip it for now
+
+        files.emplace_back(bencode::Element::build(file_dict));
+
+        // Now read data for sha1 pieces
+
+        std::ifstream file_stream(entry.path(),
+                                  std::ios::in | std::ios::binary);
+        if (!file_stream) {
+          throw std::runtime_error("Could not open data file for reading");
+        }
+
+        auto file_range =
+            std::ranges::subrange(std::istreambuf_iterator<char>(file_stream),
+                                  std::istreambuf_iterator<char>());
+
+        auto chunk_generator = get_chunks(
+            file_stream, piece_length - piece_data.size(), piece_length);
+        for (auto&& chunk : chunk_generator) {
+          piece_data.insert(piece_data.end(), chunk.begin(), chunk.end());
+          if (piece_data.size() == piece_length) {
+            pieces_ss << zit::Sha1::calculateData(piece_data).str();
+            piece_data.clear();
+          }
+        }
+      }
+    }
+
+    // Handle any remaining piece data
+    if (!piece_data.empty()) {
+      pieces_ss << zit::Sha1::calculateData(piece_data).str();
+      piece_data.clear();
+    }
+
+    info["files"] = bencode::Element::build(files);
+
   } else {
     throw std::runtime_error(
         "Data path is neither an accessible file nor directory");
@@ -73,22 +187,6 @@ void WriteTorrent(const TorrentFile& torrent_file,
   // common info fields
   info["piece length"] = bencode::Element::build(piece_length);
   // the "private" field is optional - we skip it for now
-
-  // Read file piecewise and add sha1 per piece
-  std::ifstream file_stream(data_path.get(), std::ios::in | std::ios::binary);
-  if (!file_stream) {
-    throw std::runtime_error("Could not open data file for reading");
-  }
-  auto file_range =
-      std::ranges::subrange(std::istreambuf_iterator<char>(file_stream),
-                            std::istreambuf_iterator<char>());
-  auto chunked_view = file_range | std::ranges::views::chunk(piece_length);
-
-  std::stringstream pieces_ss;
-  for (auto&& chunk : chunked_view) {
-    auto data = std::ranges::to<std::string>(chunk);
-    pieces_ss << zit::Sha1::calculateData(data).str();
-  }
   info["pieces"] = bencode::Element::build(pieces_ss.str());
   root["info"] = bencode::Element::build(info);
 
@@ -142,8 +240,8 @@ int main(int argc, const char* argv[]) noexcept {
     const auto announce_url = parser.get<std::string>("--announce");
     const auto piece_length = parser.get<uint32_t>("--piece-length");
 
-    WriteTorrent(TorrentFile(torrent_file), DataPath(data_path),
-                 Comment(comment), AnnounceURL(announce_url), piece_length);
+    write_torrent(TorrentFile(torrent_file), DataPath(data_path),
+                  Comment(comment), AnnounceURL(announce_url), piece_length);
 
   } catch (const std::exception& e) {
     std::cerr << "Error: " << e.what() << "\n";
