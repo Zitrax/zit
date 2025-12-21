@@ -180,8 +180,9 @@ void write_torrent(const TorrentFile& torrent_file,
     info["files"] = bencode::Element::build(files);
 
   } else {
-    throw std::runtime_error(
-        "Data path is neither an accessible file nor directory");
+    throw std::runtime_error(fmt::format(
+        "Data path '{}' is neither an accessible file nor directory",
+        data_path.get()));
   }
 
   // common info fields
