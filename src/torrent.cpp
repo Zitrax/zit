@@ -1264,13 +1264,13 @@ ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
   if (!torrent.encoding().empty()) {
     os << "Encoding:      " << torrent.encoding() << "\n";
   }
-  os << "Piece length:  " << torrent.piece_length() << "\n";
+  os << "Piece count:   " << torrent.pieces().size() << "\n";
+  os << "Piece length:  " << torrent.piece_length() << " bytes ("
+     << bytesToHumanReadable(torrent.piece_length()) << ")\n";
   os << "Info hash:     " << torrent.info_hash() << "\n";
   os << "Private:       " << (torrent.is_private() ? "Yes" : "No") << "\n";
+  os << "Name:          " << torrent.name() << "\n";
   if (torrent.is_single_file()) {
-    os << "Name:          " << torrent.name() << "\n";
-    os << "Length:        " << torrent.length() << " bytes ("
-       << bytesToHumanReadable(torrent.length()) << ")\n";
     if (!torrent.md5sum().empty()) {
       os << "MD5Sum:        " << torrent.md5sum() << "\n";
     }
@@ -1280,6 +1280,8 @@ ostream& operator<<(ostream& os, const zit::Torrent& torrent) {
       os << "               " << fi << "\n";
     }
   }
+  os << "Length:        " << torrent.length() << " bytes ("
+     << bytesToHumanReadable(torrent.length()) << ")\n";
   os << "Announce:      " << torrent.announce() << "\n";
   os << "Announce List:\n";
   for (const auto& list : torrent.announce_list()) {
