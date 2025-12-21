@@ -5,10 +5,12 @@
 #include "sha1.hpp"
 #include "string_utils.hpp"
 #include "strong_type.hpp"
+#include "types.hpp"
 #include "version.hpp"
 
 #include <fmt/format.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <ctime>
 #include <exception>
@@ -17,6 +19,7 @@
 #include <generator>
 #include <iostream>
 #include <iterator>
+#include <memory>
 #include <ranges>
 #include <sstream>
 #include <stdexcept>
@@ -40,11 +43,13 @@ namespace rv = std::ranges::views;
  * @param m Subsequent chunk size
  * @return std::generator<std::vector<char>>
  */
-std::generator<zit::bytes> get_chunks(std::istream& is, size_t n, size_t m) {
+std::generator<zit::bytes> get_chunks(std::shared_ptr<std::istream> is,
+                                      size_t n,
+                                      size_t m) {
   const auto read_chunk = [&](size_t size) {
     zit::bytes buf;
-    char c;
-    for (size_t i = 0; i < size && is.get(c); ++i) {
+    char c{};
+    for (size_t i = 0; i < size && is->get(c); ++i) {
       buf.push_back(static_cast<std::byte>(c));
     }
     return buf;
@@ -56,7 +61,7 @@ std::generator<zit::bytes> get_chunks(std::istream& is, size_t n, size_t m) {
   }
 
   // 2. Read subsequent chunks (size m)
-  while (is) {
+  while (*is) {
     if (auto next = read_chunk(m); !next.empty()) {
       co_yield next;
     } else {
@@ -149,18 +154,14 @@ void write_torrent(const TorrentFile& torrent_file,
 
         // Now read data for sha1 pieces
 
-        std::ifstream file_stream(entry.path(),
-                                  std::ios::in | std::ios::binary);
-        if (!file_stream) {
+        auto is = std::make_shared<std::ifstream>(
+            entry.path(), std::ios::in | std::ios::binary);
+        if (!*is) {
           throw std::runtime_error("Could not open data file for reading");
         }
 
-        auto file_range =
-            std::ranges::subrange(std::istreambuf_iterator<char>(file_stream),
-                                  std::istreambuf_iterator<char>());
-
-        auto chunk_generator = get_chunks(
-            file_stream, piece_length - piece_data.size(), piece_length);
+        auto chunk_generator =
+            get_chunks(is, piece_length - piece_data.size(), piece_length);
         for (auto&& chunk : chunk_generator) {
           piece_data.insert(piece_data.end(), chunk.begin(), chunk.end());
           if (piece_data.size() == piece_length) {
