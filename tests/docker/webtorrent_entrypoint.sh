@@ -3,8 +3,30 @@ set -e
 
 HOST_IP="${HOST_IP:-}"
 
+# 1) If user set HOST_IP env, use it (already handled by expansion above)
+
+# 2) Try getent ahostsv4 (Docker Desktop / some setups)
+if [ -z "$HOST_IP" ] && command -v getent >/dev/null 2>&1; then
+	HOST_IP=$(getent ahostsv4 host.docker.internal 2>/dev/null | awk '{print $1; exit}' || true)
+fi
+
+# 3) Try classic getent hosts lookup
+if [ -z "$HOST_IP" ] && command -v getent >/dev/null 2>&1; then
+	HOST_IP=$(getent hosts host.docker.internal 2>/dev/null | awk '{print $1; exit}' || true)
+fi
+
+# 4) Fallback: use container default gateway (usually the host's docker bridge IP)
+if [ -z "$HOST_IP" ] && command -v ip >/dev/null 2>&1; then
+	HOST_IP=$(ip route 2>/dev/null | awk '/default/ {print $3; exit}' || true)
+fi
+
+# 5) Last-resort: try /sbin/ip route (some minimal images)
+if [ -z "$HOST_IP" ] && [ -x /sbin/ip ]; then
+	HOST_IP=$(/sbin/ip route 2>/dev/null | awk '/default/ {print $3; exit}' || true)
+fi
+
 if [ -z "$HOST_IP" ]; then
-	echo "ERROR: HOST_IP not set." >&2
+	echo "Warning: HOST_IP could not be determined inside the container." >&2
 	echo "You can set HOST_IP env or run container with --add-host=host.docker.internal:host-gateway" >&2
 	exit 1
 fi
