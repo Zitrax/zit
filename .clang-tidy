@@ -69,7 +69,7 @@ Checks:          '*,
                  -readability-named-parameter,
                  '
 WarningsAsErrors: '*'
-HeaderFilterRegex: '(src|tests)/*.h$'
+HeaderFilterRegex: '.*'
 FormatStyle:     none
 User:            db
 CheckOptions:    
