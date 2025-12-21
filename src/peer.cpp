@@ -514,7 +514,7 @@ void Peer::set_interested(bool interested) {
   }
   if (m_interested && !interested) {
     logger()->info("Peer is Not interested");
-    // TODO: I guess we don't need to choke it since the peer told us
+    m_torrent.not_interested(this);
   }
   m_interested = interested;
 }
