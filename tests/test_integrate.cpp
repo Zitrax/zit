@@ -196,26 +196,21 @@ auto start_seeder(const fs::path& data_dir,
   }
 
   std::vector<std::string> args = {
-      "docker",
-      "run",
-      "--rm",
-      "--name",
-      container_name,
-      "--publish",
-      fmt::format("{}:{}", port, port),
-      "--volume",
+      "docker", "run", "--rm", "--name", container_name,
+      // Pass host UID/GID so container can fix file ownership on exit
+      "--env", fmt::format("HOST_UID={}", getuid()), "--env",
+      fmt::format("HOST_GID={}", getgid()), "--publish",
+      fmt::format("{}:{}", port, port), "--volume",
       fmt::format("{}:{}", data_dir.generic_string(), container_data_dir),
       "--volume",
       fmt::format("{}:{}", torrent_file.parent_path().generic_string(),
                   container_torrent_dir),
       // Needed to be able to run iptables in the container
-      "--cap-add",
-      "NET_ADMIN",
+      "--cap-add", "NET_ADMIN",
       // For verbose output
-      //"--env",
-      // fmt::format("DEBUG={}",
-      //            logger()->should_log(spdlog::level::debug) ? "*" : "")
-  };
+      "--env",
+      fmt::format("DEBUG={}",
+                  logger()->should_log(spdlog::level::debug) ? "*" : "")};
 
   // Add host mapping so container can resolve host.docker.internal to host LAN
   // IP
@@ -245,7 +240,19 @@ auto start_seeder(const fs::path& data_dir,
 }
 
 auto start_leecher(const fs::path& target, const fs::path& torrent_file) {
-  fs::remove(target);
+  try {
+    if (fs::exists(target)) {
+      // Ensure the directory is empty to avoid leftover files
+      for (const auto& entry : fs::directory_iterator(target)) {
+        fs::remove_all(entry);
+      }
+    }
+    // Ensure the mount directory exists and is owned by the host user
+    fs::create_directories(target);
+  } catch (const std::exception& e) {
+    logger()->warn("Failed preparing target directory {}: {}", target.string(),
+                   e.what());
+  }
   return start_seeder(target, torrent_file, "leecher");
 }
 
@@ -598,7 +605,8 @@ TEST_F(Integrate, DISABLED_upload) {
   const auto target = tmp_dir() / "upload_test";
   const auto destination = target / "1MiB.dat";
   // Be fully sure we do not have the file there yet
-  ASSERT_FALSE(fs::exists(destination));
+  ASSERT_FALSE(fs::exists(destination))
+      << "File already exists: " << destination;
 
   std::optional<zit::Process> leecher;
   asio::steady_timer timer{m_io_context};
@@ -649,6 +657,10 @@ TEST_F(Integrate, DISABLED_multi_upload) {
 
   // Start a leecher that we will upload to
   const auto target = tmp_dir() / "multi_upload_test";
+  const auto destination = target / "multi";  // folder name inside torrent
+  // Be fully sure we do not have the files there yet
+  ASSERT_FALSE(fs::exists(destination))
+      << "File already exists: " << destination;
 
   std::optional<zit::Process> leecher;
   asio::steady_timer timer{m_io_context};
@@ -672,5 +684,5 @@ TEST_F(Integrate, DISABLED_multi_upload) {
   torrent.run();
 
   // Transfer done - Verify content
-  verify_download(torrent, data_dir / torrent.name(), false);
+  verify_download(torrent, destination, false);
 }
