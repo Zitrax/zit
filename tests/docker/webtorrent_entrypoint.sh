@@ -36,5 +36,13 @@ fi
 # for the peer list which will not work from within the container
 /usr/sbin/iptables -t nat -A OUTPUT -d 172.17.0.1 -j DNAT --to-destination "$HOST_IP"
 
-# Run opentracker with the provided arguments
+# If host UID/GID are provided, fix ownership of the bind mount and
+# drop privileges using gosu so files get correct ownership
+if [ -n "$HOST_UID" ] && [ -n "$HOST_GID" ] && command -v gosu >/dev/null 2>&1; then
+	mkdir -p /data 2>/dev/null || true
+	chown -R "$HOST_UID:$HOST_GID" /data 2>/dev/null || true
+	exec gosu "$HOST_UID:$HOST_GID" webtorrent "$@"
+fi
+
+# Fallback: run as root if HOST_UID/GID not provided
 exec webtorrent "$@"
