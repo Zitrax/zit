@@ -1,8 +1,8 @@
 FROM ubuntu:24.04
 
-# Install nodejs and npm
+# Install nodejs, webtorrent-cli, iptables tools, and gosu for UID/GID drop
 RUN apt-get update && \
-    apt-get install -y npm iptables iproute2 && \
+    apt-get install -y npm iptables iproute2 gosu && \
     rm -rf /var/lib/apt/lists/* && \
     npm install webtorrent-cli -g
 
