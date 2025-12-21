@@ -120,10 +120,24 @@ class PeerAcceptor {
  */
 class Peer : public IConnectionUrlProvider {
  public:
-  explicit Peer(Url url, Torrent& torrent)
+  /**
+   * Construct a new Peer object
+   */
+  Peer(Url url, Torrent& torrent)
       : m_url(std::move(url)),
         m_torrent(torrent),
         m_last_activity(std::chrono::system_clock::now()) {}
+
+  /**
+   * Constructor for incoming connections with an already-accepted socket
+   */
+  Peer(socket_ptr socket, Url url, Torrent& torrent)
+      : m_url(std::move(url)),
+        m_listening(true),
+        m_torrent(torrent),
+        m_last_activity(std::chrono::system_clock::now()) {
+    init_io_service(std::move(socket));
+  }
 
   /**
    * Return the url of this peer.

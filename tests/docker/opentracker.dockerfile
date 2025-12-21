@@ -1,5 +1,5 @@
 # Use fixed ubuntu image for reproducibility
-FROM ubuntu:24.10
+FROM ubuntu:24.04
 
 # Install necessary packages
 RUN apt-get update && apt-get install -y \

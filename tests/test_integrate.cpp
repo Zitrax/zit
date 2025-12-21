@@ -1,6 +1,13 @@
 /**
  * Currently using linux programs for integration testing
  * but inside docker containers.
+ *
+ * sudo apt install docker.io
+ * sudo usermod -aG docker $USER
+ * newgrp docker
+ *
+ * cd tests/docker
+ * ./build.sh
  */
 
 /**
@@ -12,6 +19,8 @@
  *    - sudo apt install transmission-cli
  */
 
+#include <cstdio>
+#include <cstdlib>
 #include <file_utils.hpp>
 #include <file_writer.hpp>
 #include <torrent.hpp>
@@ -49,6 +58,51 @@ class TestConfig : public zit::Config {
 
 namespace {
 
+std::string get_host_ip_from_host() {
+  if (const char* env = getenv("HOST_IP")) {
+    if (strlen(env) > 0)
+      return std::string(env);
+  }
+  // Try to obtain the host IP used for outbound traffic (robust on Linux)
+  FILE* f = popen(
+      "ip route get 1.1.1.1 2>/dev/null | awk '{for(i=1;i<=NF;i++) "
+      "if($i==\"src\") {print $(i+1); exit}}'",
+      "r");
+  if (f) {
+    char buf[128];
+    if (fgets(buf, sizeof(buf), f)) {
+      pclose(f);
+      // strip newline
+      std::string s(buf);
+      if (!s.empty() && s.back() == '\n')
+        s.pop_back();
+      if (!s.empty())
+        return s;
+    } else {
+      pclose(f);
+    }
+  }
+  // Try docker bridge gateway as a fallback
+  f = popen(
+      "docker network inspect bridge --format '{{(index .IPAM.Config "
+      "0).Gateway}}' 2>/dev/null",
+      "r");
+  if (f) {
+    char buf[128];
+    if (fgets(buf, sizeof(buf), f)) {
+      pclose(f);
+      std::string s(buf);
+      if (!s.empty() && s.back() == '\n')
+        s.pop_back();
+      if (!s.empty())
+        return s;
+    } else {
+      pclose(f);
+    }
+  }
+  throw std::runtime_error("Failed to determine host IP address");
+}
+
 [[maybe_unused]] fs::path home_dir() {
   const auto home = getenv("HOME");
   if (!home || strlen(home) < 2) {
@@ -57,21 +111,61 @@ namespace {
   return {home};
 }
 
+// Generate a .torrent file from data using the test torrent writer
+// If `TORRENT_WRITER_EXE` is not available, fall back to existing torrent.
+fs::path generate_torrent_with_announce(const fs::path& data,
+                                        const std::string& announce,
+                                        const fs::path& out_dir) {
+#ifdef TORRENT_WRITER_EXE
+  const auto out_torrent =
+      out_dir / ("gen_" + data.filename().string() + ".torrent");
+  const std::string cmd = std::string(TORRENT_WRITER_EXE) + " --torrent " +
+                          out_torrent.generic_string() + " --data " +
+                          data.generic_string() +
+                          " --comment 'Generated for testing' --announce " +
+                          announce + " --piece-length 32768";
+  // Use exec() from test_utils.hpp which throws on non-zero exit
+  exec(cmd);
+  return out_torrent;
+#else
+  (void)announce;
+  (void)out_dir;
+  return data_dir / "1MiB.torrent";
+#endif
+}
+
 auto start_tracker(const fs::path& data_dir) {
+  // Ensure any previous tracker container is gone to avoid name conflicts
+  try {
+    exec("docker rm -f zit-opentracker > /dev/null 2>&1 || true");
+  } catch (const std::exception&) {
+    // Ignore cleanup errors
+  }
+
+  std::vector<std::string> args = {
+      "docker", "run", "--rm", "--name", "zit-opentracker", "--volume",
+      fmt::format("{}:{}", data_dir.generic_string(), "/data"),
+      // Needed to be able to run iptables in the container
+      "--cap-add", "NET_ADMIN",
+      //
+      "--publish", "8000:8000"};
+  // Add host mapping
+  const auto host_ip = get_host_ip_from_host();
+  if (!host_ip.empty()) {
+    args.push_back("--add-host");
+    args.push_back(fmt::format("host.docker.internal:{}", host_ip));
+  } else {
+    args.push_back("--add-host");
+    args.push_back("host.docker.internal:host-gateway");
+  }
+  args.push_back("opentracker");
+  args.push_back("-p");
+  args.push_back("8000");
+  args.push_back("-w");
+  args.push_back("/data/opentracker.whitelist");
+
   auto tracker =
-      Process("tracker",
-              {"docker", "run", "--rm", "--name", "zit-opentracker", "--volume",
-               fmt::format("{}:{}", data_dir.generic_string(), "/data"),
-               // Needed to be able to run iptables in the container
-               "--cap-add", "NET_ADMIN",
-               //
-               "--publish", "8000:8000", "opentracker", "-p", "8000",
-               // The default opentracker build seem to be compiled in closed
-               // mode such that all torrent must be explicitly listed in a
-               // whitelist. It would be possible to recompile it without that
-               // but for now lets just use it like this.
-               "-w", "/data/opentracker.whitelist"},
-              nullptr, {"docker", "stop", "zit-opentracker"});
+      Process("tracker", args, nullptr, {"docker", "stop", "zit-opentracker"});
 
   // Allow some time for the tracker to start
   this_thread::sleep_for(1s);
@@ -91,30 +185,63 @@ auto start_seeder(const fs::path& data_dir,
 
   static int seeder_count{0};
   const auto container_name = fmt::format("zit-webtorrent-{}", seeder_count++);
-
   const auto port = std::to_string(webtorrent_seeding_port);
-  return Process(
-      name,
-      {"docker", "run", "--rm", "--name", container_name, "--publish",
-       fmt::format("{}:{}", port, port), "--volume",
-       fmt::format("{}:{}", data_dir.generic_string(), container_data_dir),
-       "--volume",
-       fmt::format("{}:{}", torrent_file.parent_path().generic_string(),
-                   container_torrent_dir),
-       // Needed to be able to run iptables in the container
-       "--cap-add", "NET_ADMIN",
-       // For verbose output
-       "--env",
-       fmt::format("DEBUG={}",
-                   logger()->should_log(spdlog::level::debug) ? "*" : ""),
-       //
-       "webtorrent", "seed",
-       // Torrent file
-       fmt::format("{}/{}", container_torrent_dir, torrent_file.filename()),
-       "--out", container_data_dir, "--torrent-port",
-       std::to_string(webtorrent_seeding_port++), "--port",
-       std::to_string(webtorrent_http_port++), "--keep-seeding"},
-      nullptr, {"docker", "stop", container_name});
+
+  // Ensure any previous tracker container is gone to avoid name conflicts
+  try {
+    exec(fmt::format("docker rm -f {} > /dev/null 2>&1 || true",
+                     container_name));
+  } catch (const std::exception&) {
+    // Ignore cleanup errors
+  }
+
+  std::vector<std::string> args = {
+      "docker",
+      "run",
+      "--rm",
+      "--name",
+      container_name,
+      "--publish",
+      fmt::format("{}:{}", port, port),
+      "--volume",
+      fmt::format("{}:{}", data_dir.generic_string(), container_data_dir),
+      "--volume",
+      fmt::format("{}:{}", torrent_file.parent_path().generic_string(),
+                  container_torrent_dir),
+      // Needed to be able to run iptables in the container
+      "--cap-add",
+      "NET_ADMIN",
+      // For verbose output
+      //"--env",
+      // fmt::format("DEBUG={}",
+      //            logger()->should_log(spdlog::level::debug) ? "*" : "")
+  };
+
+  // Add host mapping so container can resolve host.docker.internal to host LAN
+  // IP
+  const auto host_ip = get_host_ip_from_host();
+  if (!host_ip.empty()) {
+    args.push_back("--add-host");
+    args.push_back(fmt::format("host.docker.internal:{}", host_ip));
+  } else {
+    args.push_back("--add-host");
+    args.push_back("host.docker.internal:host-gateway");
+  }
+
+  // Command and arguments for webtorrent
+  args.push_back("webtorrent");
+  args.push_back("seed");
+  args.push_back(
+      fmt::format("{}/{}", container_torrent_dir, torrent_file.filename()));
+  args.push_back("--out");
+  args.push_back(container_data_dir);
+  args.push_back("--torrent-port");
+  args.push_back(std::to_string(webtorrent_seeding_port++));
+  args.push_back("--port");
+  args.push_back(std::to_string(webtorrent_http_port++));
+  args.push_back("--keep-seeding");
+
+  return Process(name, args, nullptr, {"docker", "stop", container_name});
 }
 
 auto start_leecher(const fs::path& target, const fs::path& torrent_file) {
@@ -222,7 +349,10 @@ TEST_P(IntegrateF, download) {
 TEST_P(IntegrateF, DISABLED_download) {
 #endif  // INTEGRATION_TESTS
   const auto data_dir = fs::path(DATA_DIR);
-  const auto torrent_file = data_dir / "1MiB.torrent";
+  const auto announce =
+      std::format("http://{}:8000/announce", get_host_ip_from_host());
+  const auto torrent_file = generate_torrent_with_announce(
+      data_dir / "1MiB.dat", announce, tmp_dir());
   const uint8_t number_of_seeders = GetParam();
 
   auto tracker = start_tracker(data_dir);
@@ -255,7 +385,10 @@ TEST_F(IntegrateOodF, download_ood) {
 TEST_F(IntegrateOodF, DISABLED_download_ood) {
 #endif  // INTEGRATION_TESTS
   const auto data_dir = fs::path(DATA_DIR);
-  const auto torrent_file = data_dir / "1MiB.torrent";
+  const auto announce =
+      std::format("http://{}:8000/announce", get_host_ip_from_host());
+  const auto torrent_file = generate_torrent_with_announce(
+      data_dir / "1MiB.dat", announce, tmp_dir());
   constexpr uint8_t number_of_seeders = 1;
 
   auto tracker = start_tracker(data_dir);
@@ -298,8 +431,12 @@ TEST_F(IntegrateF, DISABLED_download_dual_torrents) {
   const auto download_dir = tmp_dir();
   TestConfig test_config;
 
-  const auto torrent_file_1 = data_dir / "1MiB.torrent";
-  const auto torrent_file_2 = data_dir / "multi.torrent";
+  const auto torrent_file_1 = generate_torrent_with_announce(
+      data_dir / "1MiB.dat",
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
+  const auto torrent_file_2 = generate_torrent_with_announce(
+      data_dir / "multi",
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
@@ -332,7 +469,9 @@ TEST_F(Integrate, download_part) {
 TEST_P(IntegrateF, DISABLED_download_part) {
 #endif  // INTEGRATION_TESTS
   const auto data_dir = fs::path(DATA_DIR);
-  const auto torrent_file = data_dir / "1MiB.torrent";
+  const auto torrent_file = generate_torrent_with_announce(
+      data_dir / "1MiB.dat",
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
   const auto download_dir = tmp_dir();
 
   auto tracker = start_tracker(data_dir);
@@ -372,7 +511,9 @@ TEST_F(Integrate, download_multi_part) {
 TEST_F(Integrate, DISABLED_download_multi_part) {
 #endif  // INTEGRATION_TESTS
   const auto data_dir = fs::path(DATA_DIR);
-  const auto torrent_file = data_dir / "multi.torrent";
+  const auto torrent_file = generate_torrent_with_announce(
+      data_dir / "multi",
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
   const auto download_dir = tmp_dir();
 
   auto tracker = start_tracker(data_dir);
@@ -414,7 +555,9 @@ TEST_F(Integrate, download_multi_file) {
 TEST_F(Integrate, DISABLED_download_multi_file) {
 #endif  // INTEGRATION_TESTS
   const auto data_dir = fs::path(DATA_DIR);
-  const auto torrent_file = data_dir / "multi.torrent";
+  const auto torrent_file = generate_torrent_with_announce(
+      data_dir / "multi",
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
@@ -435,7 +578,9 @@ TEST_F(Integrate, upload) {
 TEST_F(Integrate, DISABLED_upload) {
 #endif  // INTEGRATION_TESTS
   const auto data_dir = fs::path(DATA_DIR);
-  const auto torrent_file = data_dir / "1MiB.torrent";
+  const auto torrent_file = generate_torrent_with_announce(
+      data_dir / "1MiB.dat",
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
@@ -463,21 +608,18 @@ TEST_F(Integrate, DISABLED_upload) {
     EXPECT_FALSE(ec);
     leecher = start_leecher(target, torrent_file);
 
-    torrent.set_disconnect_callback([&](zit::Peer*) {
-      logger()->info("Peer disconnect - stopping");
+    torrent.set_not_interested_callback([&](zit::Peer*) {
+      logger()->info("Peer not interested - upload complete, stopping");
       torrent.stop();
       leecher->terminate();
     });
   });
 
-  // FIXME: How to avoid this sleep?
-  // this_thread::sleep_for(5s);
-
   // Connects to tracker and retrieves peers
   torrent.start();
 
   // Run the peer connections
-  m_io_context.run();
+  torrent.run();
 
   // Transfer done - Verify content
   verify_download(torrent, destination);
@@ -489,7 +631,9 @@ TEST_F(Integrate, multi_upload) {
 TEST_F(Integrate, DISABLED_multi_upload) {
 #endif  // INTEGRATION_TESTS
   const auto data_dir = fs::path(DATA_DIR);
-  const auto torrent_file = data_dir / "multi.torrent";
+  const auto torrent_file = generate_torrent_with_announce(
+      data_dir / "multi",
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
@@ -498,18 +642,28 @@ TEST_F(Integrate, DISABLED_multi_upload) {
   zit::Torrent torrent(m_io_context, torrent_file, data_dir, test_config);
   ASSERT_TRUE(torrent.done());
 
-  // Start a leecher that we will upload to
-  auto target = tmp_dir() / "multi_upload_test";
-  auto leecher = start_leecher(target, torrent_file);
-
-  torrent.set_disconnect_callback([&](zit::Peer*) {
-    logger()->info("Peer disconnect - stopping");
+  sigint_function = [&](int /*s*/) {
+    logger()->warn("CTRL-C pressed. Stopping torrent...");
     torrent.stop();
-    leecher.terminate();
-  });
+  };
 
-  // FIXME: How to avoid this sleep?
-  this_thread::sleep_for(15s);
+  // Start a leecher that we will upload to
+  const auto target = tmp_dir() / "multi_upload_test";
+
+  std::optional<zit::Process> leecher;
+  asio::steady_timer timer{m_io_context};
+  timer.expires_after(15s);
+
+  timer.async_wait([&](auto ec) {
+    EXPECT_FALSE(ec);
+    leecher = start_leecher(target, torrent_file);
+
+    torrent.set_not_interested_callback([&](zit::Peer*) {
+      logger()->info("Peer not interested - upload complete, stopping");
+      torrent.stop();
+      leecher->terminate();
+    });
+  });
 
   // Connects to tracker and retrieves peers
   torrent.start();
