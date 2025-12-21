@@ -96,6 +96,20 @@ void PeerConnection::write(const optional<Url>& url, const std::string& msg) {
   }
   m_msg = msg;
 
+  // If socket is already open and connected (accepted incoming connection),
+  // use it directly without attempting to resolve/connect
+  if (socket_ && socket_->is_open() && !m_connected) {
+    // Check if socket is actually connected (has remote endpoint)
+    asio::error_code ec;
+    socket_->remote_endpoint(ec);
+    if (!ec) {
+      // Socket is connected - this is an accepted incoming connection
+      m_connected = true;
+      send(true);
+      return;
+    }
+  }
+
   if (m_connected || endpoint_ != tcp::resolver::iterator()) {
     // We have already resolved and connected
     handle_connect(asio::error_code(), endpoint_);
@@ -314,8 +328,14 @@ asio::awaitable<void> PeerAcceptor::listen() {
         return port;
         //}
       }();
-      torrent->add_peer(make_shared<Peer>(
-          Url{fmt::format("http://{}:{}", ip, accept_port)}, *torrent));
+      auto peer = make_shared<Peer>(
+          std::make_unique<tcp::socket>(std::move(socket)),
+          Url{fmt::format("http://{}:{}", ip, accept_port)}, *torrent);
+      if (torrent->add_peer(peer)) {
+        // Successfully added - send our bitfield
+        // Remote will send INTERESTED if they want our pieces
+        peer->report_bitfield();
+      }
     } catch (const std::system_error& error) {
       logger()->error("Listen errored: {}", error.what());
     }

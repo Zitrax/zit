@@ -21,6 +21,7 @@ using PieceCallback =
     std::function<void(Torrent*, const std::shared_ptr<Piece>&)>;
 
 using DisconnectCallback = std::function<void(Peer*)>;
+using NotInterestedCallback = std::function<void(Peer*)>;
 
 /**
  * Function taking an Url + bind address and returning the resulting
@@ -254,7 +255,12 @@ class Torrent {
     m_disconnect_callback = std::move(disconnect_callback);
   }
 
+  void set_not_interested_callback(NotInterestedCallback not_interested_callback) {
+    m_not_interested_callback = std::move(not_interested_callback);
+  }
+
   void disconnected(Peer* peer);
+  void not_interested(Peer* peer);
 
   /**
    * The first request to the tracker. After calling this the peer list
@@ -480,6 +486,7 @@ class Torrent {
   std::filesystem::path m_torrent_file{};
   std::vector<PieceCallback> m_piece_callbacks;
   DisconnectCallback m_disconnect_callback;
+  NotInterestedCallback m_not_interested_callback;
   std::string m_peer_id;
   ListeningPort m_listening_port;
   ConnectionPort m_connection_port;

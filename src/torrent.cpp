@@ -207,14 +207,16 @@ Torrent::Torrent(asio::io_context& io_context,
     const auto& announce_list =
         root_dict.at("announce-list")->to<TypedElement<BeList>>()->val();
 
-    transform_all(announce_list, m_announce_list, [](const auto& tier) -> vector<string> {
-      vector<string> tier_output_list;
-      transform_all(tier->template to<TypedElement<BeList>>()->val(),
-                    tier_output_list, [](const auto& elm) {
-                      return elm->template to<TypedElement<string>>()->val();
-                    });
-      return tier_output_list;
-    });
+    transform_all(
+        announce_list, m_announce_list, [](const auto& tier) -> vector<string> {
+          vector<string> tier_output_list;
+          transform_all(
+              tier->template to<TypedElement<BeList>>()->val(),
+              tier_output_list, [](const auto& elm) {
+                return elm->template to<TypedElement<string>>()->val();
+              });
+          return tier_output_list;
+        });
   }
 
   m_info_hash = Sha1::calculateData(encode(info));
@@ -413,6 +415,12 @@ auto Torrent::left() const {
 void Torrent::disconnected(Peer* peer) {
   if (m_disconnect_callback) {
     m_disconnect_callback(peer);
+  }
+}
+
+void Torrent::not_interested(Peer* peer) {
+  if (m_not_interested_callback) {
+    m_not_interested_callback(peer);
   }
 }
 
@@ -947,7 +955,12 @@ void Torrent::schedule_retry_peers() {
 void Torrent::run() {
   logger()->debug("Run loop start");
   const auto is_stopped = [](auto& p) { return p->io_service().stopped(); };
-  while (!m_stopped && (!done() || !ranges::all_of(m_peers, is_stopped))) {
+  // Keep running while not explicitly stopped AND either:
+  // - we're still downloading (!done()), OR
+  // - we have active peers, OR
+  // - the io_context has pending work (timers, acceptor, etc.)
+  while (!m_stopped && (!done() || !ranges::all_of(m_peers, is_stopped) ||
+                        !m_io_context.stopped())) {
     std::size_t ran = 0;
     {
       const scoped_lock lock(m_peers_mutex);
