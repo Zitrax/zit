@@ -163,7 +163,7 @@ void PeerConnection::send(bool start_read) {
     // NOLINTNEXTLINE(misc-include-cleaner)
     asio::async_write(
         *socket_, asio::buffer(msg.c_str(), msg.size()),
-        [this, start_read](auto err, auto len) {
+        [this, start_read, msg](auto err, auto len) {
           if (!err) {
             logger()->debug("{}: Data of len {} sent", peer_.str(), len);
           } else {
