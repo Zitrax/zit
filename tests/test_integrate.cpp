@@ -59,6 +59,7 @@ class TestConfig : public zit::Config {
 namespace {
 
 std::string get_host_ip_from_host() {
+#ifndef WIN32
   if (const char* env = getenv("HOST_IP")) {
     if (strlen(env) > 0)
       return std::string(env);
@@ -100,6 +101,7 @@ std::string get_host_ip_from_host() {
       pclose(f);
     }
   }
+#endif  // WIN32
   throw std::runtime_error("Failed to determine host IP address");
 }
 
@@ -197,10 +199,12 @@ auto start_seeder(const fs::path& data_dir,
 
   std::vector<std::string> args = {
       "docker", "run", "--rm", "--name", container_name,
+#ifndef WIN32
       // Pass host UID/GID so container can fix file ownership on exit
       "--env", fmt::format("HOST_UID={}", getuid()), "--env",
-      fmt::format("HOST_GID={}", getgid()), "--publish",
-      fmt::format("{}:{}", port, port), "--volume",
+      fmt::format("HOST_GID={}", getgid()),
+#endif  // WIN32
+      "--publish", fmt::format("{}:{}", port, port), "--volume",
       fmt::format("{}:{}", data_dir.generic_string(), container_data_dir),
       "--volume",
       fmt::format("{}:{}", torrent_file.parent_path().generic_string(),
