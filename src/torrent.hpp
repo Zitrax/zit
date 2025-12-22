@@ -255,7 +255,12 @@ class Torrent {
     m_disconnect_callback = std::move(disconnect_callback);
   }
 
-  void set_not_interested_callback(NotInterestedCallback not_interested_callback) {
+  /**
+   * Callback when a peer is not interested anymore, i.e. the remote peer
+   * is not interested in our pieces anymore.
+   */
+  void set_not_interested_callback(
+      NotInterestedCallback not_interested_callback) {
     m_not_interested_callback = std::move(not_interested_callback);
   }
 

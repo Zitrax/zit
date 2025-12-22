@@ -33,6 +33,12 @@
 #include "test_main.hpp"
 #include "test_utils.hpp"
 
+// Path to the writer executable provided by CMake as a compile definition.
+// Example: "C:/path/to/build/src/torrent_writer/zit_torrent_writer"
+#ifndef TORRENT_WRITER_EXE
+#error "TORRENT_WRITER_EXE not defined"
+#endif
+
 using namespace std;
 using namespace std::chrono_literals;
 using namespace std::string_literals;
@@ -109,11 +115,10 @@ std::string get_host_ip_from_host() {
 }
 
 // Generate a .torrent file from data using the test torrent writer
-// If `TORRENT_WRITER_EXE` is not available, fall back to existing torrent.
+// `TORRENT_WRITER_EXE` is expected to be set by the build system.
 fs::path generate_torrent_with_announce(const fs::path& data,
                                         const std::string& announce,
                                         const fs::path& out_dir) {
-#ifdef TORRENT_WRITER_EXE
   const auto out_torrent =
       out_dir / ("gen_" + data.filename().string() + ".torrent");
   const std::string cmd = std::string(TORRENT_WRITER_EXE) + " --torrent " +
@@ -124,11 +129,6 @@ fs::path generate_torrent_with_announce(const fs::path& data,
   // Use exec() from test_utils.hpp which throws on non-zero exit
   exec(cmd);
   return out_torrent;
-#else
-  (void)announce;
-  (void)out_dir;
-  return data_dir / "1MiB.torrent";
-#endif
 }
 
 auto start_tracker(const fs::path& data_dir) {

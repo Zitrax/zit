@@ -119,7 +119,7 @@ std::optional<bool> parse_bool(const std::string& _str) {
 template <typename T>
 const std::map<std::string, T> settings_map;
 
-// Should be fine - possibly try maxing them constexpr
+// Should be fine - possibly try making them constexpr
 // NOLINTBEGIN(bugprone-throwing-static-initialization)
 
 template <>
