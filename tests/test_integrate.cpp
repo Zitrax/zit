@@ -15,8 +15,10 @@
  *
  *  - Tracker (opentracker)
  *    - https://erdgeist.org/arts/software/opentracker/
- *  - Seeder (transmission-cli)
- *    - sudo apt install transmission-cli
+ *  - Seeder (webtorrent-cli)
+ *    - https://github.com/webtorrent/webtorrent-cli
+ *
+ * Both currently handled by the docker images built above.
  */
 
 #include <cstdio>
@@ -41,14 +43,7 @@ namespace fs = std::filesystem;
 
 class TestConfig : public zit::Config {
  public:
-  TestConfig() : zit::Config() {
-    // As long as we use Transmission and test with all processes on localhost
-    // we need to make sure we initiate the connections.
-    // m_bool_settings[zit::BoolSetting::INITIATE_PEER_CONNECTIONS] = false;
-
-    // Transmission does not want to connect to localhost, so trick it
-    // m_string_settings[zit::StringSetting::BIND_ADDRESS] = TEST_BIND_ADDRESS;
-  }
+  TestConfig() : zit::Config() {}
 
   void set(IntSetting setting, int val) { m_int_settings[setting] = val; }
   void set(StringSetting setting, std::string val) {
