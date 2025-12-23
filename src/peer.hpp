@@ -247,7 +247,14 @@ class Peer : public IConnectionUrlProvider {
     return *m_io_service;
   }
 
-  std::size_t request_next_block(unsigned short count = 5);
+  /**
+   * Request next block from peer up to max_pending requests.
+   *
+   * @param max_pending Maximum number of pending requests to have. If 0, use
+   *   config value.
+   * @return number of requests made
+   */
+  std::size_t request_next_block(unsigned short max_pending = 0);
 
   /**
    * Update the last activity time stamp to be now.
@@ -259,6 +266,11 @@ class Peer : public IConnectionUrlProvider {
    */
   [[nodiscard]] bool is_inactive() const;
 
+  /**
+   * Return number of pending requests.
+   */
+  [[nodiscard]] int pending_requests() const { return m_pending_requests; }
+
  private:
   std::optional<Url> m_url;
   bool m_am_choking = true;
@@ -266,6 +278,7 @@ class Peer : public IConnectionUrlProvider {
   bool m_choking = true;
   bool m_interested = false;
   bool m_listening = false;
+  int m_pending_requests{0};
 
   void init_io_service(socket_ptr socket = nullptr);
 

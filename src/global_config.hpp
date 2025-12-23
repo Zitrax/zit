@@ -57,7 +57,12 @@ enum class IntSetting : std::uint8_t {
   /*
    * Interval in seconds between retrying to connect to peers.
    */
-  RETRY_PEERS_INTERVAL_SECONDS
+  RETRY_PEERS_INTERVAL_SECONDS,
+
+  /**
+   * Max number of pending block requests to a single peer.
+   */
+  MAX_PENDING_REQUESTS
 };
 
 enum class StringSetting : std::uint8_t {
@@ -100,7 +105,8 @@ class Config {
       {IntSetting::LISTENING_PORT, 20001},
       {IntSetting::CONNECTION_PORT, 20000},
       {IntSetting::RETRY_PIECES_INTERVAL_SECONDS, 60},
-      {IntSetting::RETRY_PEERS_INTERVAL_SECONDS, 120}};
+      {IntSetting::RETRY_PEERS_INTERVAL_SECONDS, 60},
+      {IntSetting::MAX_PENDING_REQUESTS, 50}};
 
   std::map<StringSetting, std::string> m_string_settings{
       {StringSetting::BIND_ADDRESS, ""}};
