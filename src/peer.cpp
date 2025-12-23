@@ -429,7 +429,7 @@ void Peer::set_am_interested(bool am_interested) {
   m_am_interested = am_interested;
 }
 
-std::size_t Peer::request_next_block(unsigned short count) {
+std::size_t Peer::request_next_block(unsigned short max_pending) {
   size_t requests = 0;
   if (!m_am_interested) {
     logger()->debug(
@@ -440,8 +440,23 @@ std::size_t Peer::request_next_block(unsigned short count) {
     logger()->debug("{}: Peer choked, not requesting blocks", str());
     return requests;
   }
+
+  if (max_pending == 0) {
+    max_pending = numeric_cast<unsigned short>(
+        m_torrent.config().get(IntSetting::MAX_PENDING_REQUESTS));
+  }
+
+  if (max_pending == 0) {
+    throw std::runtime_error("Max pending requests cannot be zero");
+  }
+
+  const int needed = max_pending - m_pending_requests;
+  if (needed <= 0) {
+    return requests;
+  }
+
   bytes req;
-  for (unsigned short i = 0; i < count; i++) {
+  for (int i = 0; i < needed; i++) {
     // We can now start requesting pieces
     auto has_piece = next_piece(true);
     if (!has_piece) {
@@ -476,6 +491,7 @@ std::size_t Peer::request_next_block(unsigned short count) {
     req.insert(req.end(), begin.begin(), begin.end());
     req.insert(req.end(), blength.begin(), blength.end());
     requests++;
+    m_pending_requests++;
   }
   // Important to write only once (to match write/read calls)
   if (!req.empty()) {
@@ -504,6 +520,7 @@ void Peer::set_choking(bool choking) {
   if (!m_choking && choking) {
     m_choking = choking;
     logger()->info("{}: Choked", str());
+    m_pending_requests = 0;
   }
 }
 
@@ -541,9 +558,11 @@ void Peer::have(uint32_t id) {
 }
 
 void Peer::set_block(uint32_t piece_id, uint32_t offset, bytes_span data) {
-  if (m_torrent.set_block(piece_id, offset, data)) {
-    request_next_block(1);
+  if (m_pending_requests > 0) {
+    m_pending_requests--;
   }
+  m_torrent.set_block(piece_id, offset, data);
+  request_next_block();
 }
 
 void Peer::stop() {

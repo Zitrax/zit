@@ -1073,7 +1073,7 @@ void Torrent::retry_pieces() {
   std::random_device rd;
   std::mt19937 g(rd());
   const scoped_lock lock(m_peers_mutex);
-  shuffle(m_peers.begin(), m_peers.end(), g);
+  std::ranges::shuffle(m_peers, g);
 
   auto it = m_peers.begin();
   if (it == m_peers.end()) {
@@ -1082,7 +1082,17 @@ void Torrent::retry_pieces() {
   }
   auto start_count = retry;
   while (retry > 0) {
-    retry -= (*it)->request_next_block(1);
+    const auto pending = (*it)->pending_requests();
+    const size_t pending_sz = pending < 0 ? 0 : static_cast<size_t>(pending);
+    // Fill up to MAX_PENDING_REQUESTS, but always at least 1
+    const size_t max_pending =
+        numeric_cast<size_t>(m_config.get(IntSetting::MAX_PENDING_REQUESTS));
+    const size_t desired =
+        pending_sz < max_pending ? max_pending - pending_sz : 1;
+    const size_t to_request = std::min(desired, retry);
+    retry -= (*it)->request_next_block(
+        numeric_cast<unsigned short>(pending_sz + to_request));
+
     it++;
     if (it == m_peers.end()) {
       if (retry == start_count) {
