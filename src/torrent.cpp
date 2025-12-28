@@ -1230,6 +1230,16 @@ std::tuple<FileInfo, int64_t, int64_t> Torrent::file_at_pos(int64_t pos) const {
   throw runtime_error(fmt::format("pos > torrent size {}>{}", pos, length()));
 }
 
+void Torrent::reset_piece(uint32_t piece_id) {
+  const scoped_lock lock(m_mutex);
+  auto it = m_active_pieces.find(piece_id);
+  if (it != m_active_pieces.end()) {
+    it->second->reset();
+    m_client_pieces.at(piece_id) = false;
+    m_active_pieces.erase(it);
+  }
+}
+
 void Torrent::last_piece_written() {
   logger()->info("{} completed. Notifying peers and tracker.", m_name);
 

@@ -84,6 +84,11 @@ class Piece {
    */
   [[nodiscard]] std::size_t retry_blocks();
 
+  /**
+   * Start this piece over from scratch
+   */
+  void reset();
+
  private:
   const uint32_t m_block_size = 1 << 14;
   uint32_t m_piece_size;

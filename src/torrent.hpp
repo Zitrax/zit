@@ -374,6 +374,11 @@ class Torrent {
   [[nodiscard]] std::tuple<FileInfo, int64_t, int64_t> file_at_pos(
       int64_t pos) const;
 
+  /**
+   * Reset one piece for re-transfer
+   */
+  void reset_piece(uint32_t piece_id);
+
   enum class TrackerEvent : std::uint8_t {
     STARTED,
     STOPPED,
