@@ -270,7 +270,11 @@ void FileWriter::write_next_piece() {
   try {
     auto sha = Sha1::calculateData(piece->data());
     if (sha != torrent->pieces().at(piece->id())) {
-      throw runtime_error("Piece data does not match expected Sha1");
+      logger()->warn(
+          "Piece data does not match expected Sha1. Resetting piece {}",
+          piece->id());
+      torrent->reset_piece(piece->id());
+      return;
     }
 
     auto dest = TorrentDestination::create(torrent, logger());
