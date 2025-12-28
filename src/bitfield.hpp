@@ -138,6 +138,11 @@ class Bitfield {
    */
   [[nodiscard]] const bytes& data() const { return m_bytes; }
 
+  /**
+   * Clear all bits
+   */
+  void clear() { m_bytes.clear(); }
+
  private:
   bytes m_bytes;
 };
