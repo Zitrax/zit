@@ -572,3 +572,11 @@ TEST(Bitfield, fill) {
   EXPECT_TRUE(bf[22]);
   EXPECT_TRUE(bf[23]);
 }
+
+TEST(Bitfield, clear) {
+  Bitfield bf(16);
+  bf.fill(16, true);
+  EXPECT_EQ(bf.count(), 16);
+  bf.clear();
+  EXPECT_EQ(bf.size_bytes(), 0);
+}
