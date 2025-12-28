@@ -152,4 +152,13 @@ std::size_t Piece::retry_blocks() {
   return 0;
 }
 
+void Piece::reset() {
+  const scoped_lock lock(m_mutex);
+  m_blocks_requested = Bitfield(block_count());
+  m_blocks_done = Bitfield(block_count());
+  m_data.clear();
+  m_data.resize(m_piece_size);
+  m_piece_written = false;
+}
+
 }  // namespace zit
