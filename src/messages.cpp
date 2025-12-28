@@ -121,6 +121,10 @@ string debugMsg(span<const byte> msg) {
 
 }  // namespace
 
+/** Maximum allowed size for incoming data. A larger size is assumed to be
+ * corrupt and we close the connection. */
+constexpr uint32_t MAX_INCOMING_DATA_SIZE{2 * 1024 * 1024};
+
 optional<HandshakeMsg> HandshakeMsg::parse(const bytes& msg) {
   if (msg.size() < MIN_BT_MSG_LENGTH) {
     return {};
@@ -213,6 +217,19 @@ size_t Message::parse(PeerConnection& connection) {
     auto len = from_big_endian<uint32_t>(m_msg);
     logger()->debug("{}: Incoming length = {}, message/buffer size = {}",
                     peer.str(), len, m_msg.size());
+
+    if (len > MAX_INCOMING_DATA_SIZE) {
+      logger()->error("{}: Incoming length {} is too large, closing connection",
+                      peer.str(), len);
+      connection.stop();
+      logger()->trace("Stopped");
+      // Inform torrent of disconnection so the peer is fully removed and
+      // retried
+      connection.peer().disconnected();
+      logger()->trace("Disconnected");
+      return 0;
+    }
+
     if (len + 4 > m_msg.size()) {
       // Not a full message - return and await more data
       return 0;

@@ -116,10 +116,14 @@ void Process::terminate() {
   }
 
   if (!m_stop_cmd.empty()) {
-    Process stop_process("stop_" + m_name, m_stop_cmd, m_cwd, {},
-                         Process::Mode::FOREGROUND);
-    if (!stop_process.wait_for_exit(35s)) {
-      logger()->warn("Stop command for {} did not exit within 35s", m_name);
+    try {
+      Process stop_process("stop_" + m_name, m_stop_cmd, m_cwd, {},
+                           Process::Mode::FOREGROUND);
+      if (!stop_process.wait_for_exit(35s)) {
+        logger()->warn("Stop command for {} did not exit within 35s", m_name);
+      }
+    } catch (const std::exception& e) {
+      logger()->warn("Failed to execute stop command: {}", e.what());
     }
   }
 }

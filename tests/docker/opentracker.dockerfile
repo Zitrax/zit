@@ -7,7 +7,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy the entrypoint script
-COPY opentracker_entrypoint.sh /usr/local/bin/opentracker_entrypoint.sh
+COPY tests/docker/opentracker_entrypoint.sh /usr/local/bin/opentracker_entrypoint.sh
 RUN chmod +x /usr/local/bin/opentracker_entrypoint.sh
 
 # Expose the necessary ports

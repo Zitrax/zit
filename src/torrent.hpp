@@ -243,6 +243,9 @@ class Torrent {
 
   /**
    * Callback that will be called whenever a piece has finished downloading.
+   * 
+   * @note This just means we got all data for the piece, at this point it's neither
+   *       verified or written to disk yet.
    */
   void add_piece_callback(PieceCallback piece_callback) {
     m_piece_callbacks.emplace_back(std::move(piece_callback));
