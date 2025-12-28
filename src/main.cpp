@@ -79,6 +79,9 @@ int main(int argc, const char* argv[]) noexcept {
     parser.add_option<std::string>("--log-level")
         .default_value("")
         .help("Log level (trace, debug, info, warning, error, critical, off)");
+    parser.add_option<std::string>("--log-prefix")
+        .default_value("")
+        .help("Prefix to add to all log messages (useful when running multiple instances)");
     parser.add_option<bool>("--dump-torrent")
         .help("Dump info about specified .torrent file and exit");
     parser.add_option<bool>("--dump-config").help("Dump config to console");
@@ -93,8 +96,18 @@ int main(int argc, const char* argv[]) noexcept {
     const auto torrent_files = parser.get_multi<std::string>("--torrent");
     const auto listening_port = parser.get<int>("--listening-port");
     const auto log_level = parser.get<std::string>("--log-level");
+    const auto log_prefix = parser.get<std::string>("--log-prefix");
     const auto dump_torrent = parser.get<bool>("--dump-torrent");
     const auto dump_config = parser.get<bool>("--dump-config");
+
+    if (!log_prefix.empty()) {
+      // Set pattern with prefix for all loggers
+      // Default spdlog pattern is: [%Y-%m-%d %H:%M:%S.%e] [%n] [%^%l%$] %v
+      // We'll add the prefix before the message
+      const auto pattern = "[%Y-%m-%d %H:%M:%S.%e] [%n] [%^%l%$] [" + log_prefix + "] %v";
+      zit::logger()->set_pattern(pattern);
+      zit::logger("file_writer")->set_pattern(pattern);
+    }
 
     if (!log_level.empty()) {
       const auto lvl = spdlog::level::from_str(log_level);
