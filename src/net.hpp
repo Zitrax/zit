@@ -21,6 +21,11 @@ using namespace std::string_literals;
  */
 std::vector<std::string> get_host_ip_addresses();
 
+/**
+ * Get a list of all IPs for a given hostname.
+ */
+std::vector<std::string> get_host_ip_addresses(const std::string& hostname);
+
 class HttpException : public std::runtime_error {
  public:
   HttpException(const std::string& what_arg, unsigned int status_code)
