@@ -71,26 +71,34 @@ namespace ssl = asio::ssl;
 
 namespace zit {
 
-vector<string> get_host_ip_addresses() {
+vector<string> get_host_ip_addresses(const string& hostname) {
   vector<string> ip_addresses;
-  asio::io_context io_context;
-  asio::ip::tcp::resolver resolver(io_context);
-  const asio::ip::tcp::resolver::query query(asio::ip::host_name(), "");
-  asio::ip::tcp::resolver::iterator it = resolver.resolve(query);
+  try {
+    asio::io_context io_context;
+    asio::ip::tcp::resolver resolver(io_context);
+    const asio::ip::tcp::resolver::query query(hostname, "");
+    asio::ip::tcp::resolver::iterator it = resolver.resolve(query);
 
-  while (it != asio::ip::tcp::resolver::iterator()) {
-    const asio::ip::tcp::endpoint endpoint = *it++;
-    ip_addresses.push_back(endpoint.address().to_string());
+    while (it != asio::ip::tcp::resolver::iterator()) {
+      const asio::ip::tcp::endpoint endpoint = *it++;
+      ip_addresses.push_back(endpoint.address().to_string());
+    }
+  } catch (const std::exception& e) {
+    logger()->warn("Failed to resolve hostname '{}': {}", hostname, e.what());
   }
 
   if (logger()->should_log(spdlog::level::debug)) {
-    logger()->debug("IP addresses for host '{}':", asio::ip::host_name());
+    logger()->debug("IP addresses for host '{}':", hostname);
     for (const auto& ip : ip_addresses) {
       logger()->debug("  {}", ip);
     }
   }
 
   return ip_addresses;
+}
+
+vector<string> get_host_ip_addresses() {
+  return get_host_ip_addresses(asio::ip::host_name());
 }
 
 /**
