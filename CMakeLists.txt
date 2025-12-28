@@ -4,6 +4,7 @@ project(zit CXX)
 
 option(USE_CLANG_TIDY "Use clang-tidy when building" ON)
 option(USE_ASAN "Build with address sanitation" OFF)
+option(USE_TSAN "Build with thread sanitation" OFF)
 
 find_package(asio)
 find_package(OpenSSL)
@@ -99,6 +100,11 @@ add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 if(USE_ASAN)
   add_compile_options(-fsanitize=address)
   add_link_options(-fsanitize=address)
+endif()
+
+if(USE_TSAN)
+  add_compile_options(-fsanitize=thread)
+  add_link_options(-fsanitize=thread)
 endif()
 
 add_subdirectory(src)
