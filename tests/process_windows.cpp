@@ -100,14 +100,26 @@ void Process::terminate() {
   if (m_pid) {
     HANDLE hProcess = OpenProcess(PROCESS_TERMINATE, FALSE, m_pid);
     if (hProcess == nullptr) {
-      logger()->error("Failed to open process for termination - {}",
-                      GetLastError());
+      try {
+        logger()->error("Failed to open process for termination - {}",
+                        GetLastError());
+      } catch (...) {
+        // Logger may not be available during shutdown
+      }
       return;
     }
     if (!TerminateProcess(hProcess, 0)) {
-      logger()->error("Failed to terminate process - {}", GetLastError());
+      try {
+        logger()->error("Failed to terminate process - {}", GetLastError());
+      } catch (...) {
+        // Logger may not be available during shutdown
+      }
     } else {
-      logger()->info("Process {} terminated", m_name);
+      try {
+        logger()->info("Process {} terminated", m_name);
+      } catch (...) {
+        // Logger may not be available during shutdown
+      }
     }
     CloseHandle(hProcess);
     m_pid = 0;
@@ -116,10 +128,22 @@ void Process::terminate() {
   // If stop_cmd, run and wait maximum 10sec, but we should wait no longer
   // than the process
   if (!m_stop_cmd.empty()) {
-    Process stop_process("stop_" + m_name, m_stop_cmd, m_cwd);
-    // Using 35s since 30s is the default max time docker use on windows
-    if (!stop_process.wait_for_exit(35s)) {
-      logger()->warn("Stop command did not exit within 35s");
+    try {
+      Process stop_process("stop_" + m_name, m_stop_cmd, m_cwd);
+      // Using 35s since 30s is the default max time docker use on windows
+      if (!stop_process.wait_for_exit(35s)) {
+        try {
+          logger()->warn("Stop command did not exit within 35s");
+        } catch (...) {
+          // Logger may not be available during shutdown
+        }
+      }
+    } catch (const std::exception& e) {
+      try {
+        logger()->warn("Failed to execute stop command: {}", e.what());
+      } catch (...) {
+        // Logger may not be available during shutdown
+      }
     }
   }
 }

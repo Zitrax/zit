@@ -6,7 +6,7 @@ RUN apt-get update && \
     rm -rf /var/lib/apt/lists/* && \
     npm install webtorrent-cli -g
 
-COPY webtorrent_entrypoint.sh /usr/local/bin/webtorrent_entrypoint.sh
+COPY tests/docker/webtorrent_entrypoint.sh /usr/local/bin/webtorrent_entrypoint.sh
 RUN chmod +x /usr/local/bin/webtorrent_entrypoint.sh
 
 EXPOSE 51413

@@ -131,6 +131,28 @@ fs::path generate_torrent_with_announce(const fs::path& data,
   return out_torrent;
 }
 
+// Ensure the test network exists for container communication
+void ensure_test_network() {
+  static bool network_created = false;
+  if (network_created)
+    return;
+
+  try {
+    // Remove any previous network to start fresh
+    exec("docker network rm zit-test-network > /dev/null 2>&1 || true");
+  } catch (const std::exception&) {
+    // Ignore if network doesn't exist
+  }
+
+  try {
+    exec("docker network create zit-test-network");
+    network_created = true;
+  } catch (const std::exception& e) {
+    logger()->warn("Failed to create test network: {}", e.what());
+    throw;
+  }
+}
+
 auto start_tracker(const fs::path& data_dir) {
   // Ensure any previous tracker container is gone to avoid name conflicts
   try {
@@ -139,8 +161,11 @@ auto start_tracker(const fs::path& data_dir) {
     // Ignore cleanup errors
   }
 
+  ensure_test_network();
+
   std::vector<std::string> args = {
-      "docker", "run", "--rm", "--name", "zit-opentracker", "--volume",
+      "docker", "run", "--rm", "--name", "zit-opentracker", "--network",
+      "zit-test-network", "--volume",
       fmt::format("{}:{}", data_dir.generic_string(), "/data"),
       // Needed to be able to run iptables in the container
       "--cap-add", "NET_ADMIN",
@@ -192,8 +217,11 @@ auto start_seeder(const fs::path& data_dir,
     // Ignore cleanup errors
   }
 
+  ensure_test_network();
+
   std::vector<std::string> args = {
-      "docker", "run", "--rm", "--name", container_name,
+      "docker", "run", "--rm", "--name", container_name, "--network",
+      "zit-test-network",
 #ifndef WIN32
       // Pass host UID/GID so container can fix file ownership on exit
       "--env", fmt::format("HOST_UID={}", getuid()), "--env",
@@ -253,6 +281,80 @@ auto start_leecher(const fs::path& target, const fs::path& torrent_file) {
                    e.what());
   }
   return start_seeder(target, torrent_file, "leecher");
+}
+
+// Zit-specific helpers for peer-to-peer testing
+auto start_zit_seeder(const fs::path& data_dir,
+                      const fs::path& torrent_file,
+                      const std::string& name = "seeder") {
+  static int zit_port = 6881;
+  const auto port = std::to_string(zit_port++);
+  const auto container_name = fmt::format("zit-test-{}", name);
+
+  // Cleanup any previous container with this name
+  try {
+    exec(fmt::format("docker rm -f {} > /dev/null 2>&1 || true",
+                     container_name));
+  } catch (const std::exception&) {
+    // Ignore cleanup errors
+  }
+
+  ensure_test_network();
+
+  std::vector<std::string> args = {
+      "docker", "run",
+      "-t",  // Allocate pseudo-TTY to preserve color output
+      "--rm", "--name", container_name, "--hostname", container_name,
+      "--network", "zit-test-network",
+#ifndef WIN32
+      // Pass host UID/GID so container can fix file ownership on exit
+      "--env", fmt::format("HOST_UID={}", getuid()), "--env",
+      fmt::format("HOST_GID={}", getgid()),
+#endif  // WIN32
+      "--publish", fmt::format("{}:{}/tcp", port, port), "--publish",
+      fmt::format("{}:{}/udp", port, port), "--volume",
+      fmt::format("{}:/data", data_dir.generic_string()), "--volume",
+      fmt::format("{}:/torrents", torrent_file.parent_path().generic_string()),
+      // Needed to be able to run iptables in the container
+      "--cap-add", "NET_ADMIN",
+      // Forward SPDLOG_LEVEL for log level control
+      "--env", "SPDLOG_LEVEL",
+      // For verbose output
+      "--env",
+      fmt::format("DEBUG={}",
+                  logger()->should_log(spdlog::level::debug) ? "1" : "0"),
+      // Add host mapping
+      "--add-host", "host.docker.internal:host-gateway", "zit", "--torrent",
+      fmt::format("/torrents/{}", torrent_file.filename()), "--listening-port",
+      port, "--log-prefix", name};
+
+  const auto host_ip = get_host_ip_from_host();
+  if (!host_ip.empty()) {
+    // Insert host IP override before zit image name
+    const auto insert_pos = static_cast<std::ptrdiff_t>(args.size()) - 7;
+    args.insert(args.begin() + insert_pos, "--add-host");
+    args.insert(args.begin() + insert_pos + 1,
+                fmt::format("host.docker.internal:{}", host_ip));
+  }
+
+  return Process(name, args, nullptr, {"docker", "stop", container_name});
+}
+
+auto start_zit_leecher(const fs::path& target, const fs::path& torrent_file) {
+  try {
+    if (fs::exists(target)) {
+      // Ensure the directory is empty to avoid leftover files
+      for (const auto& entry : fs::directory_iterator(target)) {
+        fs::remove_all(entry);
+      }
+    }
+    // Ensure the mount directory exists and is owned by the host user
+    fs::create_directories(target);
+  } catch (const std::exception& e) {
+    logger()->warn("Failed preparing target directory {}: {}", target.string(),
+                   e.what());
+  }
+  return start_zit_seeder(target, torrent_file, "leecher");
 }
 
 void start(zit::Torrent& torrent) {
@@ -356,7 +458,7 @@ TEST_P(IntegrateF, DISABLED_download) {
 #endif  // INTEGRATION_TESTS
   const auto data_dir = fs::path(DATA_DIR);
   const auto announce =
-      std::format("http://{}:8000/announce", get_host_ip_from_host());
+      std::format("http://{}:8000/announce", "zit-opentracker");
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "1MiB.dat", announce, tmp_dir());
   const uint8_t number_of_seeders = GetParam();
@@ -392,7 +494,7 @@ TEST_F(IntegrateOodF, DISABLED_download_ood) {
 #endif  // INTEGRATION_TESTS
   const auto data_dir = fs::path(DATA_DIR);
   const auto announce =
-      std::format("http://{}:8000/announce", get_host_ip_from_host());
+      std::format("http://{}:8000/announce", "zit-opentracker");
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "1MiB.dat", announce, tmp_dir());
   constexpr uint8_t number_of_seeders = 1;
@@ -439,10 +541,10 @@ TEST_F(IntegrateF, DISABLED_download_dual_torrents) {
 
   const auto torrent_file_1 = generate_torrent_with_announce(
       data_dir / "1MiB.dat",
-      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
+      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
   const auto torrent_file_2 = generate_torrent_with_announce(
       data_dir / "multi",
-      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
+      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
@@ -477,7 +579,7 @@ TEST_P(IntegrateF, DISABLED_download_part) {
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "1MiB.dat",
-      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
+      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
   const auto download_dir = tmp_dir();
 
   auto tracker = start_tracker(data_dir);
@@ -519,7 +621,7 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "multi",
-      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
+      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
   const auto download_dir = tmp_dir();
 
   auto tracker = start_tracker(data_dir);
@@ -563,7 +665,7 @@ TEST_F(Integrate, DISABLED_download_multi_file) {
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "multi",
-      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
+      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
@@ -586,7 +688,7 @@ TEST_F(Integrate, DISABLED_upload) {
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "1MiB.dat",
-      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
+      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
@@ -640,7 +742,7 @@ TEST_F(Integrate, DISABLED_multi_upload) {
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "multi",
-      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
+      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
@@ -684,4 +786,93 @@ TEST_F(Integrate, DISABLED_multi_upload) {
 
   // Transfer done - Verify content
   verify_download(torrent, destination, false);
+}
+
+#ifdef INTEGRATION_TESTS
+TEST_F(Integrate, zit_to_zit_upload) {
+#else
+TEST_F(Integrate, DISABLED_zit_to_zit_upload) {
+#endif  // INTEGRATION_TESTS
+  const auto data_dir = fs::path(DATA_DIR);
+  const auto torrent_file = generate_torrent_with_announce(
+      data_dir / "multi",
+      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
+
+  auto tracker = start_tracker(data_dir);
+
+  // Verify the source data exists before starting the test
+  ASSERT_TRUE(fs::exists(data_dir / "multi"))
+      << "Source data directory does not exist: " << data_dir / "multi";
+
+  // Start a zit seeder in a Docker container with a different IP
+  logger()->info("Starting zit seeder in Docker container");
+  auto seeder = start_zit_seeder(data_dir, torrent_file);
+
+  // Start a zit leecher in a separate Docker container to download
+  const auto target = tmp_dir() / "zit_to_zit_test";
+  const auto destination = target / "multi";  // folder name inside torrent
+
+  // Ensure destination doesn't exist
+  ASSERT_FALSE(fs::exists(destination))
+      << "File already exists: " << destination;
+
+  logger()->info("Starting zit leecher in Docker container");
+  auto leecher = start_zit_leecher(target, torrent_file);
+
+  // Wait for the Docker containers to complete the transfer
+  // The seeder and leecher are running in Docker - no need for local torrent
+  logger()->info("Waiting for zit-to-zit transfer to complete (max 120s)");
+
+  // Poll for completion - check if leecher downloaded all files
+  const auto start_time = std::chrono::steady_clock::now();
+  const auto max_wait = 300s;
+  bool transfer_complete = false;
+
+  // The marker file is created alongside the destination directory
+  // e.g. if destination is /tmp/foo/multi, marker is
+  // /tmp/foo/multi.zit_downloading
+  const auto marker_file =
+      destination.string() + zit::Torrent::tmpfileExtension();
+  ASSERT_FALSE(fs::exists(marker_file))
+      << "Marker file already exists before download: " << marker_file;
+
+  while (!transfer_complete &&
+         (std::chrono::steady_clock::now() - start_time) < max_wait) {
+    std::this_thread::sleep_for(1s);
+
+    // Check if destination exists AND marker file is gone.
+    // The marker file is removed only when the download is fully complete and
+    // verified.
+    if (fs::exists(destination) && !fs::exists(marker_file)) {
+      transfer_complete = true;
+    }
+  }
+
+  ASSERT_TRUE(transfer_complete) << "Transfer did not complete within timeout";
+
+  // Verify the leecher downloaded the files
+  logger()->info("Verifying /tmp/zit_**/zit_to_zit_test/multi and {}",
+                 data_dir / "multi");
+  ASSERT_TRUE(fs::exists(destination))
+      << "Leecher did not download files to " << destination;
+
+  // Verify content matches
+  for (const auto& entry :
+       fs::recursive_directory_iterator(data_dir / "multi")) {
+    if (entry.is_regular_file()) {
+      const auto relative = fs::relative(entry.path(), data_dir / "multi");
+      const auto downloaded_file = destination / relative;
+      ASSERT_TRUE(fs::exists(downloaded_file))
+          << "Missing downloaded file: " << downloaded_file;
+      ASSERT_EQ(fs::file_size(entry.path()), fs::file_size(downloaded_file))
+          << "File size mismatch for: " << relative;
+
+      auto source_sha1 = zit::Sha1::calculateFile(entry.path()).hex();
+      auto target_sha1 = zit::Sha1::calculateFile(downloaded_file).hex();
+      ASSERT_EQ(source_sha1, target_sha1)
+          << "Content mismatch for: " << relative;
+    }
+  }
+
+  logger()->info("zit-to-zit test passed!");
 }

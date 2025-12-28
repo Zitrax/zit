@@ -413,8 +413,31 @@ auto Torrent::left() const {
 }
 
 void Torrent::disconnected(Peer* peer) {
+  // Notify any external callback first
   if (m_disconnect_callback) {
     m_disconnect_callback(peer);
+  }
+
+  // Remove the peer from the active set, then stop it outside the lock so
+  // pending handlers can run without blocking on m_peers_mutex.
+  std::shared_ptr<Peer> peer_ref;
+  {
+    const std::scoped_lock lock(m_peers_mutex);
+    auto it = std::ranges::find_if(
+        m_peers,
+        [peer](const std::shared_ptr<Peer>& p) { return p.get() == peer; });
+    if (it != m_peers.end()) {
+      peer_ref = *it;
+      logger()->info("{}: Disconnected. Removing from active peers",
+                     peer_ref->str());
+      m_peers.erase(it);
+    } else {
+      logger()->debug("Disconnected peer not found among active peers");
+    }
+  }
+
+  if (peer_ref) {
+    peer_ref->stop();
   }
 }
 
@@ -881,16 +904,28 @@ std::vector<std::shared_ptr<Peer>> Torrent::tracker_request(
   // To avoid connecting to our own listening peer
   const auto is_local_peer = [&](const auto& peer) {
     const auto& url = peer->url();
+    if (!url || url->port().value_or(0) != m_listening_port.get()) {
+      return false;
+    }
+
     static const auto local_ips = [] -> string_list {
       auto resolved = get_host_ip_addresses();
       resolved.emplace_back("localhost");
+      resolved.emplace_back("127.0.0.1");
       // FIXME: This should not be hardcoded
       constexpr auto* docker_ip{"172.17.0.1"};
       resolved.emplace_back(docker_ip);
       return resolved;
     }();
-    return url && ranges::contains(local_ips, url->host()) &&
-           url->port().value_or(0) == m_listening_port.get();
+
+    // Get the peer's IP addresses by resolving its hostname
+    const auto peer_host = url->host();
+    auto peer_ips = get_host_ip_addresses(peer_host);
+
+    // Check if any peer IP matches any local IP
+    return std::ranges::any_of(peer_ips, [&](const auto& peer_ip) {
+      return ranges::contains(local_ips, peer_ip);
+    });
   };
 
   peers_from_tracker.erase(
@@ -931,8 +966,10 @@ void Torrent::schedule_retry_pieces() {
   m_retry_pieces_timer.async_wait([this](const asio::error_code& ec) {
     if (!ec) {
       retry_pieces();
-    } else {
+    } else if (ec != asio::error::operation_aborted) {
       logger()->warn("Timer error: {}", ec.message());
+    } else {
+      logger()->debug("Timer canceled (rescheduled)");
     }
   });
 }
@@ -945,8 +982,10 @@ void Torrent::schedule_retry_peers() {
   m_retry_peers_timer.async_wait([this](const asio::error_code& ec) {
     if (!ec) {
       retry_peers();
-    } else {
+    } else if (ec != asio::error::operation_aborted) {
       logger()->warn("Timer error: {}", ec.message());
+    } else {
+      logger()->debug("Timer canceled (rescheduled)");
     }
   });
 }
@@ -962,11 +1001,17 @@ void Torrent::run() {
   while (!m_stopped && (!done() || !ranges::all_of(m_peers, is_stopped) ||
                         !m_io_context.stopped())) {
     std::size_t ran = 0;
+
+    // Snapshot peers under lock, then release before polling to avoid
+    // deadlocks if peer handlers call back into Torrent::disconnected()
+    std::vector<std::shared_ptr<Peer>> peers_snapshot;
     {
       const scoped_lock lock(m_peers_mutex);
-      for (auto& p : m_peers) {
-        ran += p->io_service().poll_one();
-      }
+      peers_snapshot = m_peers;  // copy shared_ptrs to keep peers alive
+    }
+
+    for (auto& p : peers_snapshot) {
+      ran += p->io_service().poll_one();
     }
     ran += m_io_context.poll_one();
     //  If no handlers ran, then sleep.
@@ -1085,7 +1130,7 @@ void Torrent::retry_pieces() {
     const auto pending = (*it)->pending_requests();
     const size_t pending_sz = pending < 0 ? 0 : static_cast<size_t>(pending);
     // Fill up to MAX_PENDING_REQUESTS, but always at least 1
-    const size_t max_pending =
+    const auto max_pending =
         numeric_cast<size_t>(m_config.get(IntSetting::MAX_PENDING_REQUESTS));
     const size_t desired =
         pending_sz < max_pending ? max_pending - pending_sz : 1;
@@ -1108,24 +1153,34 @@ void Torrent::retry_pieces() {
 bool Torrent::add_peer(
     shared_ptr<Peer> peer,
     optional<reference_wrapper<std::vector<std::shared_ptr<Peer>>>> peers) {
-  const bool in_use =
+  auto existing_it =
       std::ranges::find_if(m_peers, [&peer](auto& existing_peer) {
         const auto& lurl = peer->url();
         const auto& rurl = existing_peer->url();
         return lurl.has_value() && rurl.has_value() &&
                peer->url().value().str() == existing_peer->url().value().str();
-      }) != m_peers.end();
-  logger()->debug("Candidate {} in use: {}", peer->str(), in_use);
-  if (!in_use) {
-    peer->handshake();
-    if (peers) {
-      peers->get().push_back(peer);
-    } else {
-      m_peers.push_back(peer);
-    }
-    return true;
+      });
+
+  const bool in_use = existing_it != m_peers.end();
+
+  // Replace-on-reconnect policy:
+  // If we already have a peer with the same URL, assume the inbound
+  // connection indicates the remote lost contact and is reconnecting.
+  // Stop and remove the old entry, then proceed with the new handshake.
+  if (in_use) {
+    logger()->info("Replacing existing peer {} with new connection {}",
+                   (*existing_it)->str(), peer->str());
+    (*existing_it)->stop();
+    m_peers.erase(existing_it);
   }
-  return false;
+
+  peer->handshake();
+  if (peers) {
+    peers->get().push_back(peer);
+  } else {
+    m_peers.push_back(peer);
+  }
+  return true;
 }
 
 void Torrent::retry_peers() {
@@ -1203,16 +1258,18 @@ std::shared_ptr<Piece> Torrent::active_piece(uint32_t id, bool create) {
 
 bool Torrent::done() const {
   const std::scoped_lock lock(m_mutex);
+  // Torrent is received if all pieces are marked as downloaded
+  // (m_client_pieces) and there is at least one piece which means we have
+  // populated the pieces.
+  const bool received =
+      m_client_pieces.count() == m_pieces.size() && !m_pieces.empty();
 
-  // If we haven't started on all pieces we are not done
-  if (m_active_pieces.size() != m_pieces.size()) {
-    return false;
-  }
+  // Data might have been received but not yet written to disk
+  const bool pending_writes = ranges::any_of(
+      m_active_pieces,
+      [](const auto& pair) { return !pair.second->piece_written(); });
 
-  // If any piece has not been written we are not done
-  return std::ranges::all_of(m_active_pieces, [](const auto& piece) {
-    return piece.second->piece_written();
-  });
+  return received && !pending_writes;
 }
 
 std::tuple<FileInfo, int64_t, int64_t> Torrent::file_at_pos(int64_t pos) const {

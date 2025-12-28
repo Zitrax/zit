@@ -16,6 +16,7 @@
 #include <map>
 #include <memory>
 #include <optional>
+#include <atomic>
 
 namespace zit {
 
@@ -39,7 +40,7 @@ class IConnectionUrlProvider {
  * Each Peer uses a PeerConnection to handle the network connection and
  * traffic.
  */
-class PeerConnection {
+class PeerConnection : public std::enable_shared_from_this<PeerConnection> {
  public:
   PeerConnection(IConnectionUrlProvider& peer,
                  asio::io_service& io_service,
@@ -78,8 +79,8 @@ class PeerConnection {
   asio::ip::tcp::resolver::iterator endpoint_;
   std::deque<std::string> m_send_queue;
   bool m_connected = false;
-  bool m_sending = false;
   ConnectionPort m_connection_port;
+  std::atomic<bool> m_stopped{false};
 };
 
 class PeerAcceptor {
@@ -286,7 +287,7 @@ class Peer : public IConnectionUrlProvider {
 
   // order important - connection need to be destroyed first
   std::unique_ptr<asio::io_service> m_io_service;
-  std::unique_ptr<PeerConnection> m_connection;
+  std::shared_ptr<PeerConnection> m_connection;
 
   Torrent& m_torrent;
   std::unique_ptr<asio::io_service::work> m_work;
