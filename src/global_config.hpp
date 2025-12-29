@@ -104,7 +104,7 @@ class Config {
   std::map<IntSetting, int> m_int_settings{
       {IntSetting::LISTENING_PORT, 20001},
       {IntSetting::CONNECTION_PORT, 20000},
-      {IntSetting::RETRY_PIECES_INTERVAL_SECONDS, 60},
+      {IntSetting::RETRY_PIECES_INTERVAL_SECONDS, 45},
       {IntSetting::RETRY_PEERS_INTERVAL_SECONDS, 25},
       {IntSetting::MAX_PENDING_REQUESTS, 50}};
 
