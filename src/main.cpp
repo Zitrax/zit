@@ -218,8 +218,12 @@ int main(int argc, const char* argv[]) noexcept {
 #else
     // Linux ctrl-c handler
 
-    sigint_function = [&](int /*s*/) {
-      zit::logger()->warn("CTRL-C pressed. Stopping torrent(s)...");
+    sigint_function = [&](int s) {
+      if (s == SIGINT) {
+        zit::logger()->warn("CTRL-C pressed. Stopping torrent(s)...");
+      } else if (s == SIGTERM) {
+        zit::logger()->warn("SIGTERM received. Stopping torrent(s)...");
+      }
       for (const auto& torrent : torrents) {
         torrent->stop();
       }
@@ -232,11 +236,11 @@ int main(int argc, const char* argv[]) noexcept {
     };
 
     // NOLINTBEGIN(cppcoreguidelines-pro-type-union-access,misc-include-cleaner)
-    struct sigaction sigIntHandler {};
+    struct sigaction sigIntHandler{};
     sigIntHandler.sa_handler = sigint_handler;
     sigemptyset(&sigIntHandler.sa_mask);
     sigIntHandler.sa_flags = 0;
-    sigaction(SIGINT, &sigIntHandler, nullptr);
+    sigaction(SIGINT | SIGTERM, &sigIntHandler, nullptr);
     // NOLINTEND(cppcoreguidelines-pro-type-union-access,misc-include-cleaner)
 #endif  // !WIN32
 
