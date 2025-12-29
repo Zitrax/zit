@@ -31,7 +31,13 @@ enum class BoolSetting : std::uint8_t {
   /**
    * Allow using threads for verifying existing pieces
    */
-  PIECE_VERIFY_THREADS
+  PIECE_VERIFY_THREADS,
+  /**
+   * Verify pieces on torrent creation/startup
+   *
+   * Normally only disabled if you need to inspect the torrent without dl/ul.
+   */
+  VERIFY_PIECES_ON_STARTUP
 };
 
 /**
@@ -99,7 +105,8 @@ class Config {
   std::map<BoolSetting, bool> m_bool_settings{
       {BoolSetting::INITIATE_PEER_CONNECTIONS, false},
       {BoolSetting::RESOLVE_URLS, true},
-      {BoolSetting::PIECE_VERIFY_THREADS, true}};
+      {BoolSetting::PIECE_VERIFY_THREADS, true},
+      {BoolSetting::VERIFY_PIECES_ON_STARTUP, true}};
 
   std::map<IntSetting, int> m_int_settings{
       {IntSetting::LISTENING_PORT, 20001},

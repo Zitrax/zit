@@ -102,6 +102,8 @@ int main(int argc, const char* argv[]) noexcept {
     const auto dump_torrent = parser.get<bool>("--dump-torrent");
     const auto dump_config = parser.get<bool>("--dump-config");
 
+    const bool dump = dump_torrent || dump_config;
+
     if (!log_prefix.empty()) {
       // Set pattern with prefix for all loggers
       // Default spdlog pattern is: [%Y-%m-%d %H:%M:%S.%e] [%n] [%^%l%$] %v
@@ -123,8 +125,8 @@ int main(int argc, const char* argv[]) noexcept {
 
     class CommandLineArgs : public zit::Config {
      public:
-      explicit CommandLineArgs(const int& listening_port)
-          : m_listening_port(listening_port) {}
+      explicit CommandLineArgs(const int& listening_port, bool dump)
+          : m_listening_port(listening_port), m_dump(dump) {}
 
       [[nodiscard]] int get(zit::IntSetting setting) const override {
         if (setting == zit::IntSetting::LISTENING_PORT && m_listening_port) {
@@ -134,14 +136,18 @@ int main(int argc, const char* argv[]) noexcept {
       }
 
       [[nodiscard]] bool get(zit::BoolSetting setting) const override {
+        if (setting == zit::BoolSetting::VERIFY_PIECES_ON_STARTUP && m_dump) {
+          return false;
+        }
         return zit::SingletonDirectoryFileConfig::getInstance().get(setting);
       }
 
      private:
       const int& m_listening_port;
+      const bool m_dump;
     };
 
-    CommandLineArgs clargs{listening_port};
+    CommandLineArgs clargs{listening_port, dump};
 
     asio::io_context io_context;
 
@@ -153,7 +159,7 @@ int main(int argc, const char* argv[]) noexcept {
                                  io_context, torrent_file, "", clargs);
                            });
 
-    if (dump_torrent || dump_config) {
+    if (dump) {
       for (const auto& torrent : torrents) {
         if (dump_torrent) {
           std::cout << *torrent << "\n";
