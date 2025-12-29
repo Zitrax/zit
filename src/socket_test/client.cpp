@@ -20,6 +20,8 @@
 #include "common.hpp"        // NOLINT(misc-include-cleaner)
 #include "logger.hpp"
 
+namespace {
+
 class Connection : public socket_test::ID {
  public:
   explicit Connection(asio::io_context& io_context)
@@ -55,6 +57,8 @@ class Connection : public socket_test::ID {
   asio::ip::tcp::resolver m_resolver;
   asio::ip::tcp::socket m_socket;
 };
+
+}  // namespace
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 unsigned socket_test::ID::m_counter = 0;
