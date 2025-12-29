@@ -102,6 +102,7 @@ bool Process::wait_for_exit(chrono::milliseconds timeout) {
 
 void Process::terminate() {
   if (m_pid) {
+    logger()->debug("Sending SIGTERM to {}", m_name);
     kill(m_pid, SIGTERM);
     if (!wait_for_exit(5s)) {
       logger()->info("{} still not dead, sending SIGKILL", m_name);
