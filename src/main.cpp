@@ -240,7 +240,12 @@ int main(int argc, const char* argv[]) noexcept {
     sigIntHandler.sa_handler = sigint_handler;
     sigemptyset(&sigIntHandler.sa_mask);
     sigIntHandler.sa_flags = 0;
-    sigaction(SIGINT | SIGTERM, &sigIntHandler, nullptr);
+    if (sigaction(SIGINT, &sigIntHandler, nullptr) != 0) {
+      zit::logger()->warn("Error: Failed to set SIGINT handler.");
+    }
+    if (sigaction(SIGTERM, &sigIntHandler, nullptr) != 0) {
+      zit::logger()->warn("Error: Failed to set SIGTERM handler.");
+    }
     // NOLINTEND(cppcoreguidelines-pro-type-union-access,misc-include-cleaner)
 #endif  // !WIN32
 
