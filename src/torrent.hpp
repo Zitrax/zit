@@ -243,9 +243,9 @@ class Torrent {
 
   /**
    * Callback that will be called whenever a piece has finished downloading.
-   * 
-   * @note This just means we got all data for the piece, at this point it's neither
-   *       verified or written to disk yet.
+   *
+   * @note This just means we got all data for the piece, at this point it's
+   * neither verified or written to disk yet.
    */
   void add_piece_callback(PieceCallback piece_callback) {
     m_piece_callbacks.emplace_back(std::move(piece_callback));
@@ -285,6 +285,14 @@ class Torrent {
    * Stopping all peers. Will cause the run() function to terminate.
    */
   void stop();
+
+  /**
+   * Mark the torrent as stopped.
+   *
+   * This is a non-blocking call and safe to use from signal handles to trigger
+   * a graceful shutdown.
+   */
+  void set_stopped() { m_stopped = true; }
 
   /**
    * Peer received remote piece info, make sure we have a non empty client side
@@ -508,7 +516,7 @@ class Torrent {
   HttpGet m_http_get;
   asio::steady_timer m_retry_pieces_timer;
   asio::steady_timer m_retry_peers_timer;
-  bool m_stopped = false;
+  std::atomic_bool m_stopped = false;
 
   // Piece housekeeping
   mutable std::mutex m_mutex;
