@@ -101,6 +101,10 @@ vector<string> get_host_ip_addresses() {
   return get_host_ip_addresses(asio::ip::host_name());
 }
 
+}  // namespace zit
+
+namespace {
+
 /**
  * When using asio::read_until we need to match multiple markers to handle non
  * standard responses.
@@ -117,7 +121,8 @@ class MatchMarkers {
     for (const auto& marker : m_markers) {
       auto m = std::search(begin, end, std::begin(marker), std::end(marker));
       if (m != end) {
-        return std::make_pair(next(m, numeric_cast<long>(marker.size())), true);
+        return std::make_pair(next(m, zit::numeric_cast<long>(marker.size())),
+                              true);
       }
     }
     return std::make_pair(end, false);
@@ -126,11 +131,11 @@ class MatchMarkers {
  private:
   vector<string> m_markers;
 };
-}  // namespace zit
+}  // namespace
 
 // Need to explicitly mark this as a MatchCondition
 template <>
-struct asio::is_match_condition<zit::MatchMarkers> : public std::true_type {};
+struct asio::is_match_condition<MatchMarkers> : public std::true_type {};
 
 namespace zit {
 

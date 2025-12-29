@@ -76,6 +76,8 @@ bytes FileWriter::read_block(uint32_t offset,
   return data;
 }
 
+namespace {
+
 /**
  * Interface for writing pieces to destination files. Subclasses
  * implements this for single and multi torrents.
@@ -251,6 +253,8 @@ shared_ptr<TorrentDestination> TorrentDestination::create(
   }
   return make_shared<MultiTorrentDestination>(torrent, std::move(logger));
 }
+
+}  // namespace
 
 void FileWriter::write_next_piece() {
   TorrentPiece t_piece;

@@ -18,6 +18,7 @@
 
 #include <fmt/format.h>
 #include <spdlog/common.h>
+#include <asio/error.hpp>
 #include <asio/error_code.hpp>
 #include <asio/io_context.hpp>
 
@@ -551,6 +552,8 @@ Torrent::http_tracker_request(const Url& announce_url, TrackerEvent event) {
   return {true, peers};
 }
 
+namespace {
+
 /**
  * Protocol documented here: https://libtorrent.org/udp_tracker_protocol.html
  *
@@ -827,6 +830,8 @@ class UDPTrackerRequest {
   std::optional<int64_t> m_connection_id;
   TimePoint m_last_connection_id{ClockType::time_point::min()};
 };
+
+}  // namespace
 
 std::pair<bool, std::vector<std::shared_ptr<Peer>>>
 Torrent::udp_tracker_request(const Url& announce_url, TrackerEvent event) {
@@ -1291,7 +1296,7 @@ void Torrent::reset_piece(uint32_t piece_id) {
   const scoped_lock lock(m_mutex);
   auto it = m_active_pieces.find(piece_id);
   if (it != m_active_pieces.end()) {
-    it->second->reset();
+    (*it->second).reset();
     m_client_pieces.at(piece_id) = false;
     m_active_pieces.erase(it);
   }
