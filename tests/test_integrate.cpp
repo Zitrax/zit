@@ -458,7 +458,7 @@ TEST_P(IntegrateF, DISABLED_download) {
 #endif  // INTEGRATION_TESTS
   const auto data_dir = fs::path(DATA_DIR);
   const auto announce =
-      std::format("http://{}:8000/announce", "zit-opentracker");
+      std::format("http://{}:8000/announce", get_host_ip_from_host());
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "1MiB.dat", announce, tmp_dir());
   const uint8_t number_of_seeders = GetParam();
@@ -494,7 +494,7 @@ TEST_F(IntegrateOodF, DISABLED_download_ood) {
 #endif  // INTEGRATION_TESTS
   const auto data_dir = fs::path(DATA_DIR);
   const auto announce =
-      std::format("http://{}:8000/announce", "zit-opentracker");
+      std::format("http://{}:8000/announce", get_host_ip_from_host());
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "1MiB.dat", announce, tmp_dir());
   constexpr uint8_t number_of_seeders = 1;
@@ -541,10 +541,10 @@ TEST_F(IntegrateF, DISABLED_download_dual_torrents) {
 
   const auto torrent_file_1 = generate_torrent_with_announce(
       data_dir / "1MiB.dat",
-      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
   const auto torrent_file_2 = generate_torrent_with_announce(
       data_dir / "multi",
-      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
@@ -579,7 +579,7 @@ TEST_P(IntegrateF, DISABLED_download_part) {
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "1MiB.dat",
-      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
   const auto download_dir = tmp_dir();
 
   auto tracker = start_tracker(data_dir);
@@ -621,7 +621,7 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "multi",
-      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
   const auto download_dir = tmp_dir();
 
   auto tracker = start_tracker(data_dir);
@@ -665,7 +665,7 @@ TEST_F(Integrate, DISABLED_download_multi_file) {
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "multi",
-      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
@@ -688,7 +688,7 @@ TEST_F(Integrate, DISABLED_upload) {
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "1MiB.dat",
-      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
@@ -742,7 +742,7 @@ TEST_F(Integrate, DISABLED_multi_upload) {
   const auto data_dir = fs::path(DATA_DIR);
   const auto torrent_file = generate_torrent_with_announce(
       data_dir / "multi",
-      "http://" + std::string("zit-opentracker") + ":8000/announce", tmp_dir());
+      "http://" + get_host_ip_from_host() + ":8000/announce", tmp_dir());
 
   auto tracker = start_tracker(data_dir);
 
