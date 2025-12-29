@@ -24,8 +24,8 @@ TEST_F(FileConfigTest, EmptyFile) {
   EXPECT_TRUE(config.get(BoolSetting::PIECE_VERIFY_THREADS));
   EXPECT_EQ(config.get(IntSetting::LISTENING_PORT), 20001);
   EXPECT_EQ(config.get(IntSetting::CONNECTION_PORT), 20000);
-  EXPECT_EQ(config.get(IntSetting::RETRY_PIECES_INTERVAL_SECONDS), 60);
-  EXPECT_EQ(config.get(IntSetting::RETRY_PEERS_INTERVAL_SECONDS), 120);
+  EXPECT_EQ(config.get(IntSetting::RETRY_PIECES_INTERVAL_SECONDS), 45);
+  EXPECT_EQ(config.get(IntSetting::RETRY_PEERS_INTERVAL_SECONDS), 25);
 }
 
 TEST_F(FileConfigTest, InvalidFile) {
