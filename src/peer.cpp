@@ -189,9 +189,10 @@ void PeerConnection::send(bool start_read) {
           self->m_msg = self->m_send_queue.front();
           self->m_send_queue.pop_front();
           self->send();
+        } else {
+          // Indicates that all sending is done
+          self->m_msg.clear();
         }
-        // Indicates that all sending is done
-        self->m_msg.clear();
       });
 }
 
