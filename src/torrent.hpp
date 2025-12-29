@@ -78,6 +78,7 @@ std::ostream& operator<<(std::ostream& os, const zit::FileInfo& file_info);
 class Torrent {
  public:
   /**
+   * @param io_context asio io_context to use for io operations
    * @param file path to .torrent file to read
    * @param data_dir path to the directory with the downloaded result
    * @param config a config instance, by default reads config from disk

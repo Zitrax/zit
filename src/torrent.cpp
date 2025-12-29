@@ -223,7 +223,9 @@ Torrent::Torrent(asio::io_context& io_context,
   m_info_hash = Sha1::calculateData(encode(info));
 
   // If we already have a file - scan it and mark what pieces we already have
-  verify_existing_file();
+  if (config.get(BoolSetting::VERIFY_PIECES_ON_STARTUP)) {
+    verify_existing_file();
+  }
 
   {
     const scoped_lock lock(m_torrents_mutex);
