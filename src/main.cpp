@@ -4,9 +4,9 @@
 #include "logger.hpp"
 #include "torrent.hpp"
 
-#include <asio/io_context.hpp>
 #include <fmt/format.h>
 #include <spdlog/common.h>
+#include <asio/io_context.hpp>
 
 #include <algorithm>
 #include <cstdlib>
@@ -81,7 +81,9 @@ int main(int argc, const char* argv[]) noexcept {
         .help("Log level (trace, debug, info, warning, error, critical, off)");
     parser.add_option<std::string>("--log-prefix")
         .default_value("")
-        .help("Prefix to add to all log messages (useful when running multiple instances)");
+        .help(
+            "Prefix to add to all log messages (useful when running multiple "
+            "instances)");
     parser.add_option<bool>("--dump-torrent")
         .help("Dump info about specified .torrent file and exit");
     parser.add_option<bool>("--dump-config").help("Dump config to console");
@@ -104,7 +106,8 @@ int main(int argc, const char* argv[]) noexcept {
       // Set pattern with prefix for all loggers
       // Default spdlog pattern is: [%Y-%m-%d %H:%M:%S.%e] [%n] [%^%l%$] %v
       // We'll add the prefix before the message
-      const auto pattern = "[%Y-%m-%d %H:%M:%S.%e] [%n] [%^%l%$] [" + log_prefix + "] %v";
+      const auto pattern =
+          "[%Y-%m-%d %H:%M:%S.%e] [%n] [%^%l%$] [" + log_prefix + "] %v";
       zit::logger()->set_pattern(pattern);
       zit::logger("file_writer")->set_pattern(pattern);
     }
