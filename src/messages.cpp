@@ -6,7 +6,6 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <cstdlib>
 #include <cstring>
 #include <iomanip>
 #include <ios>
@@ -146,19 +145,9 @@ optional<HandshakeMsg> HandshakeMsg::parse(const bytes& msg) {
   }
 
   if (sr.begin() != msg.begin()) {
-    const auto pos = std::distance(msg.begin(), sr.begin());
-    logger()->debug("Found BT start at {}", pos);
-    // Parse from the actual handshake start, but make sure the consumed
-    // length accounts for any leading garbage before the handshake.
-    auto parsed = HandshakeMsg::parse(bytes{sr.begin(), msg.end()});
-    if (!parsed) {
-      return {};
-    }
-    // Repackage with adjusted consumed to include the offset
-    return HandshakeMsg(parsed->getReserved(), parsed->getInfoHash(),
-                        parsed->getPeerId(),
-                        parsed->getConsumed() + numeric_cast<size_t>(pos),
-                        parsed->getBitfield());
+    logger()->debug("Found BT start at {}",
+                    std::distance(msg.begin(), sr.begin()));
+    return HandshakeMsg::parse(bytes{sr.begin(), msg.end()});
   }
 
   const bytes reserved(&msg.at(20), &msg.at(28));
@@ -167,31 +156,26 @@ optional<HandshakeMsg> HandshakeMsg::parse(const bytes& msg) {
 
   // Handle optional bitfield
   if (msg.size() > MIN_BT_MSG_LENGTH) {
-    // If we don't yet have enough bytes to decide on BITFIELD, or if the
-    // next message isn't a BITFIELD, just consume the handshake (68 bytes)
-    // and let the caller parse subsequent messages normally.
-    bool strict_handshake = false;
-    if (const char* env_p = std::getenv("ZIT_STRICT_HANDSHAKE")) {
-      strict_handshake = std::string(env_p) == "1";
+    if (msg.size() < 73) {
+      logger()->error("Invalid handshake length: {}", msg.size());
+      return {};
     }
-
-    if (msg.size() < 73 || (!strict_handshake && to_peer_wire_id(msg.at(72)) !=
-                                                     peer_wire_id::BITFIELD)) {
-      logger()->debug(
-          "Handshake without immediate BITFIELD; consuming 68 bytes");
-      return make_optional<HandshakeMsg>(reserved, info_hash, peer_id,
-                                         MIN_BT_MSG_LENGTH);
+    if (to_peer_wire_id(msg.at(72)) != peer_wire_id::BITFIELD) {
+      logger()->error("Expected bitfield id ({}) but got: {}",
+                      static_cast<pwid_t>(peer_wire_id::BITFIELD),
+                      static_cast<uint8_t>(msg.at(72)));
+      return {};
     }
-    // 4-byte big endian length for BITFIELD payload
+    // 4-byte big endian
     auto len = from_big_endian<uint32_t>(msg, 68);
     auto end = 73 + len - 1;
     if (end > msg.size()) {
-      logger()->debug("Wait for more handshake+BITFIELD data...");
+      logger()->debug("Wait for more handshake data...");
       return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, 0);
     }
     Bitfield bf(bytes(std::next(msg.begin(), 73), std::next(msg.begin(), end)));
     logger()->debug("Handshake: {}", bf);
-    // Consume the parsed part, the caller has to deal with the rest
+    // Consume the parsed part, the caller have to deal with the rest
     return make_optional<HandshakeMsg>(reserved, info_hash, peer_id, end, bf);
   }
 
