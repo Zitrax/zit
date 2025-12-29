@@ -126,8 +126,8 @@ void PeerConnection::write(const optional<Url>& url, const std::string& msg) {
     }
     auto self = shared_from_this();
     resolver_.async_resolve(
-        url->host(), url->service(),
-        [self](auto&& ec, auto&& it) { self->handle_resolve(ec, it); });
+      url->host(), url->service(),
+      [self](auto&& ec, auto&& it) { self->handle_resolve(ec, it); });
   }
 }
 
@@ -170,30 +170,30 @@ void PeerConnection::send(bool start_read) {
 
   // NOLINTNEXTLINE(misc-include-cleaner)
   auto self = shared_from_this();
-  asio::async_write(*socket_, asio::buffer(m_msg.c_str(), m_msg.size()),
-                    [self, start_read](auto err, auto len) {
-                      if (self->m_stopped) {
-                        return;
-                      }
-                      if (!err) {
-                        logger()->debug("{}: Data of len {} sent",
-                                        self->peer_.str(), len);
-                      } else {
-                        logger()->error("{}: Write failed: {}",
-                                        self->peer_.str(), err.message());
-                      }
-                      if (start_read) {
-                        self->handle_response({}, 0);
-                      }
-                      if (!self->m_send_queue.empty()) {
-                        self->m_msg = self->m_send_queue.front();
-                        self->m_send_queue.pop_front();
-                        self->send();
-                      } else {
-                        // Indicates that all sending is done
-                        self->m_msg.clear();
-                      }
-                    });
+  asio::async_write(
+      *socket_, asio::buffer(m_msg.c_str(), m_msg.size()),
+      [self, start_read](auto err, auto len) {
+        if (self->m_stopped) {
+          return;
+        }
+        if (!err) {
+          logger()->debug("{}: Data of len {} sent", self->peer_.str(), len);
+        } else {
+          logger()->error("{}: Write failed: {}", self->peer_.str(),
+                          err.message());
+        }
+        if (start_read) {
+          self->handle_response({}, 0);
+        }
+        if (!self->m_send_queue.empty()) {
+          self->m_msg = self->m_send_queue.front();
+          self->m_send_queue.pop_front();
+          self->send();
+        } else {
+          // Indicates that all sending is done
+          self->m_msg.clear();
+        }
+      });
 }
 
 void PeerConnection::handle_connect(const asio::error_code& err,
@@ -260,13 +260,14 @@ void PeerConnection::handle_response(const asio::error_code& err, std::size_t) {
     //       bytes at a time
     // NOLINTNEXTLINE(misc-include-cleaner)
     auto self = shared_from_this();
-    asio::async_read(*socket_, response_, asio::transfer_at_least(1),
-                     [self](const auto& ec, auto s) {
-                       if (self->m_stopped) {
-                         return;
-                       }
-                       self->handle_response(ec, s);
-                     });
+    asio::async_read(
+        *socket_, response_, asio::transfer_at_least(1),
+        [self](const auto& ec, auto s) {
+          if (self->m_stopped) {
+            return;
+          }
+          self->handle_response(ec, s);
+        });
   } else if (err != asio::error::eof) {
     logger()->error("Response failed: {}", err.message());
   } else {
@@ -685,7 +686,7 @@ void Peer::init_io_service(socket_ptr socket) {
   m_work = make_unique<asio::io_service::work>(*m_io_service);
   try {
     m_connection = std::make_shared<PeerConnection>(
-        *this, *m_io_service, m_torrent.connection_port(), std::move(socket));
+      *this, *m_io_service, m_torrent.connection_port(), std::move(socket));
   } catch (const asio::system_error& err) {
     throw_with_nested(
         runtime_error("Creating peer connection to " + str() + err.what()));
