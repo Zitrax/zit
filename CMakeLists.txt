@@ -1,10 +1,16 @@
 cmake_minimum_required (VERSION 3.24)
 set(CMAKE_CXX_STANDARD 23)
-project(zit CXX)
 
 option(USE_CLANG_TIDY "Use clang-tidy when building" ON)
 option(USE_ASAN "Build with address sanitation" OFF)
 option(USE_TSAN "Build with thread sanitation" OFF)
+option(BUILD_TUI "Build with text user interface support" OFF)
+
+if(BUILD_TUI)
+  list(APPEND VCPKG_MANIFEST_FEATURES "tui")
+endif()
+
+project(zit CXX)
 
 find_package(asio)
 find_package(OpenSSL)

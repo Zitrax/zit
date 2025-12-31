@@ -125,3 +125,7 @@ endif()
 
 add_subdirectory(socket_test)
 add_subdirectory(torrent_writer)
+
+if(BUILD_TUI)
+  add_subdirectory(tui)
+endif()
