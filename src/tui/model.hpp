@@ -2,9 +2,16 @@
 
 #include <asio/io_context.hpp>
 
+#include <chrono>
+#include <filesystem>
 #include <functional>
+#include <memory>
+#include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
+
+#include "file_writer.hpp"
 
 namespace zit::tui {
 
@@ -21,6 +28,7 @@ struct TorrentInfo {
 class TorrentListModel {
  public:
   TorrentListModel();
+  ~TorrentListModel();
 
   bool empty() const;
   const std::vector<TorrentInfo>& torrents() const;
@@ -33,14 +41,23 @@ class TorrentListModel {
   int* mutable_selected_index();
   const TorrentInfo* selected() const;
 
-  void AddTorrent(TorrentInfo info);
-  void Clear();
+  bool LaunchTorrent(const std::filesystem::path& path);
+  void StopAllTorrents();
 
-  // Placeholder hooks for upcoming polling/callback plumbing.
-  void OnPolledSnapshot(const std::vector<TorrentInfo>& snapshot);
+  std::vector<TorrentInfo> CollectSnapshot();
+  void OnPolledSnapshot(std::vector<TorrentInfo> snapshot);
   void RegisterRareEventCallback(std::function<void(const TorrentInfo&)> cb);
 
  private:
+  struct ActiveTorrent {
+    std::filesystem::path source_path;
+    std::unique_ptr<zit::Torrent> torrent;
+    std::thread worker;
+    size_t last_completed_pieces = 0;
+    std::chrono::steady_clock::time_point last_snapshot =
+        std::chrono::steady_clock::now();
+  };
+
   void RefreshMenuEntries();
   void ClampSelection();
 
@@ -50,6 +67,9 @@ class TorrentListModel {
   std::function<void(const TorrentInfo&)> rare_event_callback_;
 
   asio::io_context m_io_context;
+  std::unique_ptr<zit::FileWriterThread> file_writer_thread_;
+  std::vector<std::unique_ptr<ActiveTorrent>> active_torrents_;
+  mutable std::mutex active_mutex_;
 };
 
 }  // namespace zit::tui

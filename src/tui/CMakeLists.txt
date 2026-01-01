@@ -11,4 +11,13 @@ target_link_libraries(zit_tui PRIVATE
     ftxui::screen
     ftxui::component
     zitlib
+        asio::asio
+        OpenSSL::SSL
+        spdlog::spdlog
+        TBB::tbb
+        fmt::fmt
 )
+
+if(NOT WIN32)
+    target_link_libraries(zit_tui PRIVATE pthread)
+endif()

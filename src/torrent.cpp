@@ -415,6 +415,11 @@ auto Torrent::left() const {
   return length() - downloaded();
 }
 
+std::size_t Torrent::peer_count() const {
+  const std::scoped_lock lock(m_peers_mutex);
+  return m_peers.size();
+}
+
 void Torrent::disconnected(Peer* peer) {
   // Notify any external callback first
   if (m_disconnect_callback) {

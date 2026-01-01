@@ -229,6 +229,8 @@ class Torrent {
    */
   [[nodiscard]] auto& peers() { return m_peers; }
 
+  [[nodiscard]] std::size_t peer_count() const;
+
   /**
    * Add peer if there is no other peer handling the same url.
    *
@@ -512,7 +514,7 @@ class Torrent {
   std::string m_peer_id;
   ListeningPort m_listening_port;
   ConnectionPort m_connection_port;
-  std::mutex m_peers_mutex;
+  mutable std::mutex m_peers_mutex;
   std::vector<std::shared_ptr<Peer>> m_peers;
   HttpGet m_http_get;
   asio::steady_timer m_retry_pieces_timer;

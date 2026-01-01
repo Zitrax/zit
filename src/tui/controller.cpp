@@ -1,5 +1,7 @@
 #include "controller.hpp"
 
+#include <chrono>
+
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_options.hpp>
 #include <ftxui/dom/elements.hpp>
@@ -14,10 +16,14 @@ TuiController::TuiController()
     : screen_(ScreenInteractive::Fullscreen()) {
   BuildComponents();
   BindEvents();
+  StartSnapshotThread();
 }
+
+TuiController::~TuiController() { Shutdown(); }
 
 int TuiController::Run() {
   screen_.Loop(main_renderer_);
+  Shutdown();
   return 0;
 }
 
@@ -56,9 +62,7 @@ void TuiController::BuildComponents() {
   });
 
   file_dialog_ = view::MakeFileDialog(
-      [this](const std::filesystem::path& path) {
-        AddPlaceholderTorrent(path);
-      },
+      [this](const std::filesystem::path& path) { LaunchTorrent(path); },
       [this] { open_dialog_ = false; });
 
   main_renderer_ |= Modal(file_dialog_, &open_dialog_);
@@ -66,6 +70,10 @@ void TuiController::BuildComponents() {
 
 void TuiController::BindEvents() {
   main_renderer_ |= CatchEvent([this](Event event) {
+    if (event == Event::Special("zit.snapshot")) {
+      HandleSnapshotEvent();
+      return true;
+    }
     if (event == Event::Character('q') || event == Event::Escape) {
       screen_.Exit();
       return true;
@@ -88,9 +96,55 @@ void TuiController::BindEvents() {
   });
 }
 
-void TuiController::AddPlaceholderTorrent(const std::filesystem::path& path) {
-  model_.AddTorrent({path.filename().string(), "0.0%", "0 B", "0",
-                     "0 B/s", "0 B/s"});
+void TuiController::LaunchTorrent(const std::filesystem::path& path) {
+  if (model_.LaunchTorrent(path)) {
+    model_.OnPolledSnapshot(model_.CollectSnapshot());
+  }
+}
+
+void TuiController::StartSnapshotThread() {
+  snapshot_thread_ = std::thread([this] { SnapshotLoop(); });
+}
+
+void TuiController::SnapshotLoop() {
+  using namespace std::chrono_literals;
+  while (keep_polling_) {
+    auto snapshot = model_.CollectSnapshot();
+    {
+      const std::scoped_lock lock(snapshot_mutex_);
+      pending_snapshot_ = std::move(snapshot);
+      snapshot_ready_ = true;
+    }
+    screen_.PostEvent(Event::Special("zit.snapshot"));
+
+    for (int i = 0; i < 50 && keep_polling_; ++i) {
+      std::this_thread::sleep_for(20ms);
+    }
+  }
+}
+
+void TuiController::HandleSnapshotEvent() {
+  std::vector<TorrentInfo> snapshot;
+  {
+    const std::scoped_lock lock(snapshot_mutex_);
+    if (!snapshot_ready_) {
+      return;
+    }
+    snapshot = std::move(pending_snapshot_);
+    snapshot_ready_ = false;
+  }
+  model_.OnPolledSnapshot(std::move(snapshot));
+}
+
+void TuiController::Shutdown() {
+  if (shutdown_requested_.exchange(true)) {
+    return;
+  }
+  keep_polling_ = false;
+  if (snapshot_thread_.joinable()) {
+    snapshot_thread_.join();
+  }
+  model_.StopAllTorrents();
 }
 
 }  // namespace zit::tui
