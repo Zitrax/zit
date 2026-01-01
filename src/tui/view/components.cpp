@@ -1,4 +1,5 @@
 #include "components.hpp"
+#include "../tui_logger.hpp"
 
 #include <iostream>
 
@@ -24,9 +25,8 @@ ButtonOption TextOnlyButtonOption(Color color_active) {
   return option;
 }
 
-Component MakeFileDialog(
-    std::function<void(const std::filesystem::path&)> open,
-    std::function<void()> close) {
+Component MakeFileDialog(std::function<void(const std::filesystem::path&)> open,
+                         std::function<void()> close) {
   auto container = Container::Vertical({});
 
   auto renderer = Renderer(container, [container, open, close,
@@ -65,8 +65,8 @@ Component MakeFileDialog(
             },
             TextOnlyButtonOption(Color::Green)));
       }
-      container->Add(Button("Cancel", [close] { close(); },
-                            TextOnlyButtonOption(Color::Red)));
+      container->Add(Button(
+          "Cancel", [close] { close(); }, TextOnlyButtonOption(Color::Red)));
       populate = false;
     }
     return vbox({
@@ -80,8 +80,7 @@ Component MakeFileDialog(
   return renderer;
 }
 
-Element RenderTorrentTable(const TorrentListModel& model,
-                           int selected_index) {
+Element RenderTorrentTable(const TorrentListModel& model, int selected_index) {
   Elements rows;
 
   rows.push_back(hbox({
@@ -101,8 +100,7 @@ Element RenderTorrentTable(const TorrentListModel& model,
   rows.push_back(separator());
 
   if (model.empty()) {
-    rows.push_back(text("No torrents. Press 'o' to add one.") | center |
-                   focus);
+    rows.push_back(text("No torrents. Press 'o' to add one.") | center | focus);
   } else {
     for (size_t i = 0; i < model.torrents().size(); ++i) {
       const auto& torrent = model.torrents()[i];
@@ -152,8 +150,83 @@ Element RenderDetailPanel(const TorrentListModel& model, int selected_index) {
   return vbox({
              separator(),
              text("Details for: " + torrent->name) | bold | center,
-             text("(More information will be added here later)") | dim |
-                 center,
+             text("(More information will be added here later)") | dim | center,
+         }) |
+         border | flex;
+}
+
+Element RenderLogPanel() {
+  constexpr int LAST_N_LINES{20};
+
+  // Helper to convert log level to FTXUI color
+  auto level_to_color = [](spdlog::level::level_enum level) -> Color {
+    switch (level) {
+      case spdlog::level::trace:
+        return Color::Grey50;
+      case spdlog::level::debug:
+        return Color::Cyan;
+      case spdlog::level::info:
+        return Color::Green;
+      case spdlog::level::warn:
+        return Color::Yellow;
+      case spdlog::level::err:
+        return Color::Red;
+      case spdlog::level::critical:
+        return Color::RedLight;
+      case spdlog::level::off:
+      case spdlog::level::n_levels:
+        return Color::White;
+    }
+    return Color::White;
+  };
+
+  auto main_logger = zit::tui::zit_logger();
+  auto sinks = main_logger->sinks();
+  std::vector<spdlog::details::log_msg_buffer> log_messages;
+  for (const auto& sink : sinks) {
+    auto ringbuffer_sink =
+        std::dynamic_pointer_cast<spdlog::sinks::ringbuffer_sink_mt>(sink);
+    if (ringbuffer_sink) {
+      const auto entries = ringbuffer_sink->last_raw(LAST_N_LINES);
+      log_messages.insert(log_messages.end(), entries.begin(), entries.end());
+    }
+  }
+  Elements log_elements;
+  for (const auto& msg : log_messages) {
+    auto level_str = std::string("[") + to_string_view(msg.level).data() + "]";
+    auto payload_str = std::string(msg.payload.data(), msg.payload.size());
+    log_elements.push_back(text(level_str + " " + payload_str) |
+                           color(level_to_color(msg.level)));
+  }
+
+  auto file_logger = zit::tui::file_writer_logger();
+  sinks = file_logger->sinks();
+  std::vector<spdlog::details::log_msg_buffer> file_log_messages;
+  for (const auto& sink : sinks) {
+    auto ringbuffer_sink =
+        std::dynamic_pointer_cast<spdlog::sinks::ringbuffer_sink_mt>(sink);
+    if (ringbuffer_sink) {
+      const auto entries = ringbuffer_sink->last_raw(LAST_N_LINES);
+      file_log_messages.insert(file_log_messages.end(), entries.begin(),
+                               entries.end());
+    }
+  }
+  Elements file_log_elements;
+  for (const auto& msg : file_log_messages) {
+    auto level_str = std::string("[") + to_string_view(msg.level).data() + "]";
+    auto payload_str = std::string(msg.payload.data(), msg.payload.size());
+    file_log_elements.push_back(text(level_str + " " + payload_str) |
+                                color(level_to_color(msg.level)));
+  }
+
+  return vbox({
+             text("Main Logger:") | bold,
+             separator(),
+             vbox(std::move(log_elements)) | flex,
+             separator(),
+             text("File Writer Logger:") | bold,
+             separator(),
+             vbox(std::move(file_log_elements)) | flex,
          }) |
          border | flex;
 }

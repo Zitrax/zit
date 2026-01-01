@@ -12,14 +12,15 @@ namespace zit::tui {
 
 using namespace ftxui;
 
-TuiController::TuiController()
-    : screen_(ScreenInteractive::Fullscreen()) {
+TuiController::TuiController() : screen_(ScreenInteractive::Fullscreen()) {
   BuildComponents();
   BindEvents();
   StartSnapshotThread();
 }
 
-TuiController::~TuiController() { Shutdown(); }
+TuiController::~TuiController() {
+  Shutdown();
+}
 
 int TuiController::Run() {
   screen_.Loop(main_renderer_);
@@ -35,8 +36,8 @@ void TuiController::BuildComponents() {
     }
   };
 
-  menu_component_ =
-      Menu(&model_.menu_entries(), model_.mutable_selected_index(), menu_option);
+  menu_component_ = Menu(&model_.menu_entries(),
+                         model_.mutable_selected_index(), menu_option);
 
   menu_renderer_ = Renderer(menu_component_, [this] {
     return view::RenderTorrentTable(model_, model_.selected_index());
@@ -46,15 +47,24 @@ void TuiController::BuildComponents() {
     return view::RenderDetailPanel(model_, model_.selected_index());
   });
 
+  log_renderer_ = Renderer([] { return view::RenderLogPanel(); });
+
   main_container_ = Container::Vertical({menu_renderer_});
 
   main_renderer_ = Renderer(main_container_, [this] {
     auto content = menu_renderer_->Render() | flex;
 
-    if (show_details_ && !model_.empty()) {
+    if (show_details_ && !model_.empty() && !show_log_) {
       content = vbox({
           menu_renderer_->Render() | flex,
           detail_renderer_->Render(),
+      });
+    }
+
+    if (show_log_) {
+      content = vbox({
+          content,
+          log_renderer_->Render(),
       });
     }
 
@@ -80,6 +90,10 @@ void TuiController::BindEvents() {
     }
     if (event == Event::Character('o')) {
       open_dialog_ = true;
+      return true;
+    }
+    if (event == Event::Character('l')) {
+      show_log_ = !show_log_;
       return true;
     }
     if (open_dialog_) {

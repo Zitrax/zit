@@ -31,10 +31,12 @@ class TuiController {
   void Shutdown();
 
   TorrentListModel model_;
+  bool show_log_ = false;
   bool show_details_ = false;
   bool open_dialog_ = false;
 
   ftxui::ScreenInteractive screen_;
+  ftxui::Component log_renderer_;
   ftxui::Component menu_component_;
   ftxui::Component menu_renderer_;
   ftxui::Component detail_renderer_;

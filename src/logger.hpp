@@ -28,8 +28,9 @@ inline auto logger(const std::string& name = "zit",
     if (output == LogOutput::CONSOLE) {
       logger = spdlog::stderr_color_mt(name);
     } else if (output == LogOutput::MEMORY) {
-      auto sink = std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(1000);
-      logger = std::make_shared<spdlog::logger>(name, sink);
+      auto ringbuffer_sink =
+          std::make_shared<spdlog::sinks::ringbuffer_sink_mt>(1000);
+      logger = std::make_shared<spdlog::logger>(name, ringbuffer_sink);
       spdlog::register_logger(logger);
     } else {
       throw std::runtime_error("Unknown log output type");
