@@ -75,6 +75,8 @@ add_executable(zit main.cpp)
 
 target_link_libraries(zit zitlib)
 
+target_include_directories(zitlib PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+
 if(ASIO_DEBUG)
   target_compile_definitions(zitlib PRIVATE ASIO_ENABLE_HANDLER_TRACKING)
 endif()
