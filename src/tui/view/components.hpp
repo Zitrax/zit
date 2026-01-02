@@ -22,6 +22,6 @@ ftxui::Element RenderTorrentTable(const TorrentListModel& model,
 ftxui::Element RenderDetailPanel(const TorrentListModel& model,
                                  int selected_index);
 
-ftxui::Element RenderLogPanel();
+ftxui::Component MakeLogPanel(std::function<int()> window_height_provider);
 
 }  // namespace zit::tui::view

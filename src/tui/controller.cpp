@@ -1,5 +1,6 @@
 #include "controller.hpp"
 
+#include <algorithm>
 #include <chrono>
 
 #include <ftxui/component/component.hpp>
@@ -7,15 +8,23 @@
 #include <ftxui/dom/elements.hpp>
 
 #include "view/components.hpp"
+#include "tui_logger.hpp"
 
 namespace zit::tui {
 
 using namespace ftxui;
 
+namespace {
+constexpr bool kEnableTestLogThread = false;
+}
+
 TuiController::TuiController() : screen_(ScreenInteractive::Fullscreen()) {
   BuildComponents();
   BindEvents();
   StartSnapshotThread();
+  if constexpr (kEnableTestLogThread) {
+    StartTestLogThread();
+  }
 }
 
 TuiController::~TuiController() {
@@ -47,9 +56,12 @@ void TuiController::BuildComponents() {
     return view::RenderDetailPanel(model_, model_.selected_index());
   });
 
-  log_renderer_ = Renderer([] { return view::RenderLogPanel(); });
+  log_renderer_ = view::MakeLogPanel([this] { return screen_.dimy(); });
 
-  main_container_ = Container::Vertical({menu_renderer_});
+  main_container_ = Container::Vertical({
+      menu_renderer_,
+      Maybe(log_renderer_, &show_log_),
+  });
 
   main_renderer_ = Renderer(main_container_, [this] {
     auto content = menu_renderer_->Render() | flex;
@@ -62,9 +74,11 @@ void TuiController::BuildComponents() {
     }
 
     if (show_log_) {
+      const int window_height = std::max(1, screen_.dimy());
+      const int half_height = std::max(1, window_height / 2);
       content = vbox({
-          content,
-          log_renderer_->Render(),
+          content | size(HEIGHT, EQUAL, half_height),
+          log_renderer_->Render() | size(HEIGHT, EQUAL, half_height),
       });
     }
 
@@ -120,6 +134,13 @@ void TuiController::StartSnapshotThread() {
   snapshot_thread_ = std::thread([this] { SnapshotLoop(); });
 }
 
+void TuiController::StartTestLogThread() {
+  if constexpr (!kEnableTestLogThread) {
+    return;
+  }
+  test_log_thread_ = std::thread([this] { TestLogLoop(); });
+}
+
 void TuiController::SnapshotLoop() {
   using namespace std::chrono_literals;
   while (keep_polling_) {
@@ -134,6 +155,18 @@ void TuiController::SnapshotLoop() {
     for (int i = 0; i < 50 && keep_polling_; ++i) {
       std::this_thread::sleep_for(20ms);
     }
+  }
+}
+
+void TuiController::TestLogLoop() {
+  if constexpr (!kEnableTestLogThread) {
+    return;
+  }
+  using namespace std::chrono_literals;
+  std::size_t counter = 0;
+  while (keep_polling_) {
+    zit::tui::zit_logger()->info("[test] Generated log message {}", counter++);
+    std::this_thread::sleep_for(500ms);
   }
 }
 
@@ -157,6 +190,11 @@ void TuiController::Shutdown() {
   keep_polling_ = false;
   if (snapshot_thread_.joinable()) {
     snapshot_thread_.join();
+  }
+  if constexpr (kEnableTestLogThread) {
+    if (test_log_thread_.joinable()) {
+      test_log_thread_.join();
+    }
   }
   model_.StopAllTorrents();
 }

@@ -1,6 +1,7 @@
 #include "components.hpp"
 #include "../tui_logger.hpp"
 
+#include <algorithm>
 #include <iostream>
 
 #include <ftxui/component/component.hpp>
@@ -155,68 +156,129 @@ Element RenderDetailPanel(const TorrentListModel& model, int selected_index) {
          border | flex;
 }
 
-Element RenderLogPanel() {
-  // Helper to convert log level to FTXUI color
-  auto level_to_color = [](spdlog::level::level_enum level) -> Color {
-    switch (level) {
-      case spdlog::level::trace:
-        return Color::Grey50;
-      case spdlog::level::debug:
-        return Color::Cyan;
-      case spdlog::level::info:
-        return Color::Green;
-      case spdlog::level::warn:
-        return Color::Yellow;
-      case spdlog::level::err:
-        return Color::Red;
-      case spdlog::level::critical:
-        return Color::RedLight;
-      case spdlog::level::off:
-      case spdlog::level::n_levels:
-        return Color::White;
-    }
-    return Color::White;
-  };
+class LogPanelBase : public ComponentBase {
+ public:
+  explicit LogPanelBase(std::function<int()> window_height_provider)
+    : window_height_provider_(std::move(window_height_provider)) {
+    auto level_to_color = [](spdlog::level::level_enum level) -> Color {
+      switch (level) {
+        case spdlog::level::trace:
+          return Color::Grey50;
+        case spdlog::level::debug:
+          return Color::Cyan;
+        case spdlog::level::info:
+          return Color::Green;
+        case spdlog::level::warn:
+          return Color::Yellow;
+        case spdlog::level::err:
+          return Color::Red;
+        case spdlog::level::critical:
+          return Color::RedLight;
+        case spdlog::level::off:
+        case spdlog::level::n_levels:
+          return Color::White;
+      }
+      return Color::White;
+    };
 
-  // Helper to get log elements from a logger
-  auto get_log_elements = [&level_to_color](
-                              std::shared_ptr<spdlog::logger> logger) {
-    Elements log_elements;
-    auto sinks = logger->sinks();
-    for (const auto& sink : sinks) {
-      auto ringbuffer_sink =
-          std::dynamic_pointer_cast<spdlog::sinks::ringbuffer_sink_mt>(sink);
-      if (ringbuffer_sink) {
-        const auto entries = ringbuffer_sink->last_raw();
-        // Iterate in reverse to show newest logs at the top
-        for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
-          const auto& msg = *it;
-          auto level_str =
-              std::string("[") + to_string_view(msg.level).data() + "]";
-          auto payload_str = std::string(msg.payload.data(), msg.payload.size());
-          log_elements.push_back(text(level_str + " " + payload_str) |
-                                 color(level_to_color(msg.level)) | focus);
+    auto make_option = [level_to_color](
+                           const std::vector<spdlog::level::level_enum>& levels) {
+      auto option = MenuOption::Vertical();
+      option.entries_option.transform =
+          [level_to_color, &levels](const EntryState& state) {
+            Color c = Color::White;
+            if (state.index >= 0 &&
+                static_cast<size_t>(state.index) < levels.size()) {
+              c = level_to_color(levels[static_cast<size_t>(state.index)]);
+            }
+            Element e = text(state.label) | color(c);
+            if (state.focused) e = e | inverted;
+            return e;
+          };
+      return option;
+    };
+
+    main_menu_ = Menu(&main_log_items_, &main_selected_,
+                      make_option(main_log_levels_));
+    file_menu_ = Menu(&file_log_items_, &file_selected_,
+                      make_option(file_log_levels_));
+
+    Add(main_menu_);
+    Add(file_menu_);
+  }
+
+  Element OnRender() override {
+    UpdateLogs();
+
+    const int window_height = window_height_provider_
+                                  ? std::max(1, window_height_provider_())
+                                  : 1;
+    const int quarter_height = std::max(1, window_height / 4);
+    auto scrollable_panel = [quarter_height](Element element) {
+      return element | vscroll_indicator | frame |
+             size(HEIGHT, EQUAL, quarter_height);
+    };
+    return vbox({
+               text("Main Logger:") | bold,
+               separator(),
+               scrollable_panel(main_menu_->Render()),
+               separator(),
+               text("File Writer Logger:") | bold,
+               separator(),
+               scrollable_panel(file_menu_->Render()),
+           }) |
+           border | flex;
+  }
+
+ private:
+  void UpdateLogs() {
+    auto update_one = [](std::shared_ptr<spdlog::logger> logger,
+                         std::vector<std::string>& items,
+                         std::vector<spdlog::level::level_enum>& levels) {
+      items.clear();
+      levels.clear();
+      auto sinks = logger->sinks();
+      for (const auto& sink : sinks) {
+        auto ringbuffer_sink =
+            std::dynamic_pointer_cast<spdlog::sinks::ringbuffer_sink_mt>(sink);
+        if (ringbuffer_sink) {
+          const auto entries = ringbuffer_sink->last_raw();
+          for (const auto& msg : entries) {
+            auto level_str =
+                std::string("[") + to_string_view(msg.level).data() + "]";
+            auto payload_str =
+                std::string(msg.payload.data(), msg.payload.size());
+            items.push_back(level_str + " " + payload_str);
+            levels.push_back(msg.level);
+          }
         }
       }
-    }
-    return log_elements;
-  };
+      return static_cast<int>(items.size());
+    };
 
-  auto main_log_elements = get_log_elements(zit::tui::zit_logger());
-  auto file_log_elements = get_log_elements(zit::tui::file_writer_logger());
+    const int main_count =
+        update_one(zit::tui::zit_logger(), main_log_items_, main_log_levels_);
+    const int file_count = update_one(zit::tui::file_writer_logger(),
+                                      file_log_items_, file_log_levels_);
 
-  return vbox({
-             text("Main Logger:") | bold,
-             separator(),
-             vbox(std::move(main_log_elements)) | vscroll_indicator | frame |
-                 size(HEIGHT, EQUAL, 1) | flex,
-             separator(),
-             text("File Writer Logger:") | bold,
-             separator(),
-             vbox(std::move(file_log_elements)) | vscroll_indicator | frame |
-                 size(HEIGHT, EQUAL, 1) | flex,
-         }) |
-         border | flex;
+    main_selected_ = main_count > 0 ? main_count - 1 : 0;
+    file_selected_ = file_count > 0 ? file_count - 1 : 0;
+  }
+
+  std::function<int()> window_height_provider_;
+  std::vector<std::string> main_log_items_;
+  std::vector<spdlog::level::level_enum> main_log_levels_;
+  int main_selected_ = 0;
+  Component main_menu_;
+
+  std::vector<std::string> file_log_items_;
+  std::vector<spdlog::level::level_enum> file_log_levels_;
+  int file_selected_ = 0;
+  Component file_menu_;
+};
+
+Component MakeLogPanel(std::function<int()> window_height_provider) {
+  return std::make_shared<LogPanelBase>(std::move(window_height_provider));
 }
 
 }  // namespace zit::tui::view

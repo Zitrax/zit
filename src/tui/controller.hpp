@@ -26,7 +26,9 @@ class TuiController {
   void BindEvents();
   void LaunchTorrent(const std::filesystem::path& path);
   void StartSnapshotThread();
+  void StartTestLogThread();
   void SnapshotLoop();
+  void TestLogLoop();
   void HandleSnapshotEvent();
   void Shutdown();
 
@@ -47,6 +49,7 @@ class TuiController {
   std::atomic<bool> keep_polling_{true};
   std::atomic<bool> shutdown_requested_{false};
   std::thread snapshot_thread_;
+  std::thread test_log_thread_;
   std::mutex snapshot_mutex_;
   std::vector<TorrentInfo> pending_snapshot_;
   bool snapshot_ready_ = false;
