@@ -45,7 +45,7 @@ Component MakeFileDialog(std::function<void(const std::filesystem::path&)> open,
                   std::filesystem::current_path().parent_path());
               populate = true;
             },
-            TextOnlyButtonOption(Color::Blue)));
+            TextOnlyButtonOption(Color::Magenta)));
       }
 
       for (auto const& dir_entry : std::filesystem::directory_iterator{"."}) {
@@ -64,7 +64,9 @@ Component MakeFileDialog(std::function<void(const std::filesystem::path&)> open,
               open(path);
               close();
             },
-            TextOnlyButtonOption(Color::Green)));
+            TextOnlyButtonOption(std::filesystem::is_directory(dir_entry.path())
+                                     ? Color::Magenta
+                                     : Color::Green)));
       }
       container->Add(Button(
           "Cancel", [close] { close(); }, TextOnlyButtonOption(Color::Red)));
@@ -159,7 +161,7 @@ Element RenderDetailPanel(const TorrentListModel& model, int selected_index) {
 class LogPanelBase : public ComponentBase {
  public:
   explicit LogPanelBase(std::function<int()> window_height_provider)
-    : window_height_provider_(std::move(window_height_provider)) {
+      : window_height_provider_(std::move(window_height_provider)) {
     auto level_to_color = [](spdlog::level::level_enum level) -> Color {
       switch (level) {
         case spdlog::level::trace:
@@ -181,27 +183,28 @@ class LogPanelBase : public ComponentBase {
       return Color::White;
     };
 
-    auto make_option = [level_to_color](
-                           const std::vector<spdlog::level::level_enum>& levels) {
-      auto option = MenuOption::Vertical();
-      option.entries_option.transform =
-          [level_to_color, &levels](const EntryState& state) {
+    auto make_option =
+        [level_to_color](const std::vector<spdlog::level::level_enum>& levels) {
+          auto option = MenuOption::Vertical();
+          option.entries_option.transform = [level_to_color,
+                                             &levels](const EntryState& state) {
             Color c = Color::White;
             if (state.index >= 0 &&
                 static_cast<size_t>(state.index) < levels.size()) {
               c = level_to_color(levels[static_cast<size_t>(state.index)]);
             }
             Element e = text(state.label) | color(c);
-            if (state.focused) e = e | inverted;
+            if (state.focused)
+              e = e | inverted;
             return e;
           };
-      return option;
-    };
+          return option;
+        };
 
-    main_menu_ = Menu(&main_log_items_, &main_selected_,
-                      make_option(main_log_levels_));
-    file_menu_ = Menu(&file_log_items_, &file_selected_,
-                      make_option(file_log_levels_));
+    main_menu_ =
+        Menu(&main_log_items_, &main_selected_, make_option(main_log_levels_));
+    file_menu_ =
+        Menu(&file_log_items_, &file_selected_, make_option(file_log_levels_));
 
     Add(main_menu_);
     Add(file_menu_);
@@ -210,9 +213,8 @@ class LogPanelBase : public ComponentBase {
   Element OnRender() override {
     UpdateLogs();
 
-    const int window_height = window_height_provider_
-                                  ? std::max(1, window_height_provider_())
-                                  : 1;
+    const int window_height =
+        window_height_provider_ ? std::max(1, window_height_provider_()) : 1;
     const int quarter_height = std::max(1, window_height / 4);
     auto scrollable_panel = [quarter_height](Element element) {
       return element | vscroll_indicator | frame |
