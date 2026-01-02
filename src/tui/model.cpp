@@ -1,5 +1,9 @@
 #include "model.hpp"
 
+#include "file_writer.hpp"
+#include "logger.hpp"
+#include "tui_logger.hpp"
+
 #include <torrent.hpp>
 
 #include <fmt/format.h>
@@ -11,9 +15,6 @@
 #include <filesystem>
 #include <thread>
 #include <utility>
-
-#include "file_writer.hpp"
-#include "logger.hpp"
 
 namespace zit::tui {
 
@@ -48,14 +49,33 @@ std::string FormatRate(double bytes_per_second) {
   return fmt::format("{:.1f} {}", value, kSuffixes[idx]);
 }
 
+std::string PlaceholderLabel(const std::filesystem::path& path) {
+  auto name = path.filename().string();
+  if (name.empty()) {
+    name = path.string();
+  }
+  return fmt::format("{} (loading...)", name);
+}
+
+TorrentInfo MakePlaceholderInfo(const std::filesystem::path& path) {
+  return TorrentInfo{
+      .name = PlaceholderLabel(path),
+      .complete = "-",
+      .size = "-",
+      .peers = "-",
+      .down_speed = "-",
+      .up_speed = "-",
+  };
+}
+
 void LogException(const std::exception& ex) {
-  zit::logger()->error("Torrent thread error: {}", ex.what());
+  zit_logger()->error("Torrent thread error: {}", ex.what());
   try {
     std::rethrow_if_nested(ex);
   } catch (const std::exception& nested) {
     LogException(nested);
   } catch (...) {
-    zit::logger()->error("Unknown nested torrent exception");
+    zit_logger()->error("Unknown nested torrent exception");
   }
 }
 
@@ -64,13 +84,15 @@ void LogException(const std::exception& ex) {
 TorrentListModel::TorrentListModel()
     : file_writer_thread_(
           std::make_unique<zit::FileWriterThread>([](zit::Torrent& torrent) {
-            zit::logger()->info("Download completed of {}. Continuing to seed.",
-                                torrent.name());
+            zit_logger()->info("Download completed of {}. Continuing to seed.",
+                               torrent.name());
           })) {
   RefreshMenuEntries();
+  StartCreationThread();
 }
 
 TorrentListModel::~TorrentListModel() {
+  StopCreationThread();
   StopAllTorrents();
 }
 
@@ -115,10 +137,81 @@ const TorrentInfo* TorrentListModel::selected() const {
 
 bool TorrentListModel::LaunchTorrent(const std::filesystem::path& path) {
   if (!std::filesystem::exists(path)) {
-    zit::logger()->error("Torrent file '{}' does not exist", path.string());
+    zit_logger()->error("Torrent file '{}' does not exist", path.string());
     return false;
   }
+  const auto placeholder_info = MakePlaceholderInfo(path);
+  {
+    std::lock_guard lock(pending_mutex_);
+    pending_requests_.push(path);
+    pending_placeholders_.emplace_back(path, placeholder_info);
+  }
+  pending_cv_.notify_one();
 
+  torrents_.push_back(placeholder_info);
+  RefreshMenuEntries();
+  return true;
+}
+
+void TorrentListModel::StopAllTorrents() {
+  std::vector<std::unique_ptr<ActiveTorrent>> to_cleanup;
+  {
+    const std::scoped_lock lock(active_mutex_);
+    to_cleanup = std::move(active_torrents_);
+  }
+
+  for (auto& active : to_cleanup) {
+    if (active && active->torrent) {
+      try {
+        active->torrent->stop();
+      } catch (const std::exception& ex) {
+        zit_logger()->warn("Error stopping torrent '{}': {}",
+                           active->source_path.string(), ex.what());
+      }
+    }
+  }
+
+  for (auto& active : to_cleanup) {
+    if (active && active->worker.joinable()) {
+      active->worker.join();
+    }
+  }
+}
+
+void TorrentListModel::StartCreationThread() {
+  creation_thread_ = std::thread([this] { CreationLoop(); });
+}
+
+void TorrentListModel::StopCreationThread() {
+  keep_creating_ = false;
+  pending_cv_.notify_all();
+  if (creation_thread_.joinable()) {
+    creation_thread_.join();
+  }
+}
+
+void TorrentListModel::CreationLoop() {
+  while (true) {
+    std::filesystem::path path;
+    {
+      std::unique_lock lock(pending_mutex_);
+      pending_cv_.wait(lock, [this] {
+        return !keep_creating_ || !pending_requests_.empty();
+      });
+      if (!keep_creating_ && pending_requests_.empty()) {
+        return;
+      }
+      path = std::move(pending_requests_.front());
+      pending_requests_.pop();
+    }
+
+    CreateAndStartTorrent(path);
+    RemovePlaceholderForPath(path);
+  }
+}
+
+bool TorrentListModel::CreateAndStartTorrent(
+    const std::filesystem::path& path) {
   try {
     auto torrent = std::make_unique<zit::Torrent>(m_io_context, path,
                                                   std::filesystem::path{});
@@ -145,35 +238,22 @@ bool TorrentListModel::LaunchTorrent(const std::filesystem::path& path) {
 
     return true;
   } catch (const std::exception& ex) {
-    zit::logger()->error("Failed to add torrent '{}': {}", path.string(),
-                         ex.what());
+    zit_logger()->error("Failed to add torrent '{}': {}", path.string(),
+                        ex.what());
   }
   return false;
 }
 
-void TorrentListModel::StopAllTorrents() {
-  std::vector<std::unique_ptr<ActiveTorrent>> to_cleanup;
-  {
-    const std::scoped_lock lock(active_mutex_);
-    to_cleanup = std::move(active_torrents_);
-  }
-
-  for (auto& active : to_cleanup) {
-    if (active && active->torrent) {
-      try {
-        active->torrent->stop();
-      } catch (const std::exception& ex) {
-        zit::logger()->warn("Error stopping torrent '{}': {}",
-                            active->source_path.string(), ex.what());
-      }
-    }
-  }
-
-  for (auto& active : to_cleanup) {
-    if (active && active->worker.joinable()) {
-      active->worker.join();
-    }
-  }
+void TorrentListModel::RemovePlaceholderForPath(
+    const std::filesystem::path& path) {
+  std::lock_guard pending_lock(pending_mutex_);
+  const auto label = PlaceholderLabel(path);
+  auto it =
+      std::remove_if(pending_placeholders_.begin(), pending_placeholders_.end(),
+                     [&path](const PendingPlaceholder& pending) {
+                       return pending.source_path == path;
+                     });
+  pending_placeholders_.erase(it, pending_placeholders_.end());
 }
 
 std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
@@ -227,6 +307,13 @@ std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
         .down_speed = FormatRate(bytes_per_second),
         .up_speed = "-",
     });
+  }
+
+  {
+    std::lock_guard pending_lock(pending_mutex_);
+    for (const auto& placeholder : pending_placeholders_) {
+      snapshot.push_back(placeholder.info);
+    }
   }
 
   return snapshot;
