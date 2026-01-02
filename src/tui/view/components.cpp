@@ -156,8 +156,6 @@ Element RenderDetailPanel(const TorrentListModel& model, int selected_index) {
 }
 
 Element RenderLogPanel() {
-  constexpr int LAST_N_LINES{20};
-
   // Helper to convert log level to FTXUI color
   auto level_to_color = [](spdlog::level::level_enum level) -> Color {
     switch (level) {
@@ -180,53 +178,43 @@ Element RenderLogPanel() {
     return Color::White;
   };
 
-  auto main_logger = zit::tui::zit_logger();
-  auto sinks = main_logger->sinks();
-  std::vector<spdlog::details::log_msg_buffer> log_messages;
-  for (const auto& sink : sinks) {
-    auto ringbuffer_sink =
-        std::dynamic_pointer_cast<spdlog::sinks::ringbuffer_sink_mt>(sink);
-    if (ringbuffer_sink) {
-      const auto entries = ringbuffer_sink->last_raw(LAST_N_LINES);
-      log_messages.insert(log_messages.end(), entries.begin(), entries.end());
+  // Helper to get log elements from a logger
+  auto get_log_elements = [&level_to_color](
+                              std::shared_ptr<spdlog::logger> logger) {
+    Elements log_elements;
+    auto sinks = logger->sinks();
+    for (const auto& sink : sinks) {
+      auto ringbuffer_sink =
+          std::dynamic_pointer_cast<spdlog::sinks::ringbuffer_sink_mt>(sink);
+      if (ringbuffer_sink) {
+        const auto entries = ringbuffer_sink->last_raw();
+        // Iterate in reverse to show newest logs at the top
+        for (auto it = entries.rbegin(); it != entries.rend(); ++it) {
+          const auto& msg = *it;
+          auto level_str =
+              std::string("[") + to_string_view(msg.level).data() + "]";
+          auto payload_str = std::string(msg.payload.data(), msg.payload.size());
+          log_elements.push_back(text(level_str + " " + payload_str) |
+                                 color(level_to_color(msg.level)) | focus);
+        }
+      }
     }
-  }
-  Elements log_elements;
-  for (const auto& msg : log_messages) {
-    auto level_str = std::string("[") + to_string_view(msg.level).data() + "]";
-    auto payload_str = std::string(msg.payload.data(), msg.payload.size());
-    log_elements.push_back(text(level_str + " " + payload_str) |
-                           color(level_to_color(msg.level)));
-  }
+    return log_elements;
+  };
 
-  auto file_logger = zit::tui::file_writer_logger();
-  sinks = file_logger->sinks();
-  std::vector<spdlog::details::log_msg_buffer> file_log_messages;
-  for (const auto& sink : sinks) {
-    auto ringbuffer_sink =
-        std::dynamic_pointer_cast<spdlog::sinks::ringbuffer_sink_mt>(sink);
-    if (ringbuffer_sink) {
-      const auto entries = ringbuffer_sink->last_raw(LAST_N_LINES);
-      file_log_messages.insert(file_log_messages.end(), entries.begin(),
-                               entries.end());
-    }
-  }
-  Elements file_log_elements;
-  for (const auto& msg : file_log_messages) {
-    auto level_str = std::string("[") + to_string_view(msg.level).data() + "]";
-    auto payload_str = std::string(msg.payload.data(), msg.payload.size());
-    file_log_elements.push_back(text(level_str + " " + payload_str) |
-                                color(level_to_color(msg.level)));
-  }
+  auto main_log_elements = get_log_elements(zit::tui::zit_logger());
+  auto file_log_elements = get_log_elements(zit::tui::file_writer_logger());
 
   return vbox({
              text("Main Logger:") | bold,
              separator(),
-             vbox(std::move(log_elements)) | flex,
+             vbox(std::move(main_log_elements)) | vscroll_indicator | frame |
+                 size(HEIGHT, EQUAL, 1) | flex,
              separator(),
              text("File Writer Logger:") | bold,
              separator(),
-             vbox(std::move(file_log_elements)) | flex,
+             vbox(std::move(file_log_elements)) | vscroll_indicator | frame |
+                 size(HEIGHT, EQUAL, 1) | flex,
          }) |
          border | flex;
 }
