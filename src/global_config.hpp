@@ -6,6 +6,7 @@
 #include <memory>
 #include <string>
 #include <variant>
+#include <vector>
 
 namespace spdlog {
 class logger;  // NOLINT(readability-identifier-naming)
@@ -78,6 +79,13 @@ enum class StringSetting : std::uint8_t {
   BIND_ADDRESS
 };
 
+enum class StringListSetting : std::uint8_t {
+  /**
+   * List of torrent files to load in TUI mode
+   */
+  TUI_TORRENTS
+};
+
 /**
  * Provides a config interface along with default values for all settings
  */
@@ -100,6 +108,12 @@ class Config {
     return m_string_settings.at(setting);
   }
 
+  /** Get the value of a string list setting */
+  [[nodiscard]] virtual std::vector<std::string> get(
+      StringListSetting setting) const {
+    return m_string_list_settings.at(setting);
+  }
+
  protected:
   // Default values for all settings
   std::map<BoolSetting, bool> m_bool_settings{
@@ -117,6 +131,9 @@ class Config {
 
   std::map<StringSetting, std::string> m_string_settings{
       {StringSetting::BIND_ADDRESS, ""}};
+
+  std::map<StringListSetting, std::vector<std::string>> m_string_list_settings{
+      {StringListSetting::TUI_TORRENTS, {}}};
 };
 
 std::ostream& operator<<(std::ostream& os, const Config& config);

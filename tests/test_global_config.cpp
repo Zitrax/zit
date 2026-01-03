@@ -26,6 +26,9 @@ TEST_F(FileConfigTest, EmptyFile) {
   EXPECT_EQ(config.get(IntSetting::CONNECTION_PORT), 20000);
   EXPECT_EQ(config.get(IntSetting::RETRY_PIECES_INTERVAL_SECONDS), 45);
   EXPECT_EQ(config.get(IntSetting::RETRY_PEERS_INTERVAL_SECONDS), 25);
+  EXPECT_EQ(config.get(StringSetting::BIND_ADDRESS), "");
+  EXPECT_EQ(config.get(StringListSetting::TUI_TORRENTS),
+            std::vector<std::string>{});
 }
 
 TEST_F(FileConfigTest, InvalidFile) {
@@ -42,7 +45,7 @@ TEST_F(FileConfigTest, CorrectFile) {
       "initiate_peer_connections=true\nlistening_port=123\nconnection_"
       "port=321\nresolve_urls=0\npiece_verify_threads=false\nbind_"
       "address=192.168.5.5\nretry_pieces_interval_seconds=10\nretry_peers_"
-      "interval_seconds=20\n");
+      "interval_seconds=20\ntui_torrents=foo,bar,baz\n");
   const auto config = FileConfig{config_file};
   EXPECT_TRUE(config.get(BoolSetting::INITIATE_PEER_CONNECTIONS));
   EXPECT_FALSE(config.get(BoolSetting::RESOLVE_URLS));
@@ -52,4 +55,6 @@ TEST_F(FileConfigTest, CorrectFile) {
   EXPECT_EQ(config.get(StringSetting::BIND_ADDRESS), "192.168.5.5");
   EXPECT_EQ(config.get(IntSetting::RETRY_PIECES_INTERVAL_SECONDS), 10);
   EXPECT_EQ(config.get(IntSetting::RETRY_PEERS_INTERVAL_SECONDS), 20);
+  EXPECT_EQ(config.get(StringListSetting::TUI_TORRENTS),
+            (std::vector<std::string>{"foo", "bar", "baz"}));
 }

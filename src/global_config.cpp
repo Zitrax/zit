@@ -5,6 +5,7 @@
 #include "string_utils.hpp"
 
 #include <fmt/format.h>
+#include <fmt/ranges.h>
 #include <spdlog/common.h>
 #include <spdlog/fmt/ostr.h>  // NOLINT(misc-include-cleaner) Needed due to use of operator<<
 
@@ -140,6 +141,10 @@ template <>
 const std::map<std::string, StringSetting> settings_map<StringSetting>{
     {"bind_address", StringSetting::BIND_ADDRESS}};
 
+template <>
+const std::map<std::string, StringListSetting> settings_map<StringListSetting>{
+    {"tui_torrents", StringListSetting::TUI_TORRENTS}};
+
 // NOLINTEND(bugprone-throwing-static-initialization)
 
 }  // namespace
@@ -147,12 +152,14 @@ const std::map<std::string, StringSetting> settings_map<StringSetting>{
 std::ostream& operator<<(std::ostream& os, const Config& config) {
   const auto dump = [&](const auto& settings) {
     for (const auto& [key, val] : settings) {
-      os << key << "=" << config.get(val) << "\n";
+      os << key << "=" << fmt::format("{}", config.get(val)) << "\n";
     }
   };
 
   dump(settings_map<BoolSetting>);
   dump(settings_map<IntSetting>);
+  dump(settings_map<StringSetting>);
+  dump(settings_map<StringListSetting>);
   return os;
 }
 
@@ -212,6 +219,10 @@ void FileConfig::update_value(const std::string& key,
   } else if (settings_map<StringSetting>.contains(key)) {
     m_string_settings[settings_map<StringSetting>.at(key)] = value;
     logger()->debug("{} set to {}", key, value);
+  } else if (settings_map<StringListSetting>.contains(key)) {
+    const auto items = split(value, ",");
+    m_string_list_settings[settings_map<StringListSetting>.at(key)] = items;
+    logger()->debug("{} set to [{}]", key, fmt::join(items, ", "));
   } else {
     logger()->warn("Unknown key '{}' in config file ignored", key);
   }
