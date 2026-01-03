@@ -24,8 +24,9 @@ class TuiController {
  private:
   void BuildComponents();
   void BindEvents();
-  void LaunchTorrent(const std::filesystem::path& path, 
-                     const std::filesystem::path& data_dir = std::filesystem::current_path());
+  void LaunchTorrent(
+      const std::filesystem::path& path,
+      const std::filesystem::path& data_dir = std::filesystem::current_path());
   void StartSnapshotThread();
   void StartTestLogThread();
   void SnapshotLoop();
@@ -38,6 +39,7 @@ class TuiController {
   bool show_details_ = false;
   bool open_dialog_ = false;
   bool show_help_ = false;
+  bool focus_on_log_ = false;
 
   ftxui::ScreenInteractive screen_;
   ftxui::Component log_renderer_;

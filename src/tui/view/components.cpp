@@ -6,6 +6,7 @@
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_options.hpp>
+#include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
 
 namespace zit::tui::view {
@@ -169,53 +170,39 @@ Element RenderDetailPanel(const TorrentListModel& model, int selected_index) {
 class LogPanelBase : public ComponentBase {
  public:
   explicit LogPanelBase(std::function<int()> window_height_provider)
-      : window_height_provider_(std::move(window_height_provider)) {
-    auto level_to_color = [](spdlog::level::level_enum level) -> Color {
-      switch (level) {
-        case spdlog::level::trace:
-          return Color::Grey50;
-        case spdlog::level::debug:
-          return Color::Cyan;
-        case spdlog::level::info:
-          return Color::Green;
-        case spdlog::level::warn:
-          return Color::Yellow;
-        case spdlog::level::err:
-          return Color::Red;
-        case spdlog::level::critical:
-          return Color::RedLight;
-        case spdlog::level::off:
-        case spdlog::level::n_levels:
-          return Color::White;
-      }
-      return Color::White;
-    };
+      : window_height_provider_(std::move(window_height_provider)) {}
 
-    auto make_option =
-        [level_to_color](const std::vector<spdlog::level::level_enum>& levels) {
-          auto option = MenuOption::Vertical();
-          option.entries_option.transform = [level_to_color,
-                                             &levels](const EntryState& state) {
-            Color c = Color::White;
-            if (state.index >= 0 &&
-                static_cast<size_t>(state.index) < levels.size()) {
-              c = level_to_color(levels[static_cast<size_t>(state.index)]);
-            }
-            Element e = text(state.label) | color(c);
-            if (state.focused)
-              e = e | inverted;
-            return e;
-          };
-          return option;
-        };
-
-    main_menu_ =
-        Menu(&main_log_items_, &main_selected_, make_option(main_log_levels_));
-    file_menu_ =
-        Menu(&file_log_items_, &file_selected_, make_option(file_log_levels_));
-
-    Add(main_menu_);
-    Add(file_menu_);
+  bool OnEvent(Event event) override {
+    if (event == Event::ArrowUp) {
+      scroll_y_ = std::max(0, scroll_y_ - 1);
+      return true;
+    }
+    if (event == Event::ArrowDown) {
+      scroll_y_++;
+      return true;
+    }
+    if (event == Event::ArrowLeft) {
+      scroll_x_ = std::max(0, scroll_x_ - 1);
+      return true;
+    }
+    if (event == Event::ArrowRight) {
+      scroll_x_++;
+      return true;
+    }
+    if (event == Event::PageUp) {
+      scroll_y_ = std::max(0, scroll_y_ - 10);
+      return true;
+    }
+    if (event == Event::PageDown) {
+      scroll_y_ += 10;
+      return true;
+    }
+    if (event == Event::Home) {
+      scroll_x_ = 0;
+      scroll_y_ = 0;
+      return true;
+    }
+    return ComponentBase::OnEvent(event);
   }
 
   Element OnRender() override {
@@ -224,20 +211,78 @@ class LogPanelBase : public ComponentBase {
     const int window_height =
         window_height_provider_ ? std::max(1, window_height_provider_()) : 1;
     const int quarter_height = std::max(1, window_height / 4);
-    auto scrollable_panel = [quarter_height](Element element) {
-      return element | vscroll_indicator | frame |
-             size(HEIGHT, EQUAL, quarter_height);
-    };
+
     return vbox({
                text("Main Logger:") | bold,
                separator(),
-               scrollable_panel(main_menu_->Render()),
+               RenderLogView(main_log_items_, main_log_levels_, quarter_height),
                separator(),
                text("File Writer Logger:") | bold,
                separator(),
-               scrollable_panel(file_menu_->Render()),
+               RenderLogView(file_log_items_, file_log_levels_, quarter_height),
            }) |
            border | flex;
+  }
+
+ private:
+  Element RenderLogView(const std::vector<std::string>& items,
+                        const std::vector<spdlog::level::level_enum>& levels,
+                        int quarter_height) {
+    // Clamp scroll_y_ to valid range
+    const int max_scroll_y = std::max(0, static_cast<int>(items.size()) - 1);
+    const int effective_scroll_y = std::clamp(scroll_y_, 0, max_scroll_y);
+
+    // Calculate visible range
+    const size_t start_line = static_cast<size_t>(effective_scroll_y);
+    const size_t end_line = std::min(
+        items.size(), start_line + static_cast<size_t>(quarter_height));
+
+    Elements lines;
+    for (size_t i = start_line; i < end_line; ++i) {
+      Color c = Color::White;
+      if (i < levels.size()) {
+        switch (levels[i]) {
+          case spdlog::level::trace:
+            c = Color::Grey50;
+            break;
+          case spdlog::level::debug:
+            c = Color::Cyan;
+            break;
+          case spdlog::level::info:
+            c = Color::Green;
+            break;
+          case spdlog::level::warn:
+            c = Color::Yellow;
+            break;
+          case spdlog::level::err:
+            c = Color::Red;
+            break;
+          case spdlog::level::critical:
+            c = Color::RedLight;
+            break;
+          case spdlog::level::off:
+          case spdlog::level::n_levels:
+            c = Color::White;
+            break;
+        }
+      }
+
+      // Apply horizontal scroll by substring
+      std::string line_text = items[i];
+      if (scroll_x_ > 0 && static_cast<size_t>(scroll_x_) < line_text.size()) {
+        line_text = line_text.substr(static_cast<size_t>(scroll_x_));
+      } else if (scroll_x_ >= static_cast<int>(line_text.size())) {
+        line_text = "";
+      }
+
+      lines.push_back(text(line_text) | color(c));
+    }
+
+    if (lines.empty()) {
+      lines.push_back(text("") | dim);
+    }
+
+    return vbox(std::move(lines)) | frame | size(HEIGHT, EQUAL, quarter_height);
   }
 
  private:
@@ -266,25 +311,20 @@ class LogPanelBase : public ComponentBase {
       return static_cast<int>(items.size());
     };
 
-    const int main_count =
-        update_one(zit::tui::zit_logger(), main_log_items_, main_log_levels_);
-    const int file_count = update_one(zit::tui::file_writer_logger(),
-                                      file_log_items_, file_log_levels_);
-
-    main_selected_ = main_count > 0 ? main_count - 1 : 0;
-    file_selected_ = file_count > 0 ? file_count - 1 : 0;
+    update_one(zit::tui::zit_logger(), main_log_items_, main_log_levels_);
+    update_one(zit::tui::file_writer_logger(), file_log_items_,
+               file_log_levels_);
   }
 
   std::function<int()> window_height_provider_;
   std::vector<std::string> main_log_items_;
   std::vector<spdlog::level::level_enum> main_log_levels_;
-  int main_selected_ = 0;
-  Component main_menu_;
 
   std::vector<std::string> file_log_items_;
   std::vector<spdlog::level::level_enum> file_log_levels_;
-  int file_selected_ = 0;
-  Component file_menu_;
+
+  int scroll_x_ = 0;
+  int scroll_y_ = 0;
 };
 
 Component MakeLogPanel(std::function<int()> window_height_provider) {

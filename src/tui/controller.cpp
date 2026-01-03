@@ -88,12 +88,21 @@ void TuiController::BuildComponents() {
       menu_renderer_,
       Maybe(log_renderer_, &show_log_),
   });
+  main_container_->SetActiveChild(0);
 
   main_renderer_ = Renderer(main_container_, [this] {
-    auto content = menu_renderer_->Render() | flex;
+    auto list_element = menu_renderer_->Render() | flex;
+    // Highlight border around the focused pane
+    const Decorator focus_border = [](Element e) {
+      // Use a double/bold border to indicate focus without changing color.
+      return borderStyled(BorderStyle::DOUBLE)(bold(std::move(e)));
+    };
+    const Decorator neutral_border = border;
+    list_element = focus_on_log_ ? (list_element | neutral_border)
+                                 : (list_element | focus_border);
 
     if (show_details_ && !model_.empty() && !show_log_) {
-      content = vbox({
+      list_element = vbox({
           menu_renderer_->Render() | flex,
           detail_renderer_->Render(),
       });
@@ -102,13 +111,17 @@ void TuiController::BuildComponents() {
     if (show_log_) {
       const int window_height = std::max(1, screen_.dimy());
       const int half_height = std::max(1, window_height / 2);
-      content = vbox({
-          content | size(HEIGHT, EQUAL, half_height),
-          log_renderer_->Render() | size(HEIGHT, EQUAL, half_height),
+      auto log_element = log_renderer_->Render();
+      log_element = focus_on_log_ ? (log_element | focus_border)
+                                  : (log_element | neutral_border);
+
+      list_element = vbox({
+          list_element | size(HEIGHT, EQUAL, half_height),
+          log_element | size(HEIGHT, EQUAL, half_height),
       });
     }
 
-    return content;
+    return list_element;
   });
 
   file_dialog_ = view::MakeFileDialog(
@@ -139,6 +152,35 @@ void TuiController::BindEvents() {
     }
     if (event == Event::Character('l')) {
       show_log_ = !show_log_;
+      if (!show_log_) {
+        focus_on_log_ = false;
+        main_container_->SetActiveChild(main_container_->ChildAt(0));
+        menu_component_->TakeFocus();
+      }
+      return true;
+    }
+    if (event == Event::Tab && show_log_) {
+      focus_on_log_ = !focus_on_log_;
+      main_container_->SetActiveChild(focus_on_log_
+                                          ? main_container_->ChildAt(1)
+                                          : main_container_->ChildAt(0));
+      if (focus_on_log_) {
+        log_renderer_->TakeFocus();
+      } else {
+        menu_component_->TakeFocus();
+      }
+      return true;
+    }
+    if (event == Event::TabReverse && show_log_) {
+      focus_on_log_ = !focus_on_log_;
+      main_container_->SetActiveChild(focus_on_log_
+                                          ? main_container_->ChildAt(1)
+                                          : main_container_->ChildAt(0));
+      if (focus_on_log_) {
+        log_renderer_->TakeFocus();
+      } else {
+        menu_component_->TakeFocus();
+      }
       return true;
     }
     if (event == Event::Character('h')) {
