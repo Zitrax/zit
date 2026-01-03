@@ -183,14 +183,38 @@ void FileConfig::save() {
     return;
   }
 
-  std::string content;
-  {
-    std::ostringstream oss;
-    oss << *this;
-    content = oss.str();
-  }
+  // Create a default config instance for comparison
+  const Config defaults;
 
-  write_file(m_config_file, content);
+  std::ostringstream oss;
+
+  // Only save non-default values
+  const auto save_if_changed = [&](const auto& settings) {
+    for (const auto& [key, val] : settings) {
+      if constexpr (std::is_same_v<std::decay_t<decltype(val)>,
+                                   StringListSetting>) {
+        const auto current = get(val);
+        const auto default_val = defaults.get(val);
+        if (current != default_val) {
+          oss << key << "=" << fmt::format("{}", fmt::join(current, ","))
+              << "\n";
+        }
+      } else {
+        const auto current = get(val);
+        const auto default_val = defaults.get(val);
+        if (current != default_val) {
+          oss << key << "=" << current << "\n";
+        }
+      }
+    }
+  };
+
+  save_if_changed(settings_map<BoolSetting>);
+  save_if_changed(settings_map<IntSetting>);
+  save_if_changed(settings_map<StringSetting>);
+  save_if_changed(settings_map<StringListSetting>);
+
+  write_file(m_config_file, oss.str());
 }
 
 bool FileConfig::try_file(const std::filesystem::path& config_file) {
@@ -242,9 +266,18 @@ void FileConfig::update_value(const std::string& key,
     m_string_settings[settings_map<StringSetting>.at(key)] = value;
     logger()->debug("{} set to {}", key, value);
   } else if (settings_map<StringListSetting>.contains(key)) {
-    const auto items = split(value, ",");
-    m_string_list_settings[settings_map<StringListSetting>.at(key)] = items;
-    logger()->debug("{} set to [{}]", key, fmt::join(items, ", "));
+    auto items = split(value, ",");
+    // Trim each item and remove empty strings
+    std::vector<std::string> filtered_items;
+    for (auto& item : items) {
+      trim(item);
+      if (!item.empty()) {
+        filtered_items.push_back(std::move(item));
+      }
+    }
+    m_string_list_settings[settings_map<StringListSetting>.at(key)] =
+        filtered_items;
+    logger()->debug("{} set to [{}]", key, fmt::join(filtered_items, ", "));
   } else {
     logger()->warn("Unknown key '{}' in config file ignored", key);
   }
@@ -255,8 +288,17 @@ SingletonDirectoryFileConfig::SingletonDirectoryFileConfig() : FileConfig("") {
   for (const auto& config_dir : config_dirs()) {
     const auto config_file = config_dir / "zit" / "config.ini";
     if (try_file(config_file)) {
+      m_config_file = config_file;
       break;
     }
+  }
+
+  // If no config file was found, create one in the first config directory
+  if (m_config_file.empty() && !config_dirs().empty()) {
+    const auto config_dir = config_dirs().front() / "zit";
+    fs::create_directories(config_dir);
+    m_config_file = config_dir / "config.ini";
+    logger()->info("Will create config file at: {}", m_config_file);
   }
 }
 

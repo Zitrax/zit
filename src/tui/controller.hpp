@@ -16,7 +16,7 @@ namespace zit::tui {
 
 class TuiController {
  public:
-  TuiController();
+  explicit TuiController(bool clean_start = false);
   ~TuiController();
 
   int Run();
@@ -24,7 +24,8 @@ class TuiController {
  private:
   void BuildComponents();
   void BindEvents();
-  void LaunchTorrent(const std::filesystem::path& path);
+  void LaunchTorrent(const std::filesystem::path& path, 
+                     const std::filesystem::path& data_dir = std::filesystem::current_path());
   void StartSnapshotThread();
   void StartTestLogThread();
   void SnapshotLoop();
@@ -36,6 +37,7 @@ class TuiController {
   bool show_log_ = false;
   bool show_details_ = false;
   bool open_dialog_ = false;
+  bool show_help_ = false;
 
   ftxui::ScreenInteractive screen_;
   ftxui::Component log_renderer_;
@@ -45,6 +47,7 @@ class TuiController {
   ftxui::Component main_container_;
   ftxui::Component main_renderer_;
   ftxui::Component file_dialog_;
+  ftxui::Component help_modal_;
 
   std::atomic<bool> keep_polling_{true};
   std::atomic<bool> shutdown_requested_{false};

@@ -25,6 +25,7 @@ struct TorrentInfo {
   std::string peers;
   std::string down_speed;
   std::string up_speed;
+  std::string data_directory;
 };
 
 // TODO: move TorrentListModel out of the tui folder once zitlib integration lands.
@@ -44,8 +45,12 @@ class TorrentListModel {
   int* mutable_selected_index();
   const TorrentInfo* selected() const;
 
-  bool LaunchTorrent(const std::filesystem::path& path);
+  bool LaunchTorrent(const std::filesystem::path& path,
+                     const std::filesystem::path& data_dir = std::filesystem::current_path());
   void StopAllTorrents();
+  void StopTorrent(int index);
+  std::vector<std::filesystem::path> GetTorrentPaths() const;
+  std::vector<std::filesystem::path> GetDataDirectories() const;
 
   std::vector<TorrentInfo> CollectSnapshot();
   void OnPolledSnapshot(std::vector<TorrentInfo> snapshot);
@@ -54,6 +59,7 @@ class TorrentListModel {
  private:
   struct ActiveTorrent {
     std::filesystem::path source_path;
+    std::filesystem::path data_directory;
     std::unique_ptr<zit::Torrent> torrent;
     std::thread worker;
     size_t last_completed_pieces = 0;
@@ -63,13 +69,15 @@ class TorrentListModel {
 
   struct PendingPlaceholder {
     std::filesystem::path source_path;
+    std::filesystem::path data_directory;
     TorrentInfo info;
   };
 
   void StartCreationThread();
   void StopCreationThread();
   void CreationLoop();
-  bool CreateAndStartTorrent(const std::filesystem::path& path);
+  bool CreateAndStartTorrent(const std::filesystem::path& path,
+                             const std::filesystem::path& data_dir);
   void RemovePlaceholderForPath(const std::filesystem::path& path);
 
   void RefreshMenuEntries();
@@ -84,7 +92,12 @@ class TorrentListModel {
   std::unique_ptr<zit::FileWriterThread> file_writer_thread_;
   std::vector<std::unique_ptr<ActiveTorrent>> active_torrents_;
   mutable std::mutex active_mutex_;
-  std::queue<std::filesystem::path> pending_requests_;
+  
+  struct PendingRequest {
+    std::filesystem::path torrent_path;
+    std::filesystem::path data_directory;
+  };
+  std::queue<PendingRequest> pending_requests_;
   std::vector<PendingPlaceholder> pending_placeholders_;
   std::mutex pending_mutex_;
   std::condition_variable pending_cv_;

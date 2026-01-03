@@ -7,8 +7,9 @@
 #include <ftxui/component/component_options.hpp>
 #include <ftxui/dom/elements.hpp>
 
-#include "view/components.hpp"
+#include "../global_config.hpp"
 #include "tui_logger.hpp"
+#include "view/components.hpp"
 
 namespace zit::tui {
 
@@ -18,9 +19,34 @@ namespace {
 constexpr bool kEnableTestLogThread = false;
 }
 
-TuiController::TuiController() : screen_(ScreenInteractive::Fullscreen()) {
+TuiController::TuiController(bool clean_start)
+    : screen_(ScreenInteractive::Fullscreen()) {
   BuildComponents();
   BindEvents();
+
+  // Load previously saved torrents unless --clean was passed
+  if (!clean_start) {
+    const auto& config = zit::SingletonDirectoryFileConfig::getInstance();
+    const auto saved_torrents =
+        config.get(zit::StringListSetting::TUI_TORRENTS);
+
+    // Parse each entry as "torrent_path:data_dir"
+    for (const auto& entry : saved_torrents) {
+      const auto colon_pos = entry.find(':');
+      if (colon_pos != std::string::npos) {
+        const auto path = entry.substr(0, colon_pos);
+        const auto data_dir = entry.substr(colon_pos + 1);
+        zit::tui::logger()->info("Resuming torrent: {} (data: {})", path,
+                                 data_dir);
+        LaunchTorrent(path, data_dir);
+      } else {
+        // Fallback for old format or malformed entries
+        zit::tui::logger()->info("Resuming torrent: {} (data: cwd)", entry);
+        LaunchTorrent(entry, std::filesystem::current_path());
+      }
+    }
+  }
+
   StartSnapshotThread();
   if constexpr (kEnableTestLogThread) {
     StartTestLogThread();
@@ -86,10 +112,15 @@ void TuiController::BuildComponents() {
   });
 
   file_dialog_ = view::MakeFileDialog(
-      [this](const std::filesystem::path& path) { LaunchTorrent(path); },
+      [this](const std::filesystem::path& path) {
+        LaunchTorrent(path, std::filesystem::current_path());
+      },
       [this] { open_dialog_ = false; });
 
+  help_modal_ = view::MakeHelpModal();
+
   main_renderer_ |= Modal(file_dialog_, &open_dialog_);
+  main_renderer_ |= Modal(help_modal_, &show_help_);
 }
 
 void TuiController::BindEvents() {
@@ -110,8 +141,28 @@ void TuiController::BindEvents() {
       show_log_ = !show_log_;
       return true;
     }
-    if (open_dialog_) {
-      // Let the file dialog process navigation/selection keys.
+    if (event == Event::Character('h')) {
+      show_help_ = !show_help_;
+      return true;
+    }
+    if (event == Event::Character('d')) {
+      if (!model_.empty()) {
+        model_.StopTorrent(model_.selected_index());
+        model_.OnPolledSnapshot(model_.CollectSnapshot());
+      }
+      return true;
+    }
+    if (open_dialog_ || show_help_) {
+      // Let dialogs process escape to close
+      if (event == Event::Escape) {
+        if (show_help_) {
+          show_help_ = false;
+        } else if (open_dialog_) {
+          open_dialog_ = false;
+        }
+        return true;
+      }
+      // Let the dialogs process other navigation/selection keys.
       return false;
     }
     if (event == Event::Return) {
@@ -124,8 +175,9 @@ void TuiController::BindEvents() {
   });
 }
 
-void TuiController::LaunchTorrent(const std::filesystem::path& path) {
-  if (model_.LaunchTorrent(path)) {
+void TuiController::LaunchTorrent(const std::filesystem::path& path,
+                                  const std::filesystem::path& data_dir) {
+  if (model_.LaunchTorrent(path, data_dir)) {
     model_.OnPolledSnapshot(model_.CollectSnapshot());
   }
 }
@@ -196,6 +248,23 @@ void TuiController::Shutdown() {
       test_log_thread_.join();
     }
   }
+
+  // Save current torrents as "torrent_path:data_dir" format
+  const auto torrent_paths = model_.GetTorrentPaths();
+  const auto data_dirs = model_.GetDataDirectories();
+
+  std::vector<std::string> combined_entries;
+  for (size_t i = 0; i < torrent_paths.size(); ++i) {
+    const auto& path = torrent_paths[i];
+    const auto& data_dir =
+        (i < data_dirs.size()) ? data_dirs[i] : std::filesystem::current_path();
+    combined_entries.push_back(path.string() + ":" + data_dir.string());
+  }
+
+  auto& config = zit::SingletonDirectoryFileConfig::getInstance();
+  config.set(zit::StringListSetting::TUI_TORRENTS, combined_entries);
+  config.save();
+
   model_.StopAllTorrents();
 }
 

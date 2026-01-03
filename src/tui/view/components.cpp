@@ -70,6 +70,11 @@ Component MakeFileDialog(std::function<void(const std::filesystem::path&)> open,
       }
       container->Add(Button(
           "Cancel", [close] { close(); }, TextOnlyButtonOption(Color::Red)));
+
+      if (container->ChildCount() > 0) {
+        container->SetActiveChild(container->ChildAt(0));
+      }
+
       populate = false;
     }
     return vbox({
@@ -153,6 +158,9 @@ Element RenderDetailPanel(const TorrentListModel& model, int selected_index) {
   return vbox({
              separator(),
              text("Details for: " + torrent->name) | bold | center,
+             separator(),
+             hbox(text("Data Directory: "),
+                  text(torrent->data_directory) | dim),
              text("(More information will be added here later)") | dim | center,
          }) |
          border | flex;
@@ -281,6 +289,34 @@ class LogPanelBase : public ComponentBase {
 
 Component MakeLogPanel(std::function<int()> window_height_provider) {
   return std::make_shared<LogPanelBase>(std::move(window_height_provider));
+}
+
+Component MakeHelpModal() {
+  auto button = Button("Close", []() {}, ButtonOption::Simple());
+  auto container = Container::Vertical({button});
+
+  return Renderer(container, [=] {
+    return vbox({
+               text("ZIT TUI - Keyboard Shortcuts") | bold | center,
+               separator(),
+               text(""),
+               hbox(text("  o"), text(" - Open torrent file"), filler()),
+               hbox(text("  d"), text(" - Delete selected torrent"), filler()),
+               hbox(text("  l"), text(" - Toggle log panel"), filler()),
+               hbox(text("  h"), text(" - Show this help"), filler()),
+               hbox(text("  ENTER"), text(" - Toggle details panel"), filler()),
+               hbox(text("  TAB/SHIFT+TAB"), text(" - Navigate menu"),
+                    filler()),
+               hbox(text("  q/ESC"), text(" - Quit"), filler()),
+               text(""),
+               separator(),
+               text(""),
+               text("Torrents are automatically saved and resumed on startup."),
+               text("Use --clean flag to skip resuming saved torrents."),
+               text(""),
+           }) |
+           size(WIDTH, GREATER_THAN, 50) | border;
+  });
 }
 
 }  // namespace zit::tui::view

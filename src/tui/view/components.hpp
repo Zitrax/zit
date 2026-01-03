@@ -16,6 +16,8 @@ ftxui::Component MakeFileDialog(
     std::function<void(const std::filesystem::path&)> open,
     std::function<void()> close);
 
+ftxui::Component MakeHelpModal();
+
 ftxui::Element RenderTorrentTable(const TorrentListModel& model,
                                   int selected_index);
 

@@ -65,6 +65,7 @@ TorrentInfo MakePlaceholderInfo(const std::filesystem::path& path) {
       .peers = "-",
       .down_speed = "-",
       .up_speed = "-",
+      .data_directory = "-",
   };
 }
 
@@ -135,7 +136,8 @@ const TorrentInfo* TorrentListModel::selected() const {
   return &torrents_[static_cast<size_t>(selected_index_)];
 }
 
-bool TorrentListModel::LaunchTorrent(const std::filesystem::path& path) {
+bool TorrentListModel::LaunchTorrent(const std::filesystem::path& path,
+                                     const std::filesystem::path& data_dir) {
   if (!std::filesystem::exists(path)) {
     zit_logger()->error("Torrent file '{}' does not exist", path.string());
     return false;
@@ -143,8 +145,8 @@ bool TorrentListModel::LaunchTorrent(const std::filesystem::path& path) {
   const auto placeholder_info = MakePlaceholderInfo(path);
   {
     std::lock_guard lock(pending_mutex_);
-    pending_requests_.push(path);
-    pending_placeholders_.emplace_back(path, placeholder_info);
+    pending_requests_.push({path, data_dir});
+    pending_placeholders_.push_back({path, data_dir, placeholder_info});
   }
   pending_cv_.notify_one();
 
@@ -178,6 +180,63 @@ void TorrentListModel::StopAllTorrents() {
   }
 }
 
+void TorrentListModel::StopTorrent(int index) {
+  if (index < 0 || index >= static_cast<int>(torrents_.size())) {
+    return;
+  }
+
+  std::unique_ptr<ActiveTorrent> to_cleanup;
+  {
+    const std::scoped_lock lock(active_mutex_);
+    if (index >= static_cast<int>(active_torrents_.size())) {
+      return;
+    }
+    to_cleanup = std::move(active_torrents_[static_cast<size_t>(index)]);
+    active_torrents_.erase(active_torrents_.begin() + index);
+  }
+
+  if (to_cleanup && to_cleanup->torrent) {
+    try {
+      to_cleanup->torrent->stop();
+    } catch (const std::exception& ex) {
+      zit_logger()->warn("Error stopping torrent '{}': {}",
+                         to_cleanup->source_path.string(), ex.what());
+    }
+  }
+
+  if (to_cleanup && to_cleanup->worker.joinable()) {
+    to_cleanup->worker.join();
+  }
+
+  torrents_.erase(torrents_.begin() + index);
+  ClampSelection();
+  RefreshMenuEntries();
+}
+
+std::vector<std::filesystem::path> TorrentListModel::GetTorrentPaths() const {
+  std::vector<std::filesystem::path> paths;
+  const std::scoped_lock lock(active_mutex_);
+  paths.reserve(active_torrents_.size());
+  for (const auto& active : active_torrents_) {
+    if (active) {
+      paths.push_back(active->source_path);
+    }
+  }
+  return paths;
+}
+
+std::vector<std::filesystem::path> TorrentListModel::GetDataDirectories() const {
+  std::vector<std::filesystem::path> dirs;
+  const std::scoped_lock lock(active_mutex_);
+  dirs.reserve(active_torrents_.size());
+  for (const auto& active : active_torrents_) {
+    if (active) {
+      dirs.push_back(active->data_directory);
+    }
+  }
+  return dirs;
+}
+
 void TorrentListModel::StartCreationThread() {
   creation_thread_ = std::thread([this] { CreationLoop(); });
 }
@@ -192,7 +251,7 @@ void TorrentListModel::StopCreationThread() {
 
 void TorrentListModel::CreationLoop() {
   while (true) {
-    std::filesystem::path path;
+    PendingRequest request;
     {
       std::unique_lock lock(pending_mutex_);
       pending_cv_.wait(lock, [this] {
@@ -201,24 +260,27 @@ void TorrentListModel::CreationLoop() {
       if (!keep_creating_ && pending_requests_.empty()) {
         return;
       }
-      path = std::move(pending_requests_.front());
+      request = std::move(pending_requests_.front());
       pending_requests_.pop();
     }
 
-    CreateAndStartTorrent(path);
-    RemovePlaceholderForPath(path);
+    CreateAndStartTorrent(request.torrent_path, request.data_directory);
+    RemovePlaceholderForPath(request.torrent_path);
   }
 }
 
 bool TorrentListModel::CreateAndStartTorrent(
-    const std::filesystem::path& path) {
+    const std::filesystem::path& path,
+    const std::filesystem::path& data_dir) {
   try {
     auto torrent = std::make_unique<zit::Torrent>(m_io_context, path,
-                                                  std::filesystem::path{});
+                                                  data_dir);
     file_writer_thread_->register_torrent(*torrent);
 
     auto active = std::make_unique<ActiveTorrent>();
-    active->source_path = path;
+    // Store absolute path so it can be resumed later
+    active->source_path = std::filesystem::absolute(path);
+    active->data_directory = data_dir;
     active->last_completed_pieces = 0;
     auto* torrent_ptr = torrent.get();
     active->torrent = std::move(torrent);
@@ -306,6 +368,7 @@ std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
         .peers = fmt::format("{}", peers),
         .down_speed = FormatRate(bytes_per_second),
         .up_speed = "-",
+        .data_directory = active->data_directory.string(),
     });
   }
 

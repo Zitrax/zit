@@ -81,7 +81,7 @@ enum class StringSetting : std::uint8_t {
 
 enum class StringListSetting : std::uint8_t {
   /**
-   * List of torrent files to load in TUI mode
+   * List of torrent files to load in TUI mode (format: "path:data_dir")
    */
   TUI_TORRENTS
 };
