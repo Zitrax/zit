@@ -58,3 +58,35 @@ TEST_F(FileConfigTest, CorrectFile) {
   EXPECT_EQ(config.get(StringListSetting::TUI_TORRENTS),
             (std::vector<std::string>{"foo", "bar", "baz"}));
 }
+
+TEST_F(FileConfigTest, setters) {
+  const auto config_file = tmp_dir() / ".zit";
+  write_file(config_file, "");
+  FileConfig config{config_file};
+  config.set(BoolSetting::INITIATE_PEER_CONNECTIONS, true);
+  config.set(IntSetting::LISTENING_PORT, 5555);
+  config.set(StringSetting::BIND_ADDRESS, "10.0.0.1");
+  config.set(StringListSetting::TUI_TORRENTS, {"a", "b", "c"});
+  EXPECT_TRUE(config.get(BoolSetting::INITIATE_PEER_CONNECTIONS));
+  EXPECT_EQ(config.get(IntSetting::LISTENING_PORT), 5555);
+  EXPECT_EQ(config.get(StringSetting::BIND_ADDRESS), "10.0.0.1");
+  EXPECT_EQ(config.get(StringListSetting::TUI_TORRENTS),
+            (std::vector<std::string>{"a", "b", "c"}));
+}
+
+TEST_F(FileConfigTest, save) {
+  const auto config_file = tmp_dir() / ".zit";
+  write_file(config_file, "");
+  FileConfig config{config_file};
+  config.set(BoolSetting::INITIATE_PEER_CONNECTIONS, true);
+  config.set(IntSetting::LISTENING_PORT, 5555);
+  config.set(StringSetting::BIND_ADDRESS, "10.0.0.1");
+  config.set(StringListSetting::TUI_TORRENTS, {"a", "b", "c"});
+  config.save();
+  const auto config2 = FileConfig{config_file};
+  EXPECT_TRUE(config2.get(BoolSetting::INITIATE_PEER_CONNECTIONS));
+  EXPECT_EQ(config2.get(IntSetting::LISTENING_PORT), 5555);
+  EXPECT_EQ(config2.get(StringSetting::BIND_ADDRESS), "10.0.0.1");
+  EXPECT_EQ(config2.get(StringListSetting::TUI_TORRENTS),
+            (std::vector<std::string>{"a", "b", "c"}));
+}

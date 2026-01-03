@@ -152,7 +152,13 @@ const std::map<std::string, StringListSetting> settings_map<StringListSetting>{
 std::ostream& operator<<(std::ostream& os, const Config& config) {
   const auto dump = [&](const auto& settings) {
     for (const auto& [key, val] : settings) {
-      os << key << "=" << fmt::format("{}", config.get(val)) << "\n";
+      if constexpr (std::is_same_v<std::decay_t<decltype(val)>,
+                                   StringListSetting>) {
+        const auto list = config.get(val);
+        os << key << "=" << fmt::format("{}", fmt::join(list, ",")) << "\n";
+      } else {
+        os << key << "=" << config.get(val) << "\n";
+      }
     }
   };
 
@@ -169,6 +175,22 @@ FileConfig::FileConfig(std::filesystem::path config_file)
     throw std::runtime_error(
         fmt::format("Could not read/use config file '{}'", m_config_file));
   }
+}
+
+void FileConfig::save() {
+  if (m_config_file.empty()) {
+    logger()->warn("No config file specified, not saving config");
+    return;
+  }
+
+  std::string content;
+  {
+    std::ostringstream oss;
+    oss << *this;
+    content = oss.str();
+  }
+
+  write_file(m_config_file, content);
 }
 
 bool FileConfig::try_file(const std::filesystem::path& config_file) {

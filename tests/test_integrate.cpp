@@ -47,16 +47,6 @@ namespace fs = std::filesystem;
 
 // constexpr auto TEST_BIND_ADDRESS{"192.168.0.18"};
 
-class TestConfig : public zit::Config {
- public:
-  TestConfig() : zit::Config() {}
-
-  void set(IntSetting setting, int val) { m_int_settings[setting] = val; }
-  void set(StringSetting setting, std::string val) {
-    m_string_settings[setting] = val;
-  }
-};
-
 namespace {
 
 std::string get_host_ip_from_host() {
@@ -466,7 +456,7 @@ TEST_P(IntegrateF, DISABLED_download) {
   auto tracker = start_tracker(data_dir);
 
   const auto download_dir = tmp_dir();
-  TestConfig test_config;
+  zit::Config test_config;
   zit::Torrent torrent(m_io_context, torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
   download(data_dir, {torrent}, number_of_seeders);
@@ -502,7 +492,7 @@ TEST_F(IntegrateOodF, DISABLED_download_ood) {
   auto tracker = start_tracker(data_dir);
 
   const auto download_dir = mount_dir();
-  TestConfig test_config;
+  zit::Config test_config;
   zit::Torrent torrent(m_io_context, torrent_file, download_dir, test_config);
 
   sigint_function = [&](int /*s*/) {
@@ -537,7 +527,7 @@ TEST_F(IntegrateF, DISABLED_download_dual_torrents) {
   const auto data_dir = fs::path(DATA_DIR);
   constexpr uint8_t number_of_seeders = 1;
   const auto download_dir = tmp_dir();
-  TestConfig test_config;
+  zit::Config test_config;
 
   const auto torrent_file_1 = generate_torrent_with_announce(
       data_dir / "1MiB.dat",
@@ -594,7 +584,7 @@ TEST_P(IntegrateF, DISABLED_download_part) {
   content.at(byte_to_change) = 0;
   zit::write_file(fn, content);
 
-  TestConfig test_config;
+  zit::Config test_config;
   zit::Torrent torrent(m_io_context, torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
 
@@ -638,7 +628,7 @@ TEST_F(Integrate, DISABLED_download_multi_part) {
   content.at(byte_to_change) = 0;
   zit::write_file(fn, content);
 
-  TestConfig test_config;
+  zit::Config test_config;
   zit::Torrent torrent(m_io_context, torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
 
@@ -670,7 +660,7 @@ TEST_F(Integrate, DISABLED_download_multi_file) {
   auto tracker = start_tracker(data_dir);
 
   const auto download_dir = tmp_dir();
-  TestConfig test_config;
+  zit::Config test_config;
   zit::Torrent torrent(m_io_context, torrent_file, download_dir, test_config);
   ASSERT_FALSE(torrent.done());
   download(data_dir, torrent, 1);
@@ -693,7 +683,7 @@ TEST_F(Integrate, DISABLED_upload) {
   auto tracker = start_tracker(data_dir);
 
   // Launch zit with existing file to seed it
-  TestConfig test_config;
+  zit::Config test_config;
   zit::Torrent torrent(m_io_context, torrent_file, data_dir, test_config);
   ASSERT_TRUE(torrent.done());
 
@@ -747,7 +737,7 @@ TEST_F(Integrate, DISABLED_multi_upload) {
   auto tracker = start_tracker(data_dir);
 
   // Launch zit with existing file to seed it
-  TestConfig test_config;
+  zit::Config test_config;
   zit::Torrent torrent(m_io_context, torrent_file, data_dir, test_config);
   ASSERT_TRUE(torrent.done());
 

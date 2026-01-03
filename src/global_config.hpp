@@ -114,6 +114,26 @@ class Config {
     return m_string_list_settings.at(setting);
   }
 
+  /** Set the value of a bool setting */
+  virtual void set(BoolSetting setting, bool value) {
+    m_bool_settings[setting] = value;
+  }
+
+  /** Set the value of an int setting */
+  virtual void set(IntSetting setting, int value) {
+    m_int_settings[setting] = value;
+  }
+
+  /** Set the value of a string setting */
+  virtual void set(StringSetting setting, std::string value) {
+    m_string_settings[setting] = std::move(value);
+  }
+
+  /** Set the value of a string list setting */
+  virtual void set(StringListSetting setting, std::vector<std::string> value) {
+    m_string_list_settings[setting] = std::move(value);
+  }
+
  protected:
   // Default values for all settings
   std::map<BoolSetting, bool> m_bool_settings{
@@ -154,6 +174,9 @@ class FileConfig : public Config {
   FileConfig& operator=(const FileConfig&) = delete;
 
   explicit FileConfig(std::filesystem::path config_file);
+
+  /** Save the current configuration to the file on disk */
+  void save();
 
  protected:
   bool try_file(const std::filesystem::path& config_file);
