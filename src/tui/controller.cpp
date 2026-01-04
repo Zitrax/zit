@@ -103,6 +103,13 @@ void TuiController::BuildComponents() {
   main_container_->SetActiveChild(nullptr);
 
   main_renderer_ = Renderer(main_container_, [this] {
+    // Auto-follow log to bottom when it's visible but not focused
+    if (show_log_ && !focus_on_log_) {
+      const int window_height = std::max(1, screen_.dimy());
+      const int half_height = std::max(1, window_height / 2);
+      view::AutoFollowLogBottom(log_renderer_, half_height / 2);  // Approximate for each log section
+    }
+
     auto list_element = menu_renderer_->Render() | flex;
     // Highlight border around the focused pane
     const Decorator focus_border = [](Element e) {
@@ -152,6 +159,10 @@ void TuiController::BindEvents() {
   main_renderer_ |= CatchEvent([this](const Event& event) {
     if (event == Event::Special("zit.snapshot")) {
       HandleSnapshotEvent();
+      return true;
+    }
+    if (event == Event::Special("zit.log_refresh")) {
+      // Just consume the event to trigger a re-render of the main_renderer_
       return true;
     }
     if (event == Event::Character('q') || event == Event::Escape) {
@@ -272,6 +283,9 @@ void TuiController::TestLogLoop() {
   std::size_t counter = 0;
   while (keep_polling_) {
     zit::tui::zit_logger()->info("[test] Generated log message {}", counter++);
+    // Post a refresh event so the log view updates immediately without waiting
+    // for the next snapshot cycle
+    screen_.PostEvent(Event::Special("zit.log_refresh"));
     std::this_thread::sleep_for(500ms);
   }
 }

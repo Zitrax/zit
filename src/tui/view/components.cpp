@@ -18,6 +18,7 @@
 #include <filesystem>
 #include <functional>
 #include <iostream>
+#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -189,12 +190,35 @@ class LogPanelBase : public ComponentBase {
       : window_height_provider_(std::move(window_height_provider)) {}
 
   bool OnEvent(Event event) override {
+    if (auto_mode_) {
+      // Transition from auto-follow to manual scrolling; start from last auto
+      // positions.
+      auto_mode_ = false;
+      scroll_main_ = auto_scroll_main_;
+      scroll_file_ = auto_scroll_file_;
+    }
+
+    // Helper to clamp scroll values to valid range [0, size - height]
+    auto clamp_scroll = [](int& scroll_y, const std::vector<std::string>& items,
+                           int height) {
+      const int max_scroll =
+          std::max(0, static_cast<int>(items.size()) - height);
+      scroll_y = std::clamp(scroll_y, 0, max_scroll);
+    };
+
+    const int log_height = std::max(1, (window_height_provider_() / 4) - 6);
+
     if (event == Event::ArrowUp) {
-      scroll_y_ = std::max(0, scroll_y_ - 1);
+      scroll_main_ = std::max(0, scroll_main_ - 1);
+      scroll_file_ = std::max(0, scroll_file_ - 1);
       return true;
     }
     if (event == Event::ArrowDown) {
-      scroll_y_++;
+      scroll_main_++;
+      scroll_file_++;
+      // Clamp to prevent scrolling past the end
+      clamp_scroll(scroll_main_, main_log_items_, log_height);
+      clamp_scroll(scroll_file_, file_log_items_, log_height);
       return true;
     }
     if (event == Event::ArrowLeft) {
@@ -206,19 +230,41 @@ class LogPanelBase : public ComponentBase {
       return true;
     }
     if (event == Event::PageUp) {
-      scroll_y_ = std::max(0, scroll_y_ - 10);
+      scroll_main_ = std::max(0, scroll_main_ - 10);
+      scroll_file_ = std::max(0, scroll_file_ - 10);
       return true;
     }
     if (event == Event::PageDown) {
-      scroll_y_ += 10;
+      scroll_main_ += 10;
+      scroll_file_ += 10;
+      // Clamp to prevent scrolling past the end
+      clamp_scroll(scroll_main_, main_log_items_, log_height);
+      clamp_scroll(scroll_file_, file_log_items_, log_height);
+      return true;
+    }
+    if (event == Event::End) {
+      // Jump to bottom for both logs
+      scroll_main_ = std::numeric_limits<int>::max();
+      scroll_file_ = std::numeric_limits<int>::max();
+      // Clamp immediately to valid range
+      clamp_scroll(scroll_main_, main_log_items_, log_height);
+      clamp_scroll(scroll_file_, file_log_items_, log_height);
       return true;
     }
     if (event == Event::Home) {
       scroll_x_ = 0;
-      scroll_y_ = 0;
+      scroll_main_ = 0;
+      scroll_file_ = 0;
       return true;
     }
     return ComponentBase::OnEvent(event);
+  }
+
+  // Called when the log view is not focused to auto-scroll to bottom
+  void AutoFollowBottom([[maybe_unused]] int viewport_height) {
+    // Set scroll_y_ to -1 to signal auto-follow mode
+    // Each log section will independently show its bottom lines
+    auto_mode_ = true;
   }
 
   Element OnRender() override {
@@ -226,16 +272,23 @@ class LogPanelBase : public ComponentBase {
 
     const int window_height =
         window_height_provider_ ? std::max(1, window_height_provider_()) : 1;
-    const int quarter_height = std::max(1, window_height / 4);
+    // Offset to account for frame borders and other overhead that reduces
+    // visible height. This is empirically determined to show all log lines
+    // without truncation.
+    constexpr int height_overhead = 6;
+    const int quarter_height =
+        std::max(1, (window_height / 4) - height_overhead);
 
     return vbox({
                text("Main Logger:") | bold,
                separator(),
-               RenderLogView(main_log_items_, main_log_levels_, quarter_height),
+               RenderLogView(main_log_items_, main_log_levels_, quarter_height,
+                             true),
                separator(),
                text("File Writer Logger:") | bold,
                separator(),
-               RenderLogView(file_log_items_, file_log_levels_, quarter_height),
+               RenderLogView(file_log_items_, file_log_levels_, quarter_height,
+                             false),
            }) |
            border | flex;
   }
@@ -244,10 +297,32 @@ class LogPanelBase : public ComponentBase {
   [[nodiscard]] Element RenderLogView(
       const std::vector<std::string>& items,
       const std::vector<spdlog::level::level_enum>& levels,
-      int quarter_height) const {
-    // Clamp scroll_y_ to valid range
-    const int max_scroll_y = std::max(0, static_cast<int>(items.size()) - 1);
-    const int effective_scroll_y = std::clamp(scroll_y_, 0, max_scroll_y);
+      int quarter_height,
+      bool is_main_logger) {
+    // Calculate scroll position for this specific log section
+    int effective_scroll_y = 0;
+    if (auto_mode_) {
+      // Auto-follow mode: show the bottom lines of THIS log section
+      const int total_lines = static_cast<int>(items.size());
+      if (total_lines > quarter_height) {
+        effective_scroll_y = total_lines - quarter_height;
+      } else {
+        effective_scroll_y = 0;
+      }
+      // Remember per-section auto position for later manual resume
+      if (is_main_logger) {
+        auto_scroll_main_ = effective_scroll_y;
+      } else {
+        auto_scroll_file_ = effective_scroll_y;
+      }
+    } else {
+      // Manual scroll mode: use the scroll_y_ value directly
+      effective_scroll_y = is_main_logger ? scroll_main_ : scroll_file_;
+      // Clamp to valid range for this log section
+      const int max_scroll =
+          std::max(0, static_cast<int>(items.size()) - quarter_height);
+      effective_scroll_y = std::clamp(effective_scroll_y, 0, max_scroll);
+    }
 
     // Calculate visible range
     const auto start_line = static_cast<size_t>(effective_scroll_y);
@@ -330,6 +405,23 @@ class LogPanelBase : public ComponentBase {
     update_one(zit::tui::zit_logger(), main_log_items_, main_log_levels_);
     update_one(zit::tui::file_writer_logger(), file_log_items_,
                file_log_levels_);
+
+    auto prefix_all = [](std::vector<std::string>& items,
+                         std::vector<spdlog::level::level_enum>& levels) {
+      // Add start-of-log marker at the beginning
+      if (!items.empty()) {
+        items.insert(items.begin(), "[START OF LOG]");
+        levels.insert(levels.begin(), spdlog::level::info);
+      }
+      // Add end-of-log marker at the end
+      if (!items.empty()) {
+        items.emplace_back("[END OF LOG]");
+        levels.emplace_back(spdlog::level::info);
+      }
+    };
+
+    prefix_all(main_log_items_, main_log_levels_);
+    prefix_all(file_log_items_, file_log_levels_);
   }
 
   std::function<int()> window_height_provider_;
@@ -340,13 +432,24 @@ class LogPanelBase : public ComponentBase {
   std::vector<spdlog::level::level_enum> file_log_levels_;
 
   int scroll_x_ = 0;
-  int scroll_y_ = 0;
+  int scroll_main_ = 0;
+  int scroll_file_ = 0;
+  int auto_scroll_main_ = 0;
+  int auto_scroll_file_ = 0;
+  bool auto_mode_ = true;
 };
 
 }  // namespace
 
 Component MakeLogPanel(std::function<int()> window_height_provider) {
   return std::make_shared<LogPanelBase>(std::move(window_height_provider));
+}
+
+void AutoFollowLogBottom(ftxui::Component& log_panel, int viewport_height) {
+  // Cast the component to LogPanelBase to call the method
+  if (auto* panel = dynamic_cast<LogPanelBase*>(log_panel.get())) {
+    panel->AutoFollowBottom(viewport_height);
+  }
 }
 
 Component MakeHelpModal() {

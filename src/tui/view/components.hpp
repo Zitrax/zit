@@ -26,4 +26,7 @@ ftxui::Element RenderDetailPanel(const TorrentListModel& model,
 
 ftxui::Component MakeLogPanel(std::function<int()> window_height_provider);
 
+// Auto-scroll log to bottom if user is not manually scrolling
+void AutoFollowLogBottom(ftxui::Component& log_panel, int viewport_height);
+
 }  // namespace zit::tui::view
