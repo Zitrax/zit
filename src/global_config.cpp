@@ -14,11 +14,14 @@
 #endif  // !_MSC_VER
 #include <cstdlib>
 #include <filesystem>
+#include <iostream>
 #include <map>
 #include <optional>
 #include <ostream>
+#include <sstream>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 

@@ -1,7 +1,6 @@
 #include "model.hpp"
 
 #include "file_writer.hpp"
-#include "logger.hpp"
 #include "tui_logger.hpp"
 
 #include <torrent.hpp>
@@ -11,10 +10,17 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
+#include <cstddef>
+#include <cstdint>
 #include <exception>
 #include <filesystem>
+#include <functional>
+#include <memory>
+#include <mutex>
+#include <string>
 #include <thread>
 #include <utility>
+#include <vector>
 
 namespace zit::tui {
 
@@ -25,13 +31,13 @@ using Clock = std::chrono::steady_clock;
 std::string FormatBytes(int64_t bytes) {
   static constexpr std::array<const char*, 5> kSuffixes{"B", "KiB", "MiB",
                                                         "GiB", "TiB"};
-  double value = static_cast<double>(bytes);
+  auto value = static_cast<double>(bytes);
   size_t idx = 0;
   while (value >= 1024.0 && idx + 1 < kSuffixes.size()) {
     value /= 1024.0;
     ++idx;
   }
-  return fmt::format("{:.1f} {}", value, kSuffixes[idx]);
+  return fmt::format("{:.1f} {}", value, kSuffixes.at(idx));
 }
 
 std::string FormatRate(double bytes_per_second) {
@@ -46,7 +52,7 @@ std::string FormatRate(double bytes_per_second) {
     value /= 1024.0;
     ++idx;
   }
-  return fmt::format("{:.1f} {}", value, kSuffixes[idx]);
+  return fmt::format("{:.1f} {}", value, kSuffixes.at(idx));
 }
 
 std::string PlaceholderLabel(const std::filesystem::path& path) {
@@ -129,11 +135,11 @@ const TorrentInfo* TorrentListModel::selected() const {
   if (torrents_.empty()) {
     return nullptr;
   }
-  if (selected_index_ < 0 ||
-      selected_index_ >= static_cast<int>(torrents_.size())) {
+  if (std::cmp_less(selected_index_, 0) ||
+      std::cmp_greater_equal(selected_index_, torrents_.size())) {
     return nullptr;
   }
-  return &torrents_[static_cast<size_t>(selected_index_)];
+  return &torrents_.at(static_cast<size_t>(selected_index_));
 }
 
 bool TorrentListModel::LaunchTorrent(const std::filesystem::path& path,
@@ -144,9 +150,9 @@ bool TorrentListModel::LaunchTorrent(const std::filesystem::path& path,
   }
   const auto placeholder_info = MakePlaceholderInfo(path);
   {
-    std::lock_guard lock(pending_mutex_);
-    pending_requests_.push({path, data_dir});
-    pending_placeholders_.push_back({path, data_dir, placeholder_info});
+    const std::scoped_lock lock(pending_mutex_);
+    pending_requests_.emplace(path, data_dir);
+    pending_placeholders_.emplace_back(path, data_dir, placeholder_info);
   }
   pending_cv_.notify_one();
 
@@ -181,17 +187,17 @@ void TorrentListModel::StopAllTorrents() {
 }
 
 void TorrentListModel::StopTorrent(int index) {
-  if (index < 0 || index >= static_cast<int>(torrents_.size())) {
+  if (index < 0 || std::cmp_greater_equal(index, torrents_.size())) {
     return;
   }
 
   std::unique_ptr<ActiveTorrent> to_cleanup;
   {
     const std::scoped_lock lock(active_mutex_);
-    if (index >= static_cast<int>(active_torrents_.size())) {
+    if (std::cmp_greater_equal(index, active_torrents_.size())) {
       return;
     }
-    to_cleanup = std::move(active_torrents_[static_cast<size_t>(index)]);
+    to_cleanup = std::move(active_torrents_.at(static_cast<size_t>(index)));
     active_torrents_.erase(active_torrents_.begin() + index);
   }
 
@@ -225,7 +231,8 @@ std::vector<std::filesystem::path> TorrentListModel::GetTorrentPaths() const {
   return paths;
 }
 
-std::vector<std::filesystem::path> TorrentListModel::GetDataDirectories() const {
+std::vector<std::filesystem::path> TorrentListModel::GetDataDirectories()
+    const {
   std::vector<std::filesystem::path> dirs;
   const std::scoped_lock lock(active_mutex_);
   dirs.reserve(active_torrents_.size());
@@ -273,8 +280,7 @@ bool TorrentListModel::CreateAndStartTorrent(
     const std::filesystem::path& path,
     const std::filesystem::path& data_dir) {
   try {
-    auto torrent = std::make_unique<zit::Torrent>(m_io_context, path,
-                                                  data_dir);
+    auto torrent = std::make_unique<zit::Torrent>(m_io_context, path, data_dir);
     file_writer_thread_->register_torrent(*torrent);
 
     auto active = std::make_unique<ActiveTorrent>();
@@ -308,14 +314,12 @@ bool TorrentListModel::CreateAndStartTorrent(
 
 void TorrentListModel::RemovePlaceholderForPath(
     const std::filesystem::path& path) {
-  std::lock_guard pending_lock(pending_mutex_);
-  const auto label = PlaceholderLabel(path);
-  auto it =
-      std::remove_if(pending_placeholders_.begin(), pending_placeholders_.end(),
-                     [&path](const PendingPlaceholder& pending) {
-                       return pending.source_path == path;
-                     });
-  pending_placeholders_.erase(it, pending_placeholders_.end());
+  const std::scoped_lock lock(pending_mutex_);
+  auto it = std::ranges::remove_if(pending_placeholders_,
+                                   [&path](const PendingPlaceholder& pending) {
+                                     return pending.source_path == path;
+                                   });
+  pending_placeholders_.erase(it.begin(), it.end());
 }
 
 std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
@@ -373,7 +377,7 @@ std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
   }
 
   {
-    std::lock_guard pending_lock(pending_mutex_);
+    const std::scoped_lock pending_lock(pending_mutex_);
     for (const auto& placeholder : pending_placeholders_) {
       snapshot.push_back(placeholder.info);
     }
@@ -413,13 +417,9 @@ void TorrentListModel::ClampSelection() {
     selected_index_ = 0;
     return;
   }
-  if (selected_index_ < 0) {
-    selected_index_ = 0;
-  }
+  selected_index_ = std::max(selected_index_, 0);
   const int max_index = static_cast<int>(menu_entries_.size()) - 1;
-  if (selected_index_ > max_index) {
-    selected_index_ = max_index;
-  }
+  selected_index_ = std::min(selected_index_, max_index);
 }
 
 }  // namespace zit::tui

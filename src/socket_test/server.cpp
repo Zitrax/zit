@@ -12,6 +12,7 @@
 #include <csignal>
 #include <cstddef>
 #include <exception>
+#include <iostream>
 #include <istream>
 #include <iterator>
 #include <memory>
@@ -104,7 +105,7 @@ int main(int argc, char* argv[]) {
     io_context.run();
     zit::logger()->info("Shutting down server");
   } catch (const std::exception& e) {
-    zit::logger()->error("Exception: {}", e.what());
+    std::cerr << "Fatal error: " << e.what() << "\n";
     return 1;
   }
   return 0;

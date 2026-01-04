@@ -1,13 +1,26 @@
 #include "components.hpp"
+#include "../model.hpp"
 #include "../tui_logger.hpp"
 
-#include <algorithm>
-#include <iostream>
-
+#include <fmt/format.h>
+#include <spdlog/common.h>
+#include <spdlog/logger.h>
+#include <spdlog/sinks/ringbuffer_sink.h>
 #include <ftxui/component/component.hpp>
+#include <ftxui/component/component_base.hpp>
 #include <ftxui/component/component_options.hpp>
 #include <ftxui/component/event.hpp>
 #include <ftxui/dom/elements.hpp>
+#include <ftxui/screen/color.hpp>
+
+#include <algorithm>
+#include <cstddef>
+#include <filesystem>
+#include <functional>
+#include <iostream>
+#include <memory>
+#include <utility>
+#include <vector>
 
 namespace zit::tui::view {
 
@@ -27,8 +40,9 @@ ButtonOption TextOnlyButtonOption(Color color_active) {
   return option;
 }
 
-Component MakeFileDialog(std::function<void(const std::filesystem::path&)> open,
-                         std::function<void()> close) {
+Component MakeFileDialog(
+    const std::function<void(const std::filesystem::path&)>& open,
+    const std::function<void()>& close) {
   auto container = Container::Vertical({});
 
   auto renderer = Renderer(container, [container, open, close,
@@ -41,7 +55,7 @@ Component MakeFileDialog(std::function<void(const std::filesystem::path&)> open,
           std::filesystem::current_path().root_path()) {
         container->Add(Button(
             "..",
-            [open, close, &populate]() {
+            [&populate]() {
               std::filesystem::current_path(
                   std::filesystem::current_path().parent_path());
               populate = true;
@@ -112,8 +126,8 @@ Element RenderTorrentTable(const TorrentListModel& model, int selected_index) {
     rows.push_back(text("No torrents. Press 'o' to add one.") | center | focus);
   } else {
     for (size_t i = 0; i < model.torrents().size(); ++i) {
-      const auto& torrent = model.torrents()[i];
-      const bool is_selected = static_cast<int>(i) == selected_index;
+      const auto& torrent = model.torrents().at(i);
+      const bool is_selected = std::cmp_equal(i, selected_index);
 
       auto row = hbox({
           text(torrent.name) | flex,
@@ -166,6 +180,8 @@ Element RenderDetailPanel(const TorrentListModel& model, int selected_index) {
          }) |
          border | flex;
 }
+
+namespace {
 
 class LogPanelBase : public ComponentBase {
  public:
@@ -225,15 +241,16 @@ class LogPanelBase : public ComponentBase {
   }
 
  private:
-  Element RenderLogView(const std::vector<std::string>& items,
-                        const std::vector<spdlog::level::level_enum>& levels,
-                        int quarter_height) {
+  [[nodiscard]] Element RenderLogView(
+      const std::vector<std::string>& items,
+      const std::vector<spdlog::level::level_enum>& levels,
+      int quarter_height) const {
     // Clamp scroll_y_ to valid range
     const int max_scroll_y = std::max(0, static_cast<int>(items.size()) - 1);
     const int effective_scroll_y = std::clamp(scroll_y_, 0, max_scroll_y);
 
     // Calculate visible range
-    const size_t start_line = static_cast<size_t>(effective_scroll_y);
+    const auto start_line = static_cast<size_t>(effective_scroll_y);
     const size_t end_line = std::min(
         items.size(), start_line + static_cast<size_t>(quarter_height));
 
@@ -241,7 +258,7 @@ class LogPanelBase : public ComponentBase {
     for (size_t i = start_line; i < end_line; ++i) {
       Color c = Color::White;
       if (i < levels.size()) {
-        switch (levels[i]) {
+        switch (levels.at(i)) {
           case spdlog::level::trace:
             c = Color::Grey50;
             break;
@@ -268,10 +285,10 @@ class LogPanelBase : public ComponentBase {
       }
 
       // Apply horizontal scroll by substring
-      std::string line_text = items[i];
+      std::string line_text = items.at(i);
       if (scroll_x_ > 0 && static_cast<size_t>(scroll_x_) < line_text.size()) {
         line_text = line_text.substr(static_cast<size_t>(scroll_x_));
-      } else if (scroll_x_ >= static_cast<int>(line_text.size())) {
+      } else if (std::cmp_greater_equal(scroll_x_, line_text.size())) {
         line_text = "";
       }
 
@@ -285,9 +302,8 @@ class LogPanelBase : public ComponentBase {
     return vbox(std::move(lines)) | frame | size(HEIGHT, EQUAL, quarter_height);
   }
 
- private:
   void UpdateLogs() {
-    auto update_one = [](std::shared_ptr<spdlog::logger> logger,
+    auto update_one = [](const std::shared_ptr<spdlog::logger>& logger,
                          std::vector<std::string>& items,
                          std::vector<spdlog::level::level_enum>& levels) {
       items.clear();
@@ -303,7 +319,7 @@ class LogPanelBase : public ComponentBase {
                 std::string("[") + to_string_view(msg.level).data() + "]";
             auto payload_str =
                 std::string(msg.payload.data(), msg.payload.size());
-            items.push_back(level_str + " " + payload_str);
+            items.push_back(fmt::format("{} {}", level_str, payload_str));
             levels.push_back(msg.level);
           }
         }
@@ -326,6 +342,8 @@ class LogPanelBase : public ComponentBase {
   int scroll_x_ = 0;
   int scroll_y_ = 0;
 };
+
+}  // namespace
 
 Component MakeLogPanel(std::function<int()> window_height_provider) {
   return std::make_shared<LogPanelBase>(std::move(window_height_provider));

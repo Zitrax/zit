@@ -1,13 +1,25 @@
 #include "controller.hpp"
 
 #include <algorithm>
-#include <chrono>
+#if __clang__
+#include <bits/chrono.h>
+#endif  // __clang__
+#include <cstddef>
+#include <filesystem>
+#include <memory>
+#include <mutex>
+#include <string>
+#include <thread>
+#include <utility>
+#include <vector>
 
 #include <ftxui/component/component.hpp>
 #include <ftxui/component/component_options.hpp>
+#include <ftxui/component/screen_interactive.hpp>
 #include <ftxui/dom/elements.hpp>
 
 #include "../global_config.hpp"
+#include "model.hpp"
 #include "tui_logger.hpp"
 #include "view/components.hpp"
 
@@ -88,7 +100,7 @@ void TuiController::BuildComponents() {
       menu_renderer_,
       Maybe(log_renderer_, &show_log_),
   });
-  main_container_->SetActiveChild(0);
+  main_container_->SetActiveChild(nullptr);
 
   main_renderer_ = Renderer(main_container_, [this] {
     auto list_element = menu_renderer_->Render() | flex;
@@ -137,7 +149,7 @@ void TuiController::BuildComponents() {
 }
 
 void TuiController::BindEvents() {
-  main_renderer_ |= CatchEvent([this](Event event) {
+  main_renderer_ |= CatchEvent([this](const Event& event) {
     if (event == Event::Special("zit.snapshot")) {
       HandleSnapshotEvent();
       return true;
@@ -297,9 +309,10 @@ void TuiController::Shutdown() {
 
   std::vector<std::string> combined_entries;
   for (size_t i = 0; i < torrent_paths.size(); ++i) {
-    const auto& path = torrent_paths[i];
-    const auto& data_dir =
-        (i < data_dirs.size()) ? data_dirs[i] : std::filesystem::current_path();
+    const auto& path = torrent_paths.at(i);
+    const auto& data_dir = (i < data_dirs.size())
+                               ? data_dirs.at(i)
+                               : std::filesystem::current_path();
     combined_entries.push_back(path.string() + ":" + data_dir.string());
   }
 

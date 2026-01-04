@@ -9,7 +9,7 @@
 
 namespace zit {
 
-enum class LogOutput {
+enum class LogOutput : uint8_t {
   CONSOLE,  //!< Standard console output
   MEMORY,   //!< In-memory log (for GUI display)
 };

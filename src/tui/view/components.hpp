@@ -13,8 +13,8 @@ namespace zit::tui::view {
 ftxui::ButtonOption TextOnlyButtonOption(ftxui::Color color_active);
 
 ftxui::Component MakeFileDialog(
-    std::function<void(const std::filesystem::path&)> open,
-    std::function<void()> close);
+    const std::function<void(const std::filesystem::path&)>& open,
+    const std::function<void()>& close);
 
 ftxui::Component MakeHelpModal();
 
