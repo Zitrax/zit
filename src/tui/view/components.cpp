@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief View helpers: render torrent table, detail panel (piece viz), log panel, help, and
+ * file dialog. Pure UI helpers—consume TUI model snapshots; no torrent lifecycle logic.
+ */
 #include "components.hpp"
 #include "../model.hpp"
 #include "../tui_logger.hpp"
@@ -168,7 +173,6 @@ Component MakeFileDialog(
   auto renderer = Renderer(container, [container, open, close,
                                        populate = true]() mutable {
     if (populate) {
-      std::cerr << "Populating file dialog\n";
       container->DetachAllChildren();
 
       if (std::filesystem::current_path() !=

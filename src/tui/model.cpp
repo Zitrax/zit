@@ -1,3 +1,10 @@
+/**
+ * @file
+ * @brief TUI model implementation: manages torrent creation/start/stop, collects UI
+ * snapshots, and bridges torrent/peer state into view-friendly structures. Runs a
+ * creation thread and per-torrent worker threads; snapshot building is invoked by the
+ * controller thread.
+ */
 #include "model.hpp"
 
 #include "file_writer.hpp"

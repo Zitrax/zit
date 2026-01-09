@@ -1,3 +1,8 @@
+/**
+ * @file
+ * @brief Controller implementation: builds FTXUI components, handles keybindings/events,
+ * drives snapshot/log refresh events, and persists the torrent list across runs.
+ */
 #include "controller.hpp"
 
 #include <algorithm>
@@ -249,6 +254,9 @@ void TuiController::LaunchTorrent(const std::filesystem::path& path,
   }
 }
 
+/// Background poller: collects model snapshots and posts a custom UI event to
+/// refresh views. Runs independently of the UI thread; guarded by snapshot_*
+/// members.
 void TuiController::StartSnapshotThread() {
   snapshot_thread_ = std::thread([this] { SnapshotLoop(); });
 }

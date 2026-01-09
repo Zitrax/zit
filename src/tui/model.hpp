@@ -1,3 +1,10 @@
+/**
+ * @file
+ * @brief TUI model: owns torrent lifecycles, workers, and view-facing snapshots.
+ * Exposes an immutable snapshot list and selection state for the UI. Threads:
+ * creation worker (pending queue) plus per-torrent worker threads; synchronized
+ * via mutexes/condition variables.
+ */
 #pragma once
 
 #include <asio/io_context.hpp>
@@ -50,8 +57,9 @@ struct TorrentInfo {
   std::vector<uint32_t> piece_peer_counts;
 };
 
-// TODO: move TorrentListModel out of the tui folder once zitlib integration
-// lands.
+/// @note This "model" currently owns torrent orchestration (workers, creation queue)
+/// in addition to exposing view-facing snapshots—an explicit MVC boundary tradeoff.
+/// TODO: move TorrentListModel out of the tui folder once zitlib integration lands.
 class TorrentListModel {
  public:
   TorrentListModel();

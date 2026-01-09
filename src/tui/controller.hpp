@@ -1,3 +1,9 @@
+/**
+ * @file
+ * @brief TUI controller: wires input/events to model and views, owns the UI thread,
+ * snapshot poller, and optional test-log thread. Persists/restores the torrent list
+ * on startup/shutdown.
+ */
 #pragma once
 
 #include <atomic>
