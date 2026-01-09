@@ -227,6 +227,11 @@ class Peer : public IConnectionUrlProvider {
   void have(uint32_t id);
 
   /**
+   * Get the bitfield of pieces this peer has.
+   */
+  [[nodiscard]] const Bitfield& remote_pieces() const { return m_remote_pieces; }
+
+  /**
    * Store a retrieved a block ( part of a piece )
    */
   void set_block(uint32_t piece_id, uint32_t offset, bytes_span data);

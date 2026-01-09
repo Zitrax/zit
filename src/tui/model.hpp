@@ -42,6 +42,12 @@ struct TorrentInfo {
   // Piece data for visualization in UI (generated dynamically based on width)
   uint32_t pieces_completed = 0;
   uint32_t pieces_total = 0;
+
+  // Per-piece completion status (true if piece is on disk)
+  std::vector<bool> piece_completion;
+  
+  // Per-piece peer availability (count of peers that have each piece)
+  std::vector<uint32_t> piece_peer_counts;
 };
 
 // TODO: move TorrentListModel out of the tui folder once zitlib integration

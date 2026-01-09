@@ -33,55 +33,107 @@ using namespace ftxui;
 // Generate piece visualization bar using terminal width
 // Returns visualization string sized to fit available width
 namespace {
+
+// Color-coded piece visualization with peer availability
+// Returns FTXUI Element with colored blocks based on completion and peer availability
 // NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
-std::string GeneratePieceVisualization(uint32_t total, uint32_t completed,
-                                       int available_width) {
+Element GeneratePieceVisualization(uint32_t total,
+                                   int available_width,
+                                   const std::vector<bool>& piece_completion,
+                                   const std::vector<uint32_t>& piece_peer_counts) {
   if (total == 0) {
-    return "No pieces";
+    return text("No pieces");
   }
-  if (completed == 0) {
-    return "Loading...";
+
+  // Verify piece data is properly sized or empty (allow both cases)
+  if ((!piece_completion.empty() && piece_completion.size() != static_cast<size_t>(total)) ||
+      (!piece_peer_counts.empty() && piece_peer_counts.size() != static_cast<size_t>(total))) {
+    return text("Error: piece count mismatch");
   }
 
   // Use available width for visualization
   const int viz_width = std::max(10, available_width);
 
   // Unicode block characters representing density/completion
-  static constexpr std::array<const char*, 4> blocks{" ", "░", "▒", "█"};
+  static constexpr std::array<const char*, 4> blocks{"·", "░", "▒", "█"};
 
   // Calculate group size based on available width
   const auto total_sz = static_cast<size_t>(total);
   const auto width_sz = static_cast<size_t>(viz_width);
   const size_t group_size = std::max(static_cast<size_t>(1), (total_sz + width_sz - 1) / width_sz);
 
-  std::string visualization;
+  std::vector<Element> colored_blocks;
 
+  // Build piece groups showing exact status of each piece in the group
   for (size_t i = 0; i < total_sz; i += group_size) {
     const size_t end = std::min(total_sz, i + group_size);
     const size_t actual_group_size = end - i;
-    size_t group_completed = 0;
-
-    // For simplicity, estimate completion by counting in ranges
-    // (we only have total counts, not per-piece info)
-    const auto completed_sz = static_cast<size_t>(completed);
-    const size_t completed_in_group = (completed_sz * actual_group_size) / total_sz;
-    group_completed = completed_in_group;
-
-    // Calculate density based on actual group size
-    const size_t density = (group_completed * 3) / actual_group_size;
-    visualization += blocks.at(density);
-  }
-
-  // If 100% complete, show all full blocks
-  if (completed == total && !visualization.empty()) {
-    visualization.clear();
-    const size_t char_count = (total_sz + group_size - 1) / group_size;
-    for (size_t i = 0; i < char_count; ++i) {
-      visualization += "█";
+    
+    // Count local completion, peer availability, and fully complete pieces in this group
+    size_t completed_in_group = 0;
+    size_t pieces_with_peers = 0;
+    size_t pieces_without_peers = 0;
+    size_t pieces_fully_complete = 0;
+    
+    for (size_t j = i; j < end; ++j) {
+      // Check piece completion
+      bool piece_complete = false;
+      if (!piece_completion.empty() && j < piece_completion.size()) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+        piece_complete = piece_completion[j];
+      }
+      
+      if (piece_complete) {
+        completed_in_group++;
+        pieces_fully_complete++;
+      }
+      
+      // Check peer availability
+      bool has_peers = false;
+      if (!piece_peer_counts.empty() && j < piece_peer_counts.size()) {
+        // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+        has_peers = piece_peer_counts[j] > 0;
+      } else if (piece_peer_counts.empty()) {
+        // No peer data - assume has peers
+        has_peers = true;
+      }
+      
+      if (has_peers) {
+        pieces_with_peers++;
+      } else {
+        pieces_without_peers++;
+      }
     }
+    
+    // Calculate fill density based on local completion
+    const size_t density = actual_group_size > 0 ? (completed_in_group * 3) / actual_group_size : 0;
+    const char* block_char = density < blocks.size() ? blocks.at(density) : blocks.back();
+    
+    // Determine color based on completion and peer availability
+    Color color;
+    
+    if (pieces_fully_complete == actual_group_size) {
+      // All pieces in group are 100% locally complete - show green
+      color = Color::GreenLight;
+    } else if (pieces_without_peers == actual_group_size) {
+      // No peers have any piece in this group - show red
+      color = Color::RedLight;
+    } else if (pieces_without_peers > 0 && pieces_with_peers > 0) {
+      // Mixed peer availability: some pieces have peers, some don't - show orange
+      color = Color::RGB(255, 165, 0);
+    } else {
+      // All pieces in group have peers available - show blue
+      color = Color::Blue;
+    }
+    
+    colored_blocks.push_back(text(block_char) | ftxui::color(color));
   }
 
-  return visualization;
+  if (colored_blocks.empty()) {
+    return text("Loading...");
+  }
+
+  return hbox(std::move(colored_blocks));
 }
 }  // namespace
 
@@ -263,10 +315,11 @@ Element RenderDetailPanel(const TorrentListModel& model, int selected_index,
     // Account for border (2 chars: 1 left, 1 right) and minimal padding (1 char)
     const int available_width = std::max(20, terminal_width - 3);
     
-    const std::string viz = GeneratePieceVisualization(
-        torrent->pieces_total, torrent->pieces_completed, available_width);
+    const auto viz = GeneratePieceVisualization(
+        torrent->pieces_total, available_width,
+        torrent->piece_completion, torrent->piece_peer_counts);
     details.push_back(text("Piece Status: ") | bold);
-    details.push_back(text(viz) | dim);
+    details.push_back(viz);
   }
 
   details.push_back(separator());
@@ -612,6 +665,19 @@ Component MakeHelpModal() {
                hbox(text("  TAB/SHIFT+TAB"), text(" - Navigate menu"),
                     filler()),
                hbox(text("  q/ESC"), text(" - Quit"), filler()),
+               text(""),
+               separator(),
+               text("Piece Visualization Colors") | bold,
+               text(""),
+               hbox(text("  "), text("█") | color(Color::GreenLight),
+                    text(" - Piece locally complete (or torrent 100% done)"),
+                    filler()),
+               hbox(text("  "), text("█") | ftxui::color(Color::Blue),
+                    text(" - All pieces in group available from peers"), filler()),
+               hbox(text("  "), text("█") | ftxui::color(Color::RGB(255, 165, 0)),
+                    text(" - Mixed peer availability (some have pieces, some don't)"), filler()),
+               hbox(text("  "), text("█") | ftxui::color(Color::RedLight),
+                    text(" - No peers have any piece in this group"), filler()),
                text(""),
                separator(),
                text(""),

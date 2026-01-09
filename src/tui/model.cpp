@@ -101,6 +101,8 @@ TorrentInfo MakePlaceholderInfo(const std::filesystem::path& path) {
       .files_info = "-",
       .pieces_completed = 0,
       .pieces_total = 0,
+      .piece_completion = {},
+      .piece_peer_counts = {},
   };
 }
 
@@ -415,6 +417,60 @@ std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
       files_info = "Unknown";
     }
 
+    // Count connected peers with timing and collect per-piece data
+    uint32_t peer_count = 0;
+    std::vector<uint32_t> piece_peer_counts(total_pieces, 0);
+    std::vector<bool> piece_completion(total_pieces, false);
+    
+    if (total_pieces > 0) {
+      const auto peer_count_start = Clock::now();
+      
+      auto& peers_list = active->torrent->peers();
+      peer_count = static_cast<uint32_t>(peers_list.size());
+      
+      // Get which pieces we have locally
+      const auto client_pieces = active->torrent->client_pieces();
+      const auto client_pieces_size = client_pieces.size();
+      
+      for (uint32_t i = 0; i < total_pieces; ++i) {
+        // Only check bits that exist in the client's bitfield
+        if (static_cast<size_t>(i) < client_pieces_size) {
+          // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+          piece_completion[i] = client_pieces.get(i);
+        } else {
+          // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+          piece_completion[i] = false;
+        }
+      }
+      
+      // Collect per-piece peer availability by checking each peer's bitfield
+      for (const auto& peer : peers_list) {
+        const auto& remote_pieces = peer->remote_pieces();
+        const auto bitfield_bits = remote_pieces.size();  // size() returns number of bits
+        
+        for (uint32_t i = 0; i < total_pieces; ++i) {
+          // Only check bits that exist in the peer's bitfield
+          if (static_cast<size_t>(i) < bitfield_bits) {
+            // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+            if (remote_pieces.get(i)) {
+              // NOLINTNEXTLINE(cppcoreguidelines-pro-bounds-avoid-unchecked-container-access)
+              piece_peer_counts[i]++;
+            }
+          }
+        }
+      }
+      
+      const auto peer_count_elapsed = 
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+              Clock::now() - peer_count_start).count();
+      
+      if (peer_count_elapsed > 50) {
+        zit_logger()->warn(
+            "Peer count for '{}' took {}ms (peers: {})",
+            active->torrent->name(), peer_count_elapsed, peer_count);
+      }
+    }
+
     snapshot.push_back(TorrentInfo{
         .name = active->torrent->name(),
         .complete = fmt::format("{:.1f}%", percent),
@@ -435,6 +491,8 @@ std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
         .files_info = files_info,
         .pieces_completed = static_cast<uint32_t>(completed_pieces),
         .pieces_total = static_cast<uint32_t>(total_pieces),
+        .piece_completion = std::move(piece_completion),
+        .piece_peer_counts = std::move(piece_peer_counts),
     });
   }
 
