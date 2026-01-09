@@ -21,8 +21,10 @@ ftxui::Component MakeHelpModal();
 ftxui::Element RenderTorrentTable(const TorrentListModel& model,
                                   int selected_index);
 
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
 ftxui::Element RenderDetailPanel(const TorrentListModel& model,
-                                 int selected_index);
+                                 int selected_index,
+                                 int terminal_width);
 
 ftxui::Component MakeLogPanel(std::function<int()> window_height_provider);
 

@@ -91,7 +91,7 @@ void TuiController::BuildComponents() {
   });
 
   detail_renderer_ = Renderer([this] {
-    return view::RenderDetailPanel(model_, model_.selected_index());
+    return view::RenderDetailPanel(model_, model_.selected_index(), screen_.dimx());
   });
 
   log_renderer_ = view::MakeLogPanel([this] { return screen_.dimy(); });

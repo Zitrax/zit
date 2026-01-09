@@ -26,9 +26,26 @@ struct TorrentInfo {
   std::string down_speed;
   std::string up_speed;
   std::string data_directory;
+
+  // Torrent metadata (for detail view)
+  std::string announce;
+  std::string creation_date;
+  std::string comment;
+  std::string created_by;
+  std::string encoding;
+  std::string piece_count;
+  std::string piece_length;
+  std::string is_private;
+  std::string info_hash;
+  std::string files_info;
+
+  // Piece data for visualization in UI (generated dynamically based on width)
+  uint32_t pieces_completed = 0;
+  uint32_t pieces_total = 0;
 };
 
-// TODO: move TorrentListModel out of the tui folder once zitlib integration lands.
+// TODO: move TorrentListModel out of the tui folder once zitlib integration
+// lands.
 class TorrentListModel {
  public:
   TorrentListModel();
@@ -45,8 +62,9 @@ class TorrentListModel {
   int* mutable_selected_index();
   const TorrentInfo* selected() const;
 
-  bool LaunchTorrent(const std::filesystem::path& path,
-                     const std::filesystem::path& data_dir = std::filesystem::current_path());
+  bool LaunchTorrent(
+      const std::filesystem::path& path,
+      const std::filesystem::path& data_dir = std::filesystem::current_path());
   void StopAllTorrents();
   void StopTorrent(int index);
   std::vector<std::filesystem::path> GetTorrentPaths() const;
@@ -92,7 +110,7 @@ class TorrentListModel {
   std::unique_ptr<zit::FileWriterThread> file_writer_thread_;
   std::vector<std::unique_ptr<ActiveTorrent>> active_torrents_;
   mutable std::mutex active_mutex_;
-  
+
   struct PendingRequest {
     std::filesystem::path torrent_path;
     std::filesystem::path data_directory;

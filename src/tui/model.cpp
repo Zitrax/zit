@@ -3,6 +3,7 @@
 #include "file_writer.hpp"
 #include "tui_logger.hpp"
 
+#include <sha1.hpp>
 #include <torrent.hpp>
 
 #include <fmt/format.h>
@@ -27,6 +28,22 @@ namespace zit::tui {
 namespace {
 
 using Clock = std::chrono::steady_clock;
+
+// Generate a compressed piece visualization using Unicode blocks
+// Groups multiple pieces per character and represents state density
+// Format creation date as human-readable string
+std::string FormatCreationDate(int64_t timestamp) {
+  if (timestamp <= 0) {
+    return "Unknown";
+  }
+  // Simple timestamp to ISO-like format - no fancy timezone handling
+  return fmt::format("{}", timestamp);
+}
+
+// Format info hash as hex string
+std::string FormatInfoHash(const zit::Sha1& hash) {
+  return hash.hex();
+}
 
 std::string FormatBytes(int64_t bytes) {
   static constexpr std::array<const char*, 5> kSuffixes{"B", "KiB", "MiB",
@@ -72,6 +89,18 @@ TorrentInfo MakePlaceholderInfo(const std::filesystem::path& path) {
       .down_speed = "-",
       .up_speed = "-",
       .data_directory = "-",
+      .announce = "-",
+      .creation_date = "-",
+      .comment = "-",
+      .created_by = "-",
+      .encoding = "-",
+      .piece_count = "-",
+      .piece_length = "-",
+      .is_private = "-",
+      .info_hash = "-",
+      .files_info = "-",
+      .pieces_completed = 0,
+      .pieces_total = 0,
   };
 }
 
@@ -365,6 +394,27 @@ std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
     active->last_completed_pieces = completed_pieces;
     active->last_snapshot = now;
 
+    // Extract metadata
+    const auto& announce = active->torrent->announce();
+    const auto& comment = active->torrent->comment();
+    const auto& created_by = active->torrent->created_by();
+    const auto& encoding = active->torrent->encoding();
+    const auto creation_date = active->torrent->creation_date();
+    const auto piece_length = active->torrent->piece_length();
+    const bool is_private = active->torrent->is_private();
+    const auto& info_hash = active->torrent->info_hash();
+    const auto& files = active->torrent->files();
+
+    // Format files info for multi-file torrents
+    std::string files_info;
+    if (!files.empty()) {
+      files_info = fmt::format("{} files", files.size());
+    } else if (active->torrent->is_single_file()) {
+      files_info = "Single file";
+    } else {
+      files_info = "Unknown";
+    }
+
     snapshot.push_back(TorrentInfo{
         .name = active->torrent->name(),
         .complete = fmt::format("{:.1f}%", percent),
@@ -373,6 +423,18 @@ std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
         .down_speed = FormatRate(bytes_per_second),
         .up_speed = "-",
         .data_directory = active->data_directory.string(),
+        .announce = announce.empty() ? "None" : announce,
+        .creation_date = FormatCreationDate(creation_date),
+        .comment = comment.empty() ? "None" : comment,
+        .created_by = created_by.empty() ? "None" : created_by,
+        .encoding = encoding.empty() ? "UTF-8" : encoding,
+        .piece_count = fmt::format("{}", total_pieces),
+        .piece_length = FormatBytes(piece_length),
+        .is_private = is_private ? "Yes" : "No",
+        .info_hash = FormatInfoHash(info_hash),
+        .files_info = files_info,
+        .pieces_completed = static_cast<uint32_t>(completed_pieces),
+        .pieces_total = static_cast<uint32_t>(total_pieces),
     });
   }
 

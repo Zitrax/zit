@@ -14,18 +14,76 @@
 #include <ftxui/screen/color.hpp>
 
 #include <algorithm>
+#include <array>
 #include <cstddef>
+#include <cstdint>
 #include <filesystem>
 #include <functional>
 #include <iostream>
 #include <limits>
 #include <memory>
+#include <string>
 #include <utility>
 #include <vector>
 
 namespace zit::tui::view {
 
 using namespace ftxui;
+
+// Generate piece visualization bar using terminal width
+// Returns visualization string sized to fit available width
+namespace {
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+std::string GeneratePieceVisualization(uint32_t total, uint32_t completed,
+                                       int available_width) {
+  if (total == 0) {
+    return "No pieces";
+  }
+  if (completed == 0) {
+    return "Loading...";
+  }
+
+  // Use available width for visualization
+  const int viz_width = std::max(10, available_width);
+
+  // Unicode block characters representing density/completion
+  static constexpr std::array<const char*, 4> blocks{" ", "░", "▒", "█"};
+
+  // Calculate group size based on available width
+  const auto total_sz = static_cast<size_t>(total);
+  const auto width_sz = static_cast<size_t>(viz_width);
+  const size_t group_size = std::max(static_cast<size_t>(1), (total_sz + width_sz - 1) / width_sz);
+
+  std::string visualization;
+
+  for (size_t i = 0; i < total_sz; i += group_size) {
+    const size_t end = std::min(total_sz, i + group_size);
+    const size_t actual_group_size = end - i;
+    size_t group_completed = 0;
+
+    // For simplicity, estimate completion by counting in ranges
+    // (we only have total counts, not per-piece info)
+    const auto completed_sz = static_cast<size_t>(completed);
+    const size_t completed_in_group = (completed_sz * actual_group_size) / total_sz;
+    group_completed = completed_in_group;
+
+    // Calculate density based on actual group size
+    const size_t density = (group_completed * 3) / actual_group_size;
+    visualization += blocks.at(density);
+  }
+
+  // If 100% complete, show all full blocks
+  if (completed == total && !visualization.empty()) {
+    visualization.clear();
+    const size_t char_count = (total_sz + group_size - 1) / group_size;
+    for (size_t i = 0; i < char_count; ++i) {
+      visualization += "█";
+    }
+  }
+
+  return visualization;
+}
+}  // namespace
 
 ButtonOption TextOnlyButtonOption(Color color_active) {
   auto option = ButtonOption::Simple();
@@ -155,7 +213,9 @@ Element RenderTorrentTable(const TorrentListModel& model, int selected_index) {
   return vbox(std::move(rows)) | border | vscroll_indicator | frame;
 }
 
-Element RenderDetailPanel(const TorrentListModel& model, int selected_index) {
+// NOLINTNEXTLINE(bugprone-easily-swappable-parameters)
+Element RenderDetailPanel(const TorrentListModel& model, int selected_index,
+                           int terminal_width) {
   if (model.empty()) {
     return vbox({
                separator(),
@@ -169,17 +229,100 @@ Element RenderDetailPanel(const TorrentListModel& model, int selected_index) {
     return vbox({text("Selection out of range") | center}) | border | flex;
   }
 
-  (void)selected_index;  // placeholder until extended detail view arrives.
+  (void)selected_index;
 
-  return vbox({
-             separator(),
-             text("Details for: " + torrent->name) | bold | center,
-             separator(),
-             hbox(text("Data Directory: "),
-                  text(torrent->data_directory) | dim),
-             text("(More information will be added here later)") | dim | center,
-         }) |
-         border | flex;
+  std::vector<Element> details;
+
+  // Title
+  details.push_back(separator());
+  details.push_back(text("Details for: " + torrent->name) | bold | center);
+  details.push_back(separator());
+
+  // Basic info
+  details.push_back(hbox({
+      text("Status: ") | bold,
+      text(torrent->complete),
+      text(" | "),
+      text(torrent->peers),
+      text(" peers | "),
+      text("↓ ") | dim,
+      text(torrent->down_speed),
+  }));
+
+  details.push_back(hbox({
+      text("Size: ") | bold,
+      text(torrent->size),
+      text(" | Pieces: ") | bold,
+      text(torrent->piece_count),
+      text(" @ ") | dim,
+      text(torrent->piece_length),
+  }));
+
+  // Piece visualization - generate dynamically based on terminal width
+  if (torrent->pieces_total > 0) {
+    // Account for border (2 chars: 1 left, 1 right) and minimal padding (1 char)
+    const int available_width = std::max(20, terminal_width - 3);
+    
+    const std::string viz = GeneratePieceVisualization(
+        torrent->pieces_total, torrent->pieces_completed, available_width);
+    details.push_back(text("Piece Status: ") | bold);
+    details.push_back(text(viz) | dim);
+  }
+
+  details.push_back(separator());
+
+  // Metadata section
+  details.push_back(text("Metadata") | bold | underlined);
+
+  if (torrent->announce != "None") {
+    details.push_back(
+        hbox({text("Announce: ") | bold, text(torrent->announce) | dim}));
+  }
+
+  if (torrent->comment != "None") {
+    details.push_back(
+        hbox({text("Comment: ") | bold, text(torrent->comment) | dim}));
+  }
+
+  if (torrent->created_by != "None") {
+    details.push_back(
+        hbox({text("Created By: ") | bold, text(torrent->created_by) | dim}));
+  }
+
+  details.push_back(hbox({
+      text("Created: ") | bold,
+      text(torrent->creation_date) | dim,
+  }));
+
+  details.push_back(hbox({
+      text("Encoding: ") | bold,
+      text(torrent->encoding) | dim,
+  }));
+
+  details.push_back(hbox({
+      text("Private: ") | bold,
+      text(torrent->is_private) | dim,
+  }));
+
+  details.push_back(separator());
+  details.push_back(text("Info") | bold | underlined);
+
+  details.push_back(hbox({
+      text("Info Hash: ") | bold,
+      text(torrent->info_hash) | dim,
+  }));
+
+  details.push_back(hbox({
+      text("Files: ") | bold,
+      text(torrent->files_info) | dim,
+  }));
+
+  details.push_back(hbox({
+      text("Directory: ") | bold,
+      text(torrent->data_directory) | dim,
+  }));
+
+  return vbox(std::move(details)) | border | flex;
 }
 
 namespace {
