@@ -45,7 +45,7 @@ struct TorrentInfo {
 
   // Per-piece completion status (true if piece is on disk)
   std::vector<bool> piece_completion;
-  
+
   // Per-piece peer availability (count of peers that have each piece)
   std::vector<uint32_t> piece_peer_counts;
 };

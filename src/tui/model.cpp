@@ -421,17 +421,17 @@ std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
     uint32_t peer_count = 0;
     std::vector<uint32_t> piece_peer_counts(total_pieces, 0);
     std::vector<bool> piece_completion(total_pieces, false);
-    
+
     if (total_pieces > 0) {
       const auto peer_count_start = Clock::now();
-      
+
       auto& peers_list = active->torrent->peers();
       peer_count = static_cast<uint32_t>(peers_list.size());
-      
+
       // Get which pieces we have locally
       const auto client_pieces = active->torrent->client_pieces();
       const auto client_pieces_size = client_pieces.size();
-      
+
       for (uint32_t i = 0; i < total_pieces; ++i) {
         // Only check bits that exist in the client's bitfield
         if (static_cast<size_t>(i) < client_pieces_size) {
@@ -442,12 +442,13 @@ std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
           piece_completion[i] = false;
         }
       }
-      
+
       // Collect per-piece peer availability by checking each peer's bitfield
       for (const auto& peer : peers_list) {
         const auto& remote_pieces = peer->remote_pieces();
-        const auto bitfield_bits = remote_pieces.size();  // size() returns number of bits
-        
+        const auto bitfield_bits =
+            remote_pieces.size();  // size() returns number of bits
+
         for (uint32_t i = 0; i < total_pieces; ++i) {
           // Only check bits that exist in the peer's bitfield
           if (static_cast<size_t>(i) < bitfield_bits) {
@@ -459,15 +460,16 @@ std::vector<TorrentInfo> TorrentListModel::CollectSnapshot() {
           }
         }
       }
-      
-      const auto peer_count_elapsed = 
+
+      const auto peer_count_elapsed =
           std::chrono::duration_cast<std::chrono::milliseconds>(
-              Clock::now() - peer_count_start).count();
-      
+              Clock::now() - peer_count_start)
+              .count();
+
       if (peer_count_elapsed > 50) {
-        zit_logger()->warn(
-            "Peer count for '{}' took {}ms (peers: {})",
-            active->torrent->name(), peer_count_elapsed, peer_count);
+        zit_logger()->warn("Peer count for '{}' took {}ms (peers: {})",
+                           active->torrent->name(), peer_count_elapsed,
+                           peer_count);
       }
     }
 

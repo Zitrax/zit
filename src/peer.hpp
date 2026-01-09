@@ -12,11 +12,11 @@
 #include <asio.hpp>
 #include <asio/awaitable.hpp>
 
+#include <atomic>
 #include <deque>
 #include <map>
 #include <memory>
 #include <optional>
-#include <atomic>
 
 namespace zit {
 
@@ -229,7 +229,9 @@ class Peer : public IConnectionUrlProvider {
   /**
    * Get the bitfield of pieces this peer has.
    */
-  [[nodiscard]] const Bitfield& remote_pieces() const { return m_remote_pieces; }
+  [[nodiscard]] const Bitfield& remote_pieces() const {
+    return m_remote_pieces;
+  }
 
   /**
    * Store a retrieved a block ( part of a piece )

@@ -91,7 +91,8 @@ void TuiController::BuildComponents() {
   });
 
   detail_renderer_ = Renderer([this] {
-    return view::RenderDetailPanel(model_, model_.selected_index(), screen_.dimx());
+    return view::RenderDetailPanel(model_, model_.selected_index(),
+                                   screen_.dimx());
   });
 
   log_renderer_ = view::MakeLogPanel([this] { return screen_.dimy(); });
@@ -107,7 +108,8 @@ void TuiController::BuildComponents() {
     if (show_log_ && !focus_on_log_) {
       const int window_height = std::max(1, screen_.dimy());
       const int half_height = std::max(1, window_height / 2);
-      view::AutoFollowLogBottom(log_renderer_, half_height / 2);  // Approximate for each log section
+      view::AutoFollowLogBottom(
+          log_renderer_, half_height / 2);  // Approximate for each log section
     }
 
     auto list_element = menu_renderer_->Render() | flex;

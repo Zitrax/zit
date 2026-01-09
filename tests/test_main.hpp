@@ -5,4 +5,3 @@
 
 // NOLINTNEXTLINE(cppcoreguidelines-avoid-non-const-global-variables)
 extern std::function<void(int)> sigint_function;
-

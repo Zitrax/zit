@@ -4,8 +4,8 @@
 #include "../arg_parser.hpp"
 
 #include <exception>
-#include <iterator>
 #include <iostream>
+#include <iterator>
 #include <vector>
 
 int main(int argc, const char* argv[]) noexcept {

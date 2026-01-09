@@ -236,7 +236,7 @@ int main(int argc, const char* argv[]) noexcept {
     };
 
     // NOLINTBEGIN(cppcoreguidelines-pro-type-union-access,misc-include-cleaner)
-    struct sigaction sigIntHandler{};
+    struct sigaction sigIntHandler {};
     sigIntHandler.sa_handler = sigint_handler;
     sigemptyset(&sigIntHandler.sa_mask);
     sigIntHandler.sa_flags = 0;
